@@ -27,14 +27,22 @@ export function FilaProveedor({ pp, conPedido = false }: { pp: PedidoProveedor; 
         <div style={{ minWidth: 0 }}>
           <div className="item-titulo">
             {pp.proveedor_nombre}
-            {conPedido && (
+            {conPedido && pp.pedido_id && (
               <a href={`/pedidos/${pp.pedido_id}`} className="quiet" style={{ fontWeight: 400 }}>
                 {' '}
                 · #{pp.pedido_numero} {pp.cliente_nombre}
               </a>
             )}
+            {pp.es_stock && (
+              <span className="chip" style={{ marginLeft: 6 }}>
+                Stock
+              </span>
+            )}
           </div>
-          {pp.detalle && <div className="item-detalle">{pp.detalle}</div>}
+          {(pp.detalle || pp.cantidad) && (
+            <div className="item-detalle">{[pp.cantidad, pp.detalle].filter(Boolean).join(' · ')}</div>
+          )}
+          {pp.nota && <div className="item-detalle faint">{pp.nota}</div>}
           <div className="xs faint" style={{ marginTop: 2 }}>
             Pedido {fechaCorta(pp.fecha_pedido)}
             {pp.estado === 'recibido'
@@ -74,7 +82,7 @@ export function FilaProveedor({ pp, conPedido = false }: { pp: PedidoProveedor; 
             Volver a "esperando"
           </button>
         )}
-        {!conPedido && (
+        {(!conPedido || pp.es_stock) && (
           <button
             type="button"
             className="btn btn-chico btn-fantasma btn-peligro"

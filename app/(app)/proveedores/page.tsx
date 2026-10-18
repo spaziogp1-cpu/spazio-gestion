@@ -1,39 +1,51 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { leerReglaPlazo } from '@/lib/parametros';
 import { miembroActual } from '@/lib/sesion';
-import type { PedidoProveedor } from '@/lib/tipos';
+import type { PedidoProveedor, Proveedor } from '@/lib/tipos';
 import { FilaProveedor } from '../pedidos/[id]/proveedores-pedido';
+import NuevoStock from './nuevo-stock';
 
 export const metadata: Metadata = { title: 'Proveedores' };
 
-export default async function ProveedoresPage({ searchParams }: { searchParams: Promise<{ ver?: string; p?: string }> }) {
-  const { ver, p: filtroProv } = await searchParams;
-  const recibidos = ver === 'recibidos';
+type Params = { ver?: string; p?: string; tipo?: string };
+
+export default async function ProveedoresPage({ searchParams }: { searchParams: Promise<Params> }) {
+  const params = await searchParams;
+  const recibidos = params.ver === 'recibidos';
+  const tipo = params.tipo === 'stock' || params.tipo === 'clientes' ? params.tipo : null;
   const { supabase } = await miembroActual();
 
-  const [{ data: provs }, { data }] = await Promise.all([
-    supabase.from('proveedores').select('id, nombre').eq('activo', true).order('nombre', { ascending: false }),
-    (() => {
-      let c = supabase.from('proveedor_pendientes').select('*');
-      c = recibidos
-        ? c.eq('estado', 'recibido').order('fecha_recepcion', { ascending: false }).limit(50)
-        : c.eq('estado', 'pedido').order('fecha_esperada', { ascending: true, nullsFirst: false }).limit(300);
-      if (filtroProv) c = c.eq('proveedor_id', filtroProv);
-      return c;
-    })(),
+  let consulta = supabase.from('proveedor_pendientes').select('*');
+  consulta = recibidos
+    ? consulta.eq('estado', 'recibido').order('fecha_recepcion', { ascending: false }).limit(50)
+    : consulta.eq('estado', 'pedido').order('fecha_esperada', { ascending: true, nullsFirst: false }).limit(300);
+  if (params.p) consulta = consulta.eq('proveedor_id', params.p);
+  if (tipo === 'stock') consulta = consulta.is('pedido_id', null);
+  if (tipo === 'clientes') consulta = consulta.not('pedido_id', 'is', null);
+
+  const [{ data: provs }, { data }, plazo] = await Promise.all([
+    supabase.from('proveedores').select('id, nombre, plazo_dias').eq('activo', true).order('nombre'),
+    consulta,
+    leerReglaPlazo(supabase),
   ]);
   const lista = (data ?? []) as PedidoProveedor[];
-  const proveedores = (provs ?? []) as { id: string; nombre: string }[];
+  // Vidpro y STG primero, después el resto por nombre.
+  const proveedores = ((provs ?? []) as Proveedor[]).sort((a, b) => {
+    const orden = (n: string) => (n === 'Vidpro' ? 0 : n === 'STG' ? 1 : 2);
+    return orden(a.nombre) - orden(b.nombre) || a.nombre.localeCompare(b.nombre);
+  });
   const demorados = lista.filter((x) => x.demorado).length;
 
-  const href = (cambios: { ver?: string | null; p?: string | null }) => {
-    const params = new URLSearchParams();
-    const v = cambios.ver === undefined ? ver : cambios.ver;
-    const pr = cambios.p === undefined ? filtroProv : cambios.p;
-    if (v) params.set('ver', v);
-    if (pr) params.set('p', pr);
-    const qs = params.toString();
-    return qs ? `/proveedores?${qs}` : '/proveedores';
+  const href = (cambios: Partial<Record<keyof Params, string | null>>) => {
+    const q = new URLSearchParams();
+    const final = { ...params, ...cambios };
+    (Object.keys(final) as (keyof Params)[]).forEach((k) => {
+      const v = final[k];
+      if (v) q.set(k, v);
+    });
+    const s = q.toString();
+    return s ? `/proveedores?${s}` : '/proveedores';
   };
 
   return (
@@ -48,6 +60,8 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
         </div>
       </div>
 
+      <NuevoStock proveedores={proveedores} feriados={plazo.feriados} />
+
       <div className="filtros">
         <Link href={href({ ver: null })} className="filtro" aria-current={!recibidos ? 'true' : undefined}>
           Esperando
@@ -56,11 +70,22 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
           Recibidos
         </Link>
         <span style={{ width: 8, flexShrink: 0 }} />
-        <Link href={href({ p: null })} className="filtro" aria-current={!filtroProv ? 'true' : undefined}>
-          Todos
+        <Link href={href({ tipo: null })} className="filtro" aria-current={!tipo ? 'true' : undefined}>
+          Todo
+        </Link>
+        <Link href={href({ tipo: 'clientes' })} className="filtro" aria-current={tipo === 'clientes' ? 'true' : undefined}>
+          Para clientes
+        </Link>
+        <Link href={href({ tipo: 'stock' })} className="filtro" aria-current={tipo === 'stock' ? 'true' : undefined}>
+          Stock
+        </Link>
+      </div>
+      <div className="filtros">
+        <Link href={href({ p: null })} className="filtro" aria-current={!params.p ? 'true' : undefined}>
+          Todos los proveedores
         </Link>
         {proveedores.map((pr) => (
-          <Link key={pr.id} href={href({ p: pr.id })} className="filtro" aria-current={filtroProv === pr.id ? 'true' : undefined}>
+          <Link key={pr.id} href={href({ p: pr.id })} className="filtro" aria-current={params.p === pr.id ? 'true' : undefined}>
             {pr.nombre}
           </Link>
         ))}
@@ -70,9 +95,9 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
         <div className="seccion">
           {lista.length === 0 ? (
             <div className="vacio">
-              {recibidos ? 'Todavía no se marcó nada como recibido.' : 'No hay nada pendiente de los proveedores.'}
+              {recibidos ? 'Todavía no se marcó nada como recibido.' : 'No hay nada pendiente con estos filtros.'}
               <div className="small faint" style={{ marginTop: 6 }}>
-                Los pedidos a proveedores se registran desde la ficha de cada pedido.
+                Los pedidos para clientes se registran desde la ficha de cada pedido; los de stock, con el botón de arriba.
               </div>
             </div>
           ) : (

@@ -58,7 +58,7 @@ export type Proveedor = { id: string; nombre: string; plazo_dias: number };
 
 export type PedidoProveedor = {
   id: string;
-  pedido_id: string;
+  pedido_id: string | null;
   proveedor_id: string;
   detalle: string | null;
   estado: 'pedido' | 'recibido' | 'cancelado';
@@ -67,11 +67,13 @@ export type PedidoProveedor = {
   fecha_recepcion: string | null;
   link_drive: string | null;
   nota: string | null;
+  cantidad: string | null;
   proveedor_nombre: string;
-  pedido_numero: number;
-  pedido_etapa: string;
-  pedido_fecha_limite: string;
-  cliente_nombre: string;
+  pedido_numero: number | null;
+  pedido_etapa: string | null;
+  pedido_fecha_limite: string | null;
+  cliente_nombre: string | null;
+  es_stock: boolean;
   demorado: boolean;
 };
 
