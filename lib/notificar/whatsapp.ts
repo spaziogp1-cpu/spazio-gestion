@@ -23,7 +23,7 @@ export async function enviarPlantilla(telefono: string, plantilla: string, param
   if (!whatsappConfigurado()) return { ok: false, omitido: true, error: 'WhatsApp sin configurar' };
   const destino = telefonoWhatsApp(telefono);
   if (!destino) return { ok: false, error: 'Teléfono inválido' };
-  const version = process.env.WHATSAPP_API_VERSION || 'v21.0';
+  const version = process.env.WHATSAPP_API_VERSION || 'v25.0';
   try {
     const r = await fetch(`https://graph.facebook.com/${version}/${process.env.WHATSAPP_PHONE_ID}/messages`, {
       method: 'POST',
