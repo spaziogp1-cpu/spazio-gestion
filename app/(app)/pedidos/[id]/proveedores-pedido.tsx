@@ -1,7 +1,7 @@
 'use client';
 
 import { startTransition, useActionState, useEffect, useState, useTransition } from 'react';
-import { fechaCorta, hoyAR, sumarDiasCorridos } from '@/lib/fechas';
+import { fechaCorta, hoyAR, sumarDiasHabiles } from '@/lib/fechas';
 import type { PedidoProveedor, Proveedor } from '@/lib/tipos';
 import { borrarPedidoProveedor, cambiarEstadoProveedor, pedirAProveedor, type EstadoProv } from '../../proveedores/actions';
 
@@ -91,14 +91,24 @@ export function FilaProveedor({ pp, conPedido = false }: { pp: PedidoProveedor; 
   );
 }
 
-export function NuevoPedidoProveedor({ pedidoId, proveedores, abiertoInicial }: { pedidoId: string; proveedores: Proveedor[]; abiertoInicial: boolean }) {
+export function NuevoPedidoProveedor({
+  pedidoId,
+  proveedores,
+  feriados,
+  abiertoInicial,
+}: {
+  pedidoId: string;
+  proveedores: Proveedor[];
+  feriados: string[];
+  abiertoInicial: boolean;
+}) {
   const [abierto, setAbierto] = useState(abiertoInicial);
   const [estado, accion, guardando] = useActionState<EstadoProv, FormData>(pedirAProveedor.bind(null, pedidoId), {});
   const [proveedorId, setProveedorId] = useState(proveedores[0]?.id ?? '');
   const [fechaPedido, setFechaPedido] = useState(hoyAR());
   const [fechaManual, setFechaManual] = useState('');
-  const plazo = proveedores.find((p) => p.id === proveedorId)?.plazo_dias ?? 20;
-  const esperada = fechaManual || sumarDiasCorridos(fechaPedido || hoyAR(), plazo);
+  const plazo = proveedores.find((p) => p.id === proveedorId)?.plazo_dias ?? 25;
+  const esperada = fechaManual || sumarDiasHabiles(fechaPedido || hoyAR(), plazo, new Set(feriados));
 
   useEffect(() => {
     if (estado.ok) {
@@ -146,7 +156,7 @@ export function NuevoPedidoProveedor({ pedidoId, proveedores, abiertoInicial }: 
         <div className="campo">
           <label htmlFor="pp_esperada">Llega aprox.</label>
           <input id="pp_esperada" name="fecha_esperada" type="date" value={esperada} onChange={(e) => setFechaManual(e.target.value)} />
-          <span className="ayuda">{fechaManual ? 'Cambiada a mano' : `${plazo} días después del pedido`}</span>
+          <span className="ayuda">{fechaManual ? 'Cambiada a mano' : `${plazo} días hábiles después del pedido`}</span>
         </div>
       </div>
       <div className="campo">

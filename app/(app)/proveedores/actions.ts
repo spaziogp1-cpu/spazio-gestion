@@ -1,8 +1,9 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { hoyAR, sumarDiasCorridos } from '@/lib/fechas';
+import { hoyAR, sumarDiasHabiles } from '@/lib/fechas';
 import { texto } from '@/lib/formato';
+import { leerReglaPlazo } from '@/lib/parametros';
 import { miembroActual } from '@/lib/sesion';
 
 export type EstadoProv = { error?: string; ok?: string };
@@ -27,8 +28,11 @@ export async function pedirAProveedor(pedidoId: string, _prev: EstadoProv, fd: F
   const fechaPedido = fechaValida(texto(fd.get('fecha_pedido'))) ?? hoyAR();
   let fechaEsperada = fechaValida(texto(fd.get('fecha_esperada')));
   if (!fechaEsperada) {
-    const { data: prov } = await supabase.from('proveedores').select('plazo_dias').eq('id', proveedorId).maybeSingle();
-    fechaEsperada = sumarDiasCorridos(fechaPedido, prov?.plazo_dias ?? 20);
+    const [{ data: prov }, { feriados }] = await Promise.all([
+      supabase.from('proveedores').select('plazo_dias').eq('id', proveedorId).maybeSingle(),
+      leerReglaPlazo(supabase),
+    ]);
+    fechaEsperada = sumarDiasHabiles(fechaPedido, prov?.plazo_dias ?? 25, new Set(feriados));
   }
 
   const { error } = await supabase.from('pedidos_proveedor').insert({

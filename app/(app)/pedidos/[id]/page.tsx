@@ -6,6 +6,7 @@ import { ChipEtapa } from '@/components/pedido-fila';
 import { CANALES, ENVIOS, ETAPAS, TIPOS_PAGO, TIPOS_VENTA, nombreDe } from '@/lib/constantes';
 import { fechaCorta, fechaHora, fechaLarga, relativo } from '@/lib/fechas';
 import { linkWhatsApp, plata } from '@/lib/formato';
+import { leerReglaPlazo } from '@/lib/parametros';
 import { miembroActual } from '@/lib/sesion';
 import type { Archivo, Cliente, Comentario, Evento, Item, Pago, PedidoProveedor, PedidoResumen, Proveedor } from '@/lib/tipos';
 import { FilaProveedor, NuevoPedidoProveedor } from './proveedores-pedido';
@@ -35,7 +36,7 @@ export default async function FichaPedido({
   if (!pData) notFound();
   const p = pData as PedidoResumen;
 
-  const [clienteR, itemsR, pagosR, comentariosR, archivosR, eventosR, equipoR, provR, ppR] = await Promise.all([
+  const [clienteR, itemsR, pagosR, comentariosR, archivosR, eventosR, equipoR, provR, ppR, plazo] = await Promise.all([
     supabase.from('clientes').select('*').eq('id', p.cliente_id).single(),
     supabase.from('pedido_items').select('*').eq('pedido_id', id).order('orden').order('creado_en'),
     supabase.from('pagos').select('*').eq('pedido_id', id).order('fecha').order('creado_en'),
@@ -45,6 +46,7 @@ export default async function FichaPedido({
     supabase.from('equipo').select('id, nombre, email').eq('activo', true).order('nombre'),
     supabase.from('proveedores').select('id, nombre, plazo_dias').eq('activo', true).order('nombre', { ascending: false }),
     supabase.from('proveedor_pendientes').select('*').eq('pedido_id', id).order('creado_en'),
+    leerReglaPlazo(supabase),
   ]);
   const proveedores = (provR.data ?? []) as Proveedor[];
   const pedidosProv = (ppR.data ?? []) as PedidoProveedor[];
@@ -143,7 +145,7 @@ export default async function FichaPedido({
               {pedidosProv.map((pp) => (
                 <FilaProveedor key={pp.id} pp={pp} />
               ))}
-              <NuevoPedidoProveedor pedidoId={p.id} proveedores={proveedores} abiertoInicial={false} />
+              <NuevoPedidoProveedor pedidoId={p.id} proveedores={proveedores} feriados={plazo.feriados} abiertoInicial={false} />
             </div>
           </section>
 

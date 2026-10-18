@@ -11,15 +11,15 @@ create table public.proveedores (
   que_provee      text,
   contacto        text,
   telefono        text,
-  plazo_dias      integer not null default 20 check (plazo_dias > 0),  -- días corridos que suele tardar
+  plazo_dias      integer not null default 25 check (plazo_dias > 0),  -- días HÁBILES que tarda, como máximo
   activo          boolean not null default true,
   creado_en       timestamptz not null default now()
 );
 
 insert into public.proveedores (nombre, que_provee, plazo_dias) values
-  ('Vidpro', 'Vidrio y mesas armadas', 20),
-  ('STG', 'Estructuras cromadas', 20)
-on conflict (nombre) do nothing;
+  ('Vidpro', 'Vidrio y mesas armadas', 25),   -- tarda entre 20 y 25 días hábiles
+  ('STG', 'Estructuras cromadas', 30)         -- tarda entre 25 y 30 días hábiles
+on conflict (nombre) do update set plazo_dias = excluded.plazo_dias;
 
 create table public.pedidos_proveedor (
   id                uuid primary key default gen_random_uuid(),
