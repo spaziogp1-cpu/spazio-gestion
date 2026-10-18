@@ -1,17 +1,36 @@
 import type { Metadata } from 'next';
 import { miembroActual } from '@/lib/sesion';
-import { FormMiembro, FormParametros, ProbarPlanilla, ProbarResumen } from './partes';
+import { fechaCorta } from '@/lib/fechas';
+import { FormMiembro, FormParametros, ImportarTiendaNube, ProbarPlanilla, ProbarResumen } from './partes';
+
+async function conexionTiendaNube() {
+  try {
+    const { crearAdmin } = await import('@/lib/supabase/admin');
+    const { leerConexion } = await import('@/lib/tiendanube/api');
+    return await leerConexion(crearAdmin());
+  } catch {
+    return null;
+  }
+}
 
 export const metadata: Metadata = { title: 'Ajustes' };
 
-export default async function AjustesPage() {
+export default async function AjustesPage({ searchParams }: { searchParams: Promise<{ tiendanube?: string }> }) {
+  const { tiendanube: mensajeTN } = await searchParams;
   const { miembro, supabase } = await miembroActual();
   const admin = miembro.rol === 'admin';
-  const [{ data: eq }, { data: params }, { data: sync }] = await Promise.all([
+  const [{ data: eq }, { data: params }, { data: sync }, { data: tnOrdenes }, tn] = await Promise.all([
     supabase.from('equipo').select('id, nombre, alias_planilla, email, telefono, rol, activo').order('activo', { ascending: false }).order('nombre'),
     supabase.from('parametros').select('clave, valor'),
     supabase.from('planilla_sync').select('estado, error, sincronizado_en').order('creado_en', { ascending: false }).limit(500),
+    supabase.from('tiendanube_ordenes').select('numero, estado, detalle, recibido_en').order('recibido_en', { ascending: false }).limit(500),
+    conexionTiendaNube(),
   ]);
+  const ordenesTN = (tnOrdenes ?? []) as { numero: number | null; estado: string; detalle: string | null; recibido_en: string }[];
+  const tnCreadas = ordenesTN.filter((o) => o.estado === 'creado').length;
+  const tnVinculadas = ordenesTN.filter((o) => o.estado === 'vinculado').length;
+  const tnError = ordenesTN.find((o) => o.estado === 'error');
+  const tnConfig = Boolean(process.env.TIENDANUBE_APP_ID && process.env.TIENDANUBE_CLIENT_SECRET);
   const filasSync = (sync ?? []) as { estado: string; error: string | null; sincronizado_en: string | null }[];
   const syncOk = filasSync.filter((x) => x.estado === 'ok').length;
   const syncPend = filasSync.filter((x) => x.estado === 'pendiente').length;
@@ -85,6 +104,38 @@ export default async function AjustesPage() {
                 {syncErr[0]?.error && <li style={{ color: 'var(--danger)' }}>Último error: {syncErr[0].error}</li>}
               </ul>
               {admin && <ProbarPlanilla />}
+            </div>
+          </section>
+          <section className="card">
+            <div className="card-titulo">
+              <h2>Tienda Nube</h2>
+            </div>
+            <div className="seccion form-bloque">
+              <p className="small">Cada venta pagada en spaziodesign.net entra sola como pedido (y de ahí a la planilla). Si ya la habían cargado a mano, se une con ese pedido en vez de duplicarla.</p>
+              {mensajeTN && (mensajeTN === 'ok' ? <p className="aviso aviso-ok">Tienda conectada. Desde ahora las ventas pagadas entran solas.</p> : <p className="error-form">{mensajeTN}</p>)}
+              <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>
+                <li>App de Tienda Nube: {tnConfig ? '✓ configurada' : '✗ falta TIENDANUBE_APP_ID y TIENDANUBE_CLIENT_SECRET'}</li>
+                <li>Tienda: {tn ? `✓ conectada (n.º ${tn.store_id}) · ventas desde el ${fechaCorta(tn.desde.slice(0, 10))}` : '✗ sin conectar'}</li>
+                {tn && (
+                  <li>
+                    Pedidos creados: {tnCreadas}
+                    {tnVinculadas ? ` · unidos a pedidos cargados a mano: ${tnVinculadas}` : ''}
+                  </li>
+                )}
+                {tnError?.detalle && (
+                  <li style={{ color: 'var(--danger)' }}>
+                    Último error{tnError.numero ? ` (#${tnError.numero})` : ''}: {tnError.detalle}
+                  </li>
+                )}
+              </ul>
+              {admin && tnConfig && (
+                <div>
+                  <a className="btn" href="/api/tiendanube/conectar">
+                    {tn ? 'Volver a conectar' : 'Conectar con Tienda Nube'}
+                  </a>
+                </div>
+              )}
+              {admin && tn && <ImportarTiendaNube />}
             </div>
           </section>
         </div>

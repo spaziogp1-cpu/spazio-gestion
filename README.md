@@ -25,6 +25,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 5. `supabase/migrations/0005_tareas_objetivos_visitas.sql` — tareas, objetivos, showroom
 6. `supabase/migrations/0006_avisos_y_automatismos.sql` — avisos y tareas automáticas por etapa
 7. `supabase/migrations/0007_planilla.sql` — registro de lo escrito en la planilla de ventas
+8. `supabase/migrations/0008_tiendanube.sql` — ventas de Tienda Nube que entran solas
 
 ## Variables en Vercel (Settings → Environment Variables)
 
@@ -39,6 +40,8 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID` | **Secret** | Más adelante, para avisos por WhatsApp |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | **Secret** | Contenido completo del .json de la cuenta de servicio de Google |
 | `PLANILLA_ID` | Config | ID de la planilla donde se escriben las ventas (hoy, la copia de pruebas) |
+| `TIENDANUBE_APP_ID` | Config | ID de la app creada en el portal de socios de Tienda Nube |
+| `TIENDANUBE_CLIENT_SECRET` | **Secret** | Secreto de esa app (también firma los avisos de ventas) |
 | `WHATSAPP_PLANTILLA_RESUMEN` | Config | Nombre de la plantilla aprobada (por defecto `resumen_diario`) |
 
 ## Puesta en marcha (una sola vez)
@@ -87,6 +90,21 @@ En **Authentication → URL Configuration**:
 ### 5. En el celular
 Abrí la dirección en Safari o Chrome → **Compartir → Agregar a inicio**.
 Queda como una app más.
+
+## Ventas de Tienda Nube
+
+1. En partners.tiendanube.com, creá una app (para uso propio) con:
+   - URL de redirección: `https://spazio-gestion.vercel.app/api/tiendanube/callback`
+   - Permisos: **Orders (lectura)** y **Customers (lectura)**
+   - Las URLs obligatorias de datos personales pueden apuntar a `https://spazio-gestion.vercel.app/api/tiendanube/webhook`
+2. Cargá `TIENDANUBE_APP_ID` y `TIENDANUBE_CLIENT_SECRET` en Vercel y hacé Redeploy.
+3. Corré la migración 0008.
+4. En la app: **Ajustes → Tienda Nube → Conectar con Tienda Nube** y aceptá en la tienda.
+
+Desde ese momento, cada venta pagada crea un pedido (canal Tienda Nube, sin vendedor) y se
+escribe en la planilla. Si la venta ya estaba cargada a mano (mismo email o teléfono, canal
+Tienda Nube, ±4 días), se une a ese pedido. El proceso diario repasa los últimos 3 días por si
+algún aviso no llegó. Si una venta se cancela en la tienda, avisa al equipo pero no cancela solo.
 
 ## Para desarrollar
 

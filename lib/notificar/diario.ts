@@ -1,6 +1,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sincronizarPendientes } from '@/lib/planilla/sync';
+import { importarDesde } from '@/lib/tiendanube/importar';
 import { armarResumen, type Resumen } from '@/lib/resumen';
 import { enviarEmail } from './email';
 import { emailResumen, lineaWhatsApp } from './resumen-email';
@@ -40,8 +41,13 @@ export async function procesoDiario(db: Cliente, soloMiembro?: string): Promise<
   const { data: param } = await db.from('parametros').select('valor').eq('clave', 'aviso_dias_antes').maybeSingle();
   const avisoDias = Number(param?.valor ?? 3) || 3;
 
-  // Pedidos que no se pudieron escribir en la planilla: se reintentan una vez por día.
-  if (!soloMiembro) await sincronizarPendientes(db).catch((e) => console.error('planilla pendientes', e));
+  if (!soloMiembro) {
+    // Ventas de Tienda Nube de los últimos 3 días que no hayan llegado por aviso.
+    const hace3 = new Date(Date.now() - 3 * 86_400_000).toISOString();
+    await importarDesde(db, hace3).catch((e) => console.error('tiendanube diario', e));
+    // Pedidos que no se pudieron escribir en la planilla: se reintentan una vez por día.
+    await sincronizarPendientes(db).catch((e) => console.error('planilla pendientes', e));
+  }
 
   const informes: Informe[] = [];
   for (const m of (equipo ?? []) as Miembro[]) {

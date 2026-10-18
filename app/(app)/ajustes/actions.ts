@@ -98,3 +98,24 @@ export async function probarPlanilla(): Promise<EstadoAjustes> {
     return { error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+// Trae las ventas pagadas de Tienda Nube de los últimos días que todavía no sean pedidos.
+export async function importarTiendaNube(dias: number): Promise<EstadoAjustes> {
+  try {
+    await soloAdmin();
+    const { crearAdmin } = await import('@/lib/supabase/admin');
+    const { importarDesde } = await import('@/lib/tiendanube/importar');
+    const { leerConexion } = await import('@/lib/tiendanube/api');
+    const db = crearAdmin();
+    if (!(await leerConexion(db))) return { error: 'Primero conectá la tienda.' };
+    const desde = new Date(Date.now() - Math.min(Math.max(dias, 1), 60) * 86_400_000).toISOString();
+    const r = await importarDesde(db, desde);
+    revalidatePath('/ajustes');
+    revalidatePath('/pedidos');
+    if (r.errores.length) return { error: `${r.creadas} pedidos nuevos, ${r.errores.length} con error: ${r.errores[0]}` };
+    if (!r.revisadas) return { ok: 'No hay ventas pagadas nuevas desde que se conectó la tienda.' };
+    return { ok: `Revisé ${r.revisadas} ventas pagadas: ${r.creadas} pedidos nuevos${r.vinculadas ? `, ${r.vinculadas} ya estaban cargados a mano` : ''}.` };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}

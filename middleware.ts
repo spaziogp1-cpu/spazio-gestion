@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseKey, supabaseUrl } from '@/lib/supabase/config';
 
-const PUBLICAS = ['/login', '/auth', '/api/cron'];
+const PUBLICAS = ['/login', '/auth', '/api/cron', '/api/tiendanube/webhook'];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
