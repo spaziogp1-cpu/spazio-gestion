@@ -45,3 +45,10 @@ export const IconoWhatsApp = (p: P) => (
     <path d="M9 9.5c.3 2.2 2.3 4.2 4.5 4.5l1-1.2 2 .9c-.3 1.1-1.2 1.8-2.3 1.8C10.6 15.5 8 12.9 8 9.8 8 8.7 8.7 7.8 9.8 7.5l.9 2z" />
   </svg>
 );
+export const IconoProveedores = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z" />
+    <circle cx="7" cy="17.5" r="1.8" />
+    <circle cx="17" cy="17.5" r="1.8" />
+  </svg>
+);

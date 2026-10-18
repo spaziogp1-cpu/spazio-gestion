@@ -109,10 +109,10 @@ p { margin: 0; }
   border-top: 1px solid var(--line);
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
 }
-.tab { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; color: var(--ink-3); padding: 4px 12px; }
+.tab { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; color: var(--ink-3); padding: 4px 6px; min-width: 56px; }
 .tab svg { width: 22px; height: 22px; }
 .tab[aria-current='page'] { color: var(--accent); }
-.tab-mas { background: var(--accent); color: var(--accent-ink) !important; border-radius: 14px; padding: 8px 18px; margin-top: -2px; }
+.tab-mas { background: var(--accent); color: var(--accent-ink) !important; border-radius: 14px; padding: 8px 12px; margin-top: -2px; }
 
 @media (min-width: 900px) {
   .sidebar { display: flex; }
@@ -297,3 +297,26 @@ details.mas[open] > summary::before { content: '– '; }
 .login .card { width: 100%; max-width: 380px; padding: 28px 24px; }
 .login .marca { padding: 0 0 20px; font-size: 18px; }
 .login .marca img { width: 36px; height: 36px; }
+
+/* ---------- Tablero de producción ---------- */
+.tablero {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(260px, 1fr);
+  gap: 12px; overflow-x: auto; padding-bottom: 8px; align-items: start;
+  scroll-snap-type: x proximity;
+}
+.columna { scroll-snap-align: start; transition: border-color .12s, background .12s; }
+.columna-sobre { border-color: var(--accent); background: var(--accent-soft); }
+.columna-lista { padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 60px; }
+.tarjeta {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+  cursor: grab; user-select: none;
+}
+.tarjeta:active { cursor: grabbing; }
+.tarjeta-mal { border-color: var(--danger); background: var(--danger-soft); }
+.tarjeta-arrastrando { opacity: 0.4; }
+.tarjeta-link { display: block; padding: 10px 12px 6px; }
+.tarjeta-arriba { font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+.tarjeta-cliente, .tarjeta-productos { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tarjeta-fecha { margin-top: 4px; color: var(--ink-3); }
+.tarjeta-fecha.mal { color: var(--danger); font-weight: 600; }
+.tarjeta-avanzar { margin: 0 8px 8px; min-height: 28px; font-size: 12px; width: calc(100% - 16px); }

@@ -26,6 +26,12 @@ const CAMPOS: Record<string, string> = {
   cantidad: 'la cantidad',
   precio: 'el precio',
   monto: 'el monto',
+  estado: 'el estado',
+  detalle: 'el detalle',
+  fecha_pedido: 'la fecha de pedido',
+  fecha_esperada: 'la fecha esperada',
+  fecha_recepcion: 'la fecha de recepción',
+  link_drive: 'el link de Drive',
 };
 
 const ENTIDAD: Record<string, string> = {
@@ -33,6 +39,7 @@ const ENTIDAD: Record<string, string> = {
   pedido_items: 'un producto',
   pagos: 'un pago',
   archivos: 'un archivo',
+  pedidos_proveedor: 'un pedido a proveedor',
 };
 
 function valor(campo: string, v: string | null): string {
@@ -42,6 +49,7 @@ function valor(campo: string, v: string | null): string {
   if (campo === 'envio') return nombreDe(ENVIOS, v);
   if (campo === 'tipo_venta') return nombreDe(TIPOS_VENTA, v);
   if (campo === 'tipo') return nombreDe(TIPOS_PAGO, v);
+  if (campo === 'estado') return ({ pedido: 'pedido', recibido: 'recibido', cancelado: 'cancelado' } as Record<string, string>)[v] ?? v;
   if (campo.startsWith('fecha')) return fechaCorta(v);
   if (['total', 'precio_envio_cliente', 'precio', 'monto'].includes(campo)) return plata(v);
   return v.length > 40 ? v.slice(0, 40) + '…' : v;

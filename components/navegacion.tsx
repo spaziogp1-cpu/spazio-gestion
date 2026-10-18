@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { IconoClientes, IconoMas, IconoPedidos, IconoProduccion } from './iconos';
+import { IconoClientes, IconoMas, IconoPedidos, IconoProduccion, IconoProveedores } from './iconos';
 
 const LINKS = [
   { href: '/pedidos', nombre: 'Pedidos', Icono: IconoPedidos },
   { href: '/produccion', nombre: 'Producción', Icono: IconoProduccion },
+  { href: '/proveedores', nombre: 'Proveedores', Icono: IconoProveedores },
   { href: '/clientes', nombre: 'Clientes', Icono: IconoClientes },
 ];
 
@@ -55,6 +56,9 @@ export function TabBar() {
       </Link>
       <Link href="/pedidos/nuevo" className="tab tab-mas" aria-label="Nuevo pedido">
         <IconoMas /> Nuevo
+      </Link>
+      <Link href="/proveedores" className="tab" aria-current={activo(path, '/proveedores') ? 'page' : undefined}>
+        <IconoProveedores /> Proveed.
       </Link>
       <Link href="/clientes" className="tab" aria-current={activo(path, '/clientes') ? 'page' : undefined}>
         <IconoClientes /> Clientes

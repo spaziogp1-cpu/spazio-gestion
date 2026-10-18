@@ -7,7 +7,8 @@ import { CANALES, ENVIOS, ETAPAS, TIPOS_PAGO, TIPOS_VENTA, nombreDe } from '@/li
 import { fechaCorta, fechaHora, fechaLarga, relativo } from '@/lib/fechas';
 import { linkWhatsApp, plata } from '@/lib/formato';
 import { miembroActual } from '@/lib/sesion';
-import type { Archivo, Cliente, Comentario, Evento, Item, Pago, PedidoResumen } from '@/lib/tipos';
+import type { Archivo, Cliente, Comentario, Evento, Item, Pago, PedidoProveedor, PedidoResumen, Proveedor } from '@/lib/tipos';
+import { FilaProveedor, NuevoPedidoProveedor } from './proveedores-pedido';
 import { textoEvento } from './historial';
 import { BorrarPago, EditarPedido, FormComentario, FormPago, ItemEditable, NuevoItem, SelectorEtapa, SubirArchivos, BorrarArchivo } from './partes';
 
@@ -34,7 +35,7 @@ export default async function FichaPedido({
   if (!pData) notFound();
   const p = pData as PedidoResumen;
 
-  const [clienteR, itemsR, pagosR, comentariosR, archivosR, eventosR, equipoR] = await Promise.all([
+  const [clienteR, itemsR, pagosR, comentariosR, archivosR, eventosR, equipoR, provR, ppR] = await Promise.all([
     supabase.from('clientes').select('*').eq('id', p.cliente_id).single(),
     supabase.from('pedido_items').select('*').eq('pedido_id', id).order('orden').order('creado_en'),
     supabase.from('pagos').select('*').eq('pedido_id', id).order('fecha').order('creado_en'),
@@ -42,7 +43,11 @@ export default async function FichaPedido({
     supabase.from('archivos').select('*').eq('pedido_id', id).order('creado_en'),
     supabase.from('eventos').select('*').eq('pedido_id', id).order('creado_en', { ascending: false }).limit(60),
     supabase.from('equipo').select('id, nombre, email').eq('activo', true).order('nombre'),
+    supabase.from('proveedores').select('id, nombre, plazo_dias').eq('activo', true).order('nombre', { ascending: false }),
+    supabase.from('proveedor_pendientes').select('*').eq('pedido_id', id).order('creado_en'),
   ]);
+  const proveedores = (provR.data ?? []) as Proveedor[];
+  const pedidosProv = (ppR.data ?? []) as PedidoProveedor[];
   const cliente = clienteR.data as Cliente;
   const items = (itemsR.data ?? []) as Item[];
   const pagos = (pagosR.data ?? []) as Pago[];
@@ -115,6 +120,30 @@ export default async function FichaPedido({
                 <ItemEditable key={it.id} pedidoId={p.id} item={it} />
               ))}
               <NuevoItem pedidoId={p.id} />
+            </div>
+          </section>
+
+          <section className="card">
+            <div className="card-titulo">
+              <h2>Proveedores</h2>
+              <span className="quiet small">
+                {pedidosProv.filter((x) => x.estado === 'pedido').length > 0
+                  ? `${pedidosProv.filter((x) => x.estado === 'pedido').length} esperando`
+                  : pedidosProv.length > 0
+                    ? 'todo recibido'
+                    : ''}
+              </span>
+            </div>
+            <div className="seccion">
+              {pedidosProv.length === 0 && (
+                <p className="quiet small">
+                  Todavía no se registró qué se pidió a Vidpro, STG u otro proveedor. Al registrarlo, el pedido pasa a “Pedido a fábrica”.
+                </p>
+              )}
+              {pedidosProv.map((pp) => (
+                <FilaProveedor key={pp.id} pp={pp} />
+              ))}
+              <NuevoPedidoProveedor pedidoId={p.id} proveedores={proveedores} abiertoInicial={false} />
             </div>
           </section>
 

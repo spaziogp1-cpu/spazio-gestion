@@ -49,6 +49,30 @@ export type PedidoResumen = {
   atrasado: boolean;
   dias_restantes: number;
   productos: string;
+  prov_pendientes: number;
+  prov_recibidos: number;
+  prov_resumen: string;
+};
+
+export type Proveedor = { id: string; nombre: string; plazo_dias: number };
+
+export type PedidoProveedor = {
+  id: string;
+  pedido_id: string;
+  proveedor_id: string;
+  detalle: string | null;
+  estado: 'pedido' | 'recibido' | 'cancelado';
+  fecha_pedido: string;
+  fecha_esperada: string | null;
+  fecha_recepcion: string | null;
+  link_drive: string | null;
+  nota: string | null;
+  proveedor_nombre: string;
+  pedido_numero: number;
+  pedido_etapa: string;
+  pedido_fecha_limite: string;
+  cliente_nombre: string;
+  demorado: boolean;
 };
 
 export type Item = {
