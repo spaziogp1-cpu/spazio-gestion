@@ -16,6 +16,14 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
   (se cambia en la tabla `parametros`).
 - La numeración de pedidos sigue la de la planilla (arranca en 542).
 
+## Migraciones (ejecutar en orden en Supabase → SQL Editor)
+
+1. `supabase/migrations/0001_inicial.sql` — base, pedidos, clientes, pagos, archivos
+2. `supabase/migrations/0002_proveedores.sql` — proveedores y pedidos a proveedor
+3. `supabase/migrations/0003_pedidos_stock.sql` — pedidos para stock
+4. `supabase/migrations/0004_monto_proveedores.sql` — precio de los pedidos a proveedor
+5. `supabase/migrations/0005_tareas_objetivos_visitas.sql` — tareas, objetivos, showroom
+
 ## Puesta en marcha (una sola vez)
 
 ### 1. Base de datos (Supabase)

@@ -8,9 +8,10 @@ import { fechaCorta, fechaHora, fechaLarga, relativo } from '@/lib/fechas';
 import { linkWhatsApp, plata } from '@/lib/formato';
 import { leerReglaPlazo } from '@/lib/parametros';
 import { miembroActual } from '@/lib/sesion';
-import type { Archivo, Cliente, Comentario, Evento, Item, Pago, PedidoProveedor, PedidoResumen, Proveedor } from '@/lib/tipos';
+import type { Archivo, Cliente, Comentario, Evento, Item, Pago, PedidoProveedor, PedidoResumen, Proveedor, Tarea } from '@/lib/tipos';
 import { FilaProveedor, NuevoPedidoProveedor } from './proveedores-pedido';
-import { textoEvento } from './historial';
+import { ListaTareas, NuevaTarea } from '@/components/tareas';
+import { CAMPOS_OCULTOS, textoEvento } from './historial';
 import { BorrarPago, EditarPedido, FormComentario, FormPago, ItemEditable, NuevoItem, SelectorEtapa, SubirArchivos, BorrarArchivo } from './partes';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -30,13 +31,13 @@ export default async function FichaPedido({
   const { id } = await params;
   const { nuevo } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const { supabase } = await miembroActual();
+  const { miembro, supabase } = await miembroActual();
 
   const { data: pData } = await supabase.from('pedidos_resumen').select('*').eq('id', id).maybeSingle();
   if (!pData) notFound();
   const p = pData as PedidoResumen;
 
-  const [clienteR, itemsR, pagosR, comentariosR, archivosR, eventosR, equipoR, provR, ppR, plazo] = await Promise.all([
+  const [clienteR, itemsR, pagosR, comentariosR, archivosR, eventosR, equipoR, provR, ppR, plazo, tareasR] = await Promise.all([
     supabase.from('clientes').select('*').eq('id', p.cliente_id).single(),
     supabase.from('pedido_items').select('*').eq('pedido_id', id).order('orden').order('creado_en'),
     supabase.from('pagos').select('*').eq('pedido_id', id).order('fecha').order('creado_en'),
@@ -47,7 +48,9 @@ export default async function FichaPedido({
     supabase.from('proveedores').select('id, nombre, plazo_dias').eq('activo', true).order('nombre', { ascending: false }),
     supabase.from('proveedor_pendientes').select('*').eq('pedido_id', id).order('creado_en'),
     leerReglaPlazo(supabase),
+    supabase.from('tareas_resumen').select('*').eq('pedido_id', id).order('estado').order('vencimiento', { nullsFirst: false }),
   ]);
+  const tareas = (tareasR.data ?? []) as Tarea[];
   const proveedores = (provR.data ?? []) as Proveedor[];
   const pedidosProv = (ppR.data ?? []) as PedidoProveedor[];
   const cliente = clienteR.data as Cliente;
@@ -55,7 +58,7 @@ export default async function FichaPedido({
   const pagos = (pagosR.data ?? []) as Pago[];
   const comentarios = (comentariosR.data ?? []) as unknown as Comentario[];
   const archivos = (archivosR.data ?? []) as Archivo[];
-  const eventos = (eventosR.data ?? []) as Evento[];
+  const eventos = ((eventosR.data ?? []) as Evento[]).filter((ev) => !ev.campo || !CAMPOS_OCULTOS.has(ev.campo));
   const equipo = (equipoR.data ?? []) as { id: string; nombre: string; email: string }[];
   // A Vidpro se le pide el vidrio de todo menos las sillas; a STG, la estructura cromada (se elige a mano).
   const describir = (it: Item) =>
@@ -160,6 +163,24 @@ export default async function FichaPedido({
                 sugerencias={sugerencias}
                 yaPedidos={yaPedidos}
               />
+            </div>
+          </section>
+
+          <section className="card">
+            <div className="card-titulo">
+              <h2>Tareas</h2>
+              <span className="quiet small">{tareas.filter((t) => t.estado !== 'hecha').length || ''}</span>
+            </div>
+            <div className="seccion">
+              <ListaTareas tareas={tareas} equipo={equipo.map(({ id, nombre }) => ({ id, nombre }))} contexto={false} agrupar={false} />
+              <div style={{ marginTop: 10 }}>
+                <NuevaTarea
+                  equipo={equipo.map(({ id, nombre }) => ({ id, nombre }))}
+                  yo={p.responsable_id ?? miembro.id}
+                  pedidoId={p.id}
+                  placeholder="Nueva tarea para este pedido… (ej: avisar al cliente)"
+                />
+              </div>
             </div>
           </section>
 

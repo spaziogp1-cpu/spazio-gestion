@@ -127,3 +127,58 @@ export type Evento = {
   usuario_email: string | null;
   creado_en: string;
 };
+
+export type Tarea = {
+  id: string;
+  titulo: string;
+  descripcion: string | null;
+  responsable_id: string | null;
+  creado_por: string | null;
+  prioridad: 'baja' | 'media' | 'alta';
+  vencimiento: string | null;
+  estado: 'pendiente' | 'en_curso' | 'bloqueada' | 'hecha';
+  bloqueo: string | null;
+  pedido_id: string | null;
+  visita_id: string | null;
+  objetivo_id: string | null;
+  completada_en: string | null;
+  creado_en: string;
+  responsable_nombre: string | null;
+  creador_nombre: string | null;
+  pedido_numero: number | null;
+  pedido_cliente: string | null;
+  objetivo_titulo: string | null;
+  visita_nombre: string | null;
+  vencida: boolean;
+};
+
+export type Objetivo = {
+  id: string;
+  titulo: string;
+  descripcion: string | null;
+  tipo: 'numerico' | 'proyecto';
+  responsable_id: string | null;
+  metrica: 'ventas' | 'facturacion' | null;
+  periodo: 'semana' | 'mes' | null;
+  meta: number | null;
+  fecha_limite: string | null;
+  estado: 'activo' | 'cumplido' | 'cancelado';
+  creado_en: string;
+};
+
+export type Visita = {
+  id: string;
+  cliente_id: string | null;
+  nombre: string;
+  telefono: string | null;
+  fecha: string;
+  hora: string | null;
+  con_turno: boolean;
+  motivo: string | null;
+  atiende_id: string | null;
+  estado: 'agendada' | 'confirmada' | 'vino' | 'no_vino' | 'cancelada';
+  resultado: 'compro' | 'presupuesto' | 'pensando' | 'no_interesado' | null;
+  notas: string | null;
+  pedido_id: string | null;
+  creado_en: string;
+};

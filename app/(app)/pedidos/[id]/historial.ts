@@ -32,6 +32,9 @@ const CAMPOS: Record<string, string> = {
   fecha_esperada: 'la fecha esperada',
   fecha_recepcion: 'la fecha de recepción',
   link_drive: 'el link de Drive',
+  titulo: 'el título',
+  vencimiento: 'el vencimiento',
+  prioridad: 'la prioridad',
 };
 
 const ENTIDAD: Record<string, string> = {
@@ -40,6 +43,7 @@ const ENTIDAD: Record<string, string> = {
   pagos: 'un pago',
   archivos: 'un archivo',
   pedidos_proveedor: 'un pedido a proveedor',
+  tareas: 'una tarea',
 };
 
 function valor(campo: string, v: string | null): string {
@@ -49,8 +53,8 @@ function valor(campo: string, v: string | null): string {
   if (campo === 'envio') return nombreDe(ENVIOS, v);
   if (campo === 'tipo_venta') return nombreDe(TIPOS_VENTA, v);
   if (campo === 'tipo') return nombreDe(TIPOS_PAGO, v);
-  if (campo === 'estado') return ({ pedido: 'pedido', recibido: 'recibido', cancelado: 'cancelado' } as Record<string, string>)[v] ?? v;
-  if (campo.startsWith('fecha')) return fechaCorta(v);
+  if (campo === 'estado') return ({ pedido: 'pedido', recibido: 'recibido', cancelado: 'cancelado', pendiente: 'pendiente', en_curso: 'en curso', bloqueada: 'trabada', hecha: 'hecha' } as Record<string, string>)[v] ?? v;
+  if (campo.startsWith('fecha') || campo === 'vencimiento') return fechaCorta(v);
   if (['total', 'precio_envio_cliente', 'precio', 'monto'].includes(campo)) return plata(v);
   return v.length > 40 ? v.slice(0, 40) + '…' : v;
 }
@@ -65,3 +69,6 @@ export function textoEvento(ev: Evento): string {
   const donde = ev.entidad === 'pedidos' ? '' : ` de ${ent}`;
   return `cambió ${nombre}${donde}: ${valor(campo, ev.valor_anterior)} → ${valor(campo, ev.valor_nuevo)}`;
 }
+
+// Cambios internos que no aportan al historial.
+export const CAMPOS_OCULTOS = new Set(['completada_en', 'bloqueo', 'orden', 'creado_por', 'subido_por']);

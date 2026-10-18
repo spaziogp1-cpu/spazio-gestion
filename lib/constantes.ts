@@ -68,3 +68,31 @@ export function nombreDe(lista: readonly { id: string; nombre: string }[], id: s
   if (!id) return '—';
   return lista.find((x) => x.id === id)?.nombre ?? id;
 }
+
+export const PRIORIDADES = [
+  { id: 'alta', nombre: 'Alta' },
+  { id: 'media', nombre: 'Media' },
+  { id: 'baja', nombre: 'Baja' },
+] as const;
+
+export const ESTADOS_TAREA = [
+  { id: 'pendiente', nombre: 'Pendiente' },
+  { id: 'en_curso', nombre: 'En curso' },
+  { id: 'bloqueada', nombre: 'Trabada' },
+  { id: 'hecha', nombre: 'Hecha' },
+] as const;
+
+export const ESTADOS_VISITA = [
+  { id: 'agendada', nombre: 'Agendada' },
+  { id: 'confirmada', nombre: 'Confirmada' },
+  { id: 'vino', nombre: 'Vino' },
+  { id: 'no_vino', nombre: 'No vino' },
+  { id: 'cancelada', nombre: 'Cancelada' },
+] as const;
+
+export const RESULTADOS_VISITA = [
+  { id: 'compro', nombre: 'Compró' },
+  { id: 'presupuesto', nombre: 'Pidió presupuesto' },
+  { id: 'pensando', nombre: 'Lo está pensando' },
+  { id: 'no_interesado', nombre: 'No le interesó' },
+] as const;

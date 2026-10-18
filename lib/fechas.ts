@@ -84,3 +84,17 @@ export function relativo(dias: number): string {
   if (dias === -1) return 'ayer';
   return dias > 0 ? `en ${dias} días` : `hace ${-dias} días`;
 }
+
+// Lunes de la semana de una fecha
+export function inicioSemana(fecha: string): string {
+  const dia = aUTC(fecha).getUTCDay(); // 0 domingo
+  return sumarDiasCorridos(fecha, dia === 0 ? -6 : 1 - dia);
+}
+
+export function diaSemana(fecha: string): number {
+  return aUTC(fecha).getUTCDay();
+}
+
+export function horaCorta(hora: string | null | undefined): string {
+  return hora ? hora.slice(0, 5) : '';
+}

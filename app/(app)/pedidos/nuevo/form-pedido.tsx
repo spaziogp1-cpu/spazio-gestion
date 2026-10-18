@@ -14,16 +14,17 @@ type Props = {
   hoy: string;
   regla: ReglaPlazo;
   feriados: string[];
+  inicial?: { nombre: string; telefono: string; canal: string };
 };
 
 type ItemForm = { key: number; precio: string; cantidad: string };
 
-export default function FormPedido({ equipo, yo, hoy, regla, feriados }: Props) {
+export default function FormPedido({ equipo, yo, hoy, regla, feriados, inicial }: Props) {
   const [estado, accion, guardando] = useActionState<Estado, FormData>(crearPedido, {});
 
   // ----- Cliente -----
   const [cliente, setCliente] = useState<Cliente | null>(null);
-  const [busqueda, setBusqueda] = useState('');
+  const [busqueda, setBusqueda] = useState(inicial?.nombre ?? '');
   const [sugeridos, setSugeridos] = useState<Cliente[]>([]);
   const supabase = useMemo(() => createClient(), []);
   const pedidoBusqueda = useRef(0);
@@ -61,7 +62,7 @@ export default function FormPedido({ equipo, yo, hoy, regla, feriados }: Props) 
   const [envioCliente, setEnvioCliente] = useState('');
   const [fechaVenta, setFechaVenta] = useState(hoy);
   const [fechaManual, setFechaManual] = useState('');
-  const [canal, setCanal] = useState('');
+  const [canal, setCanal] = useState(inicial?.canal ?? '');
 
   const sumaItems = items.reduce((s, it) => s + leerMonto(it.precio) * (Number(it.cantidad) || 1), 0);
   const totalFinal = total ? leerMonto(total) : sumaItems;
@@ -138,7 +139,7 @@ export default function FormPedido({ equipo, yo, hoy, regla, feriados }: Props) 
             <div className="fila fila-2">
               <div className="campo">
                 <label htmlFor="cliente_telefono">Teléfono</label>
-                <input id="cliente_telefono" name="cliente_telefono" type="tel" inputMode="tel" autoComplete="off" />
+                <input id="cliente_telefono" name="cliente_telefono" type="tel" inputMode="tel" autoComplete="off" defaultValue={inicial?.telefono} />
               </div>
               <div className="campo">
                 <label htmlFor="cliente_localidad">Localidad</label>

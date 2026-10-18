@@ -52,3 +52,36 @@ export const IconoProveedores = (p: P) => (
     <circle cx="17" cy="17.5" r="1.8" />
   </svg>
 );
+export const IconoTareas = (p: P) => (
+  <svg {...base} {...p}>
+    <rect x="4" y="4" width="16" height="16" rx="3" />
+    <path d="M8.5 12.5l2.5 2.5 4.5-5" />
+  </svg>
+);
+export const IconoObjetivos = (p: P) => (
+  <svg {...base} {...p}>
+    <circle cx="12" cy="12" r="8" />
+    <circle cx="12" cy="12" r="4" />
+    <circle cx="12" cy="12" r="0.8" fill="currentColor" />
+  </svg>
+);
+export const IconoShowroom = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M3 10l9-6 9 6" />
+    <path d="M5 9v11h14V9" />
+    <path d="M10 20v-5h4v5" />
+  </svg>
+);
+export const IconoCalendario = (p: P) => (
+  <svg {...base} {...p}>
+    <rect x="3.5" y="5" width="17" height="15" rx="2" />
+    <path d="M3.5 10h17M8 3v4M16 3v4" />
+  </svg>
+);
+export const IconoMasMenu = (p: P) => (
+  <svg {...base} {...p}>
+    <circle cx="5" cy="12" r="1.4" fill="currentColor" />
+    <circle cx="12" cy="12" r="1.4" fill="currentColor" />
+    <circle cx="19" cy="12" r="1.4" fill="currentColor" />
+  </svg>
+);
