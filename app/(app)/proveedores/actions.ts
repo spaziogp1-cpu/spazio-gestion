@@ -1,6 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
+import { actualizarPedido as actualizarEnPlanilla } from '@/lib/planilla/sync';
 import { hoyAR, sumarDiasHabiles } from '@/lib/fechas';
 import { leerMonto, texto } from '@/lib/formato';
 import { leerReglaPlazo } from '@/lib/parametros';
@@ -47,6 +49,7 @@ export async function pedirAProveedor(pedidoId: string, _prev: EstadoProv, fd: F
     creado_por: miembro.id,
   });
   if (error) return { error: `No se pudo guardar: ${error.message}` };
+  after(() => actualizarEnPlanilla(supabase, pedidoId));
   refrescar(pedidoId);
   return { ok: 'Pedido a proveedor registrado' };
 }
@@ -70,6 +73,7 @@ export async function cambiarEstadoProveedor(
       await supabase.from('pedidos').update({ etapa: 'en_fabricacion' }).eq('id', pedidoId).in('etapa', ['senado', 'pedido_fabrica']);
     }
   }
+  if (pedidoId) after(() => actualizarEnPlanilla(supabase, pedidoId));
   refrescar(pedidoId);
   return { ok: 'Actualizado' };
 }

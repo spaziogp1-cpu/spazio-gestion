@@ -1,16 +1,22 @@
 import type { Metadata } from 'next';
 import { miembroActual } from '@/lib/sesion';
-import { FormMiembro, FormParametros, ProbarResumen } from './partes';
+import { FormMiembro, FormParametros, ProbarPlanilla, ProbarResumen } from './partes';
 
 export const metadata: Metadata = { title: 'Ajustes' };
 
 export default async function AjustesPage() {
   const { miembro, supabase } = await miembroActual();
   const admin = miembro.rol === 'admin';
-  const [{ data: eq }, { data: params }] = await Promise.all([
+  const [{ data: eq }, { data: params }, { data: sync }] = await Promise.all([
     supabase.from('equipo').select('id, nombre, alias_planilla, email, telefono, rol, activo').order('activo', { ascending: false }).order('nombre'),
     supabase.from('parametros').select('clave, valor'),
+    supabase.from('planilla_sync').select('estado, error, sincronizado_en').order('creado_en', { ascending: false }).limit(500),
   ]);
+  const filasSync = (sync ?? []) as { estado: string; error: string | null; sincronizado_en: string | null }[];
+  const syncOk = filasSync.filter((x) => x.estado === 'ok').length;
+  const syncPend = filasSync.filter((x) => x.estado === 'pendiente').length;
+  const syncErr = filasSync.filter((x) => x.estado === 'error');
+  const planilla = Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON && process.env.PLANILLA_ID);
   const equipo = (eq ?? []) as { id: string; nombre: string; alias_planilla: string | null; email: string; telefono: string | null; rol: string; activo: boolean }[];
   const valores = Object.fromEntries(((params ?? []) as { clave: string; valor: string }[]).map((p) => [p.clave, p.valor]));
   const whatsapp = Boolean(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_ID);
@@ -61,6 +67,24 @@ export default async function AjustesPage() {
                 <li>WhatsApp: {whatsapp ? '✓ configurado' : '— todavía no (se conecta más adelante)'}</li>
               </ul>
               <ProbarResumen />
+            </div>
+          </section>
+          <section className="card">
+            <div className="card-titulo">
+              <h2>Planilla de ventas</h2>
+            </div>
+            <div className="seccion form-bloque">
+              <p className="small">
+                Cada venta nueva se agrega en <strong>VENTAS_2026</strong> (una fila por producto), y al cambiar la etapa se actualizan ESTADO y FECHA REAL DE ENTREGA.
+              </p>
+              <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>
+                <li>Conexión: {planilla ? '✓ configurada' : '✗ falta GOOGLE_SERVICE_ACCOUNT_JSON y PLANILLA_ID'}</li>
+                <li>
+                  Pedidos escritos: {syncOk} · pendientes: {syncPend} · con error: {syncErr.length}
+                </li>
+                {syncErr[0]?.error && <li style={{ color: 'var(--danger)' }}>Último error: {syncErr[0].error}</li>}
+              </ul>
+              {admin && <ProbarPlanilla />}
             </div>
           </section>
         </div>

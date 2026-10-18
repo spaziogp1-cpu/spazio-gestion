@@ -24,6 +24,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 4. `supabase/migrations/0004_monto_proveedores.sql` — precio de los pedidos a proveedor
 5. `supabase/migrations/0005_tareas_objetivos_visitas.sql` — tareas, objetivos, showroom
 6. `supabase/migrations/0006_avisos_y_automatismos.sql` — avisos y tareas automáticas por etapa
+7. `supabase/migrations/0007_planilla.sql` — registro de lo escrito en la planilla de ventas
 
 ## Variables en Vercel (Settings → Environment Variables)
 
@@ -36,6 +37,8 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 | `RESEND_API_KEY` | **Secret** | Envío de emails |
 | `EMAIL_REMITENTE` | Config | Opcional, p. ej. `Spazio Gestión <gestion@spaziodesign.net>` |
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID` | **Secret** | Más adelante, para avisos por WhatsApp |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | **Secret** | Contenido completo del .json de la cuenta de servicio de Google |
+| `PLANILLA_ID` | Config | ID de la planilla donde se escriben las ventas (hoy, la copia de pruebas) |
 | `WHATSAPP_PLANTILLA_RESUMEN` | Config | Nombre de la plantilla aprobada (por defecto `resumen_diario`) |
 
 ## Puesta en marcha (una sola vez)

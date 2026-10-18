@@ -1,7 +1,7 @@
 'use client';
 
 import { startTransition, useActionState, useState, useTransition } from 'react';
-import { enviarmeResumen, guardarMiembro, guardarParametros, type EstadoAjustes } from './actions';
+import { enviarmeResumen, guardarMiembro, guardarParametros, probarPlanilla, type EstadoAjustes } from './actions';
 
 type Miembro = { id: string; nombre: string; alias_planilla: string | null; email: string; telefono: string | null; rol: string; activo: boolean };
 
@@ -132,6 +132,22 @@ export function ProbarResumen() {
           }
         >
           {pendiente ? 'Enviando…' : 'Enviarme el resumen de hoy'}
+        </button>
+      </div>
+      {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}
+      {estado.error && <p className="error-form">{estado.error}</p>}
+    </div>
+  );
+}
+
+export function ProbarPlanilla() {
+  const [pendiente, iniciar] = useTransition();
+  const [estado, setEstado] = useState<EstadoAjustes>({});
+  return (
+    <div className="form-bloque">
+      <div>
+        <button type="button" className="btn" disabled={pendiente} onClick={() => iniciar(async () => setEstado(await probarPlanilla()))}>
+          {pendiente ? 'Probando…' : 'Probar conexión y escribir pendientes'}
         </button>
       </div>
       {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}

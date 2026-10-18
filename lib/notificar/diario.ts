@@ -1,5 +1,6 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { sincronizarPendientes } from '@/lib/planilla/sync';
 import { armarResumen, type Resumen } from '@/lib/resumen';
 import { enviarEmail } from './email';
 import { emailResumen, lineaWhatsApp } from './resumen-email';
@@ -38,6 +39,9 @@ export async function procesoDiario(db: Cliente, soloMiembro?: string): Promise<
 
   const { data: param } = await db.from('parametros').select('valor').eq('clave', 'aviso_dias_antes').maybeSingle();
   const avisoDias = Number(param?.valor ?? 3) || 3;
+
+  // Pedidos que no se pudieron escribir en la planilla: se reintentan una vez por día.
+  if (!soloMiembro) await sincronizarPendientes(db).catch((e) => console.error('planilla pendientes', e));
 
   const informes: Informe[] = [];
   for (const m of (equipo ?? []) as Miembro[]) {

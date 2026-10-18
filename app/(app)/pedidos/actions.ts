@@ -1,12 +1,14 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { redirect } from 'next/navigation';
 import { ETAPAS } from '@/lib/constantes';
 import { calcularFechaLimite, hoyAR } from '@/lib/fechas';
 import { leerMonto, texto } from '@/lib/formato';
 import { leerReglaPlazo } from '@/lib/parametros';
 import { miembroActual } from '@/lib/sesion';
+import { actualizarPedido as actualizarEnPlanilla, agregarPedido as agregarAPlanilla, anotarPendiente } from '@/lib/planilla/sync';
 
 export type Estado = { error?: string; ok?: string };
 
@@ -92,6 +94,10 @@ export async function crearPedido(_prev: Estado, fd: FormData): Promise<Estado> 
   });
   if (error || !id) return { error: `No se pudo guardar el pedido: ${error?.message ?? 'error desconocido'}` };
 
+  // La fila en la planilla se escribe después de responder, para no demorar la carga.
+  await anotarPendiente(supabase, id).catch(() => {});
+  after(() => agregarAPlanilla(supabase, id));
+
   revalidatePath('/pedidos');
   redirect(`/pedidos/${id}?nuevo=1`);
 }
@@ -106,6 +112,7 @@ export async function cambiarEtapa(pedidoId: string, etapa: string): Promise<Est
   if (etapa === 'entregado') cambios.fecha_entrega_real = hoyAR();
   const { error } = await supabase.from('pedidos').update(cambios).eq('id', pedidoId);
   if (error) return { error: 'No se pudo cambiar la etapa.' };
+  after(() => actualizarEnPlanilla(supabase, pedidoId));
   revalidatePath(`/pedidos/${pedidoId}`);
   revalidatePath('/pedidos');
   revalidatePath('/produccion');
@@ -138,6 +145,7 @@ export async function actualizarPedido(pedidoId: string, _prev: Estado, fd: Form
     })
     .eq('id', pedidoId);
   if (error) return { error: `No se pudo guardar: ${error.message}` };
+  after(() => actualizarEnPlanilla(supabase, pedidoId));
   revalidatePath(`/pedidos/${pedidoId}`);
   revalidatePath('/pedidos');
   return { ok: 'Cambios guardados' };

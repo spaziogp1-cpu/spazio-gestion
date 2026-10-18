@@ -81,3 +81,20 @@ export async function enviarmeResumen(): Promise<EstadoAjustes> {
     return { error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+export async function probarPlanilla(): Promise<EstadoAjustes> {
+  const { supabase } = await miembroActual();
+  try {
+    const { planillaConfigurada } = await import('@/lib/planilla/google');
+    if (!planillaConfigurada()) return { error: 'Falta cargar GOOGLE_SERVICE_ACCOUNT_JSON y PLANILLA_ID en Vercel.' };
+    const { probarConexion, sincronizarPendientes } = await import('@/lib/planilla/sync');
+    const encabezado = await probarConexion();
+    const r = await sincronizarPendientes(supabase);
+    revalidatePath('/ajustes');
+    return {
+      ok: `Conectada (VENTAS_2026 empieza con: ${encabezado}).${r.ok || r.error ? ` Pendientes: ${r.ok} escritos${r.error ? `, ${r.error} con error` : ''}.` : ''}`,
+    };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}
