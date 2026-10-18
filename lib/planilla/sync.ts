@@ -1,7 +1,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { HOJA_VENTAS, estadoPlanilla, fechaPlanilla, filasDelPedido, filasPedido, type PedidoParaPlanilla } from './filas';
-import { escribir, escribirVarios, leer, planillaConfigurada } from './google';
+import { escribir, escribirVarios, extenderTabla, leer, planillaConfigurada } from './google';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Cliente = SupabaseClient<any, any, any>;
@@ -49,7 +49,10 @@ export async function agregarPedido(db: Cliente, pedidoId: string): Promise<{ ok
     }
     const filas = filasPedido(p);
     const desde = Math.max(A.length, B.length) + 1;
-    await escribir(`${HOJA_VENTAS}!A${desde}:AJ${desde + filas.length - 1}`, filas);
+    const hasta = desde + filas.length - 1;
+    // Primero se agranda la tabla, así la fila nueva entra con el formato y los desplegables.
+    await extenderTabla(HOJA_VENTAS, hasta).catch((e) => console.error('planilla: extender tabla', e));
+    await escribir(`${HOJA_VENTAS}!A${desde}:AJ${hasta}`, filas);
     await registrar(db, pedidoId, { estado: 'ok', filas: filas.length, error: null, sincronizado_en: new Date().toISOString() });
     return { ok: true };
   } catch (e) {

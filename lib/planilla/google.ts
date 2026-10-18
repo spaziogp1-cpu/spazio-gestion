@@ -97,6 +97,26 @@ export async function escribir(a1: string, valores: (string | number | null)[][]
   });
 }
 
+type Rango = { sheetId: number; startRowIndex?: number; endRowIndex?: number; startColumnIndex?: number; endColumnIndex?: number };
+type Hoja = { properties: { sheetId: number; title: string }; tables?: { tableId: string; name: string; range: Rango }[] };
+
+/**
+ * Si la hoja tiene una tabla (Insertar → Tabla) que termina antes de `hastaFila`
+ * (número de fila de la planilla, 1 = encabezado), la agranda para que la incluya.
+ */
+export async function extenderTabla(hoja: string, hastaFila: number): Promise<void> {
+  const j = (await sheets(`?fields=${encodeURIComponent('sheets(properties(sheetId,title),tables(tableId,name,range))')}`)) as { sheets: Hoja[] };
+  const h = j.sheets.find((s) => s.properties.title === hoja);
+  const tabla = h?.tables?.find((t) => (t.range.startColumnIndex ?? 0) === 0) ?? h?.tables?.[0];
+  if (!tabla || (tabla.range.endRowIndex ?? 0) >= hastaFila) return;
+  await sheets(':batchUpdate', {
+    method: 'POST',
+    body: JSON.stringify({
+      requests: [{ updateTable: { table: { tableId: tabla.tableId, range: { ...tabla.range, endRowIndex: hastaFila } }, fields: 'range' } }],
+    }),
+  });
+}
+
 export async function escribirVarios(datos: { range: string; values: (string | number | null)[][] }[]): Promise<void> {
   if (!datos.length) return;
   await sheets(`/values:batchUpdate`, {
