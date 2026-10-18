@@ -54,15 +54,31 @@ async function token(): Promise<string> {
   return j.access_token;
 }
 
+/** Acepta el ID solo, el link completo de la planilla, o el valor con espacios/comillas. */
+export function idPlanilla(crudo: string | undefined): string | null {
+  if (!crudo) return null;
+  const limpio = crudo.trim().replace(/^["']|["']$/g, '').trim();
+  const m = limpio.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  const id = limpio.match(/[a-zA-Z0-9_-]{20,}/);
+  return id ? id[0] : null;
+}
+
 async function sheets(ruta: string, init?: RequestInit) {
-  const id = process.env.PLANILLA_ID;
+  const id = idPlanilla(process.env.PLANILLA_ID);
   if (!id) throw new Error('Falta PLANILLA_ID');
   const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}${ruta}`, {
     ...init,
     headers: { Authorization: `Bearer ${await token()}`, 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
   });
-  if (r.status === 403) throw new Error('La cuenta de servicio no tiene acceso: compartile la planilla como Editor');
-  if (r.status === 404) throw new Error('No se encontró la planilla: revisá PLANILLA_ID');
+  if (r.status === 403) {
+    const t = await r.text();
+    if (/has not been used|is disabled|SERVICE_DISABLED/i.test(t))
+      throw new Error('Falta activar la "Google Sheets API" en el proyecto de Google Cloud');
+    throw new Error('La cuenta de servicio no tiene acceso: compartile la planilla como Editor');
+  }
+  if (r.status === 404)
+    throw new Error(`No se encontró la planilla (ID usado: ${id.slice(0, 6)}…${id.slice(-4)}, ${id.length} caracteres): revisá PLANILLA_ID`);
   if (!r.ok) throw new Error(`Google Sheets ${r.status}: ${(await r.text()).slice(0, 200)}`);
   return r.json();
 }
