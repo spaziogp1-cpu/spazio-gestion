@@ -64,14 +64,22 @@ export async function enviarPlantilla(telefono: string, plantilla: string, param
   const destino = telefonoWhatsApp(telefono);
   if (!destino) return { ok: false, error: 'Teléfono inválido' };
   try {
-    let r = await enviarA(destino, plantilla, parametros);
-    // Celulares de Argentina: Meta a veces registra el número sin el 9 (54 11… en vez de 54 9 11…).
-    // Si dice que el destinatario no está habilitado, se reintenta con ese formato.
-    if (!r.ok && destino.startsWith('549') && r.cuerpo?.includes('131030')) {
-      r = await enviarA('54' + destino.slice(3), plantilla, parametros);
-      if (!r.ok && r.cuerpo?.includes('131030'))
-        return { ok: false, error: `Meta no tiene habilitado ese número. Probé ${tapar(destino)} y ${tapar('54' + destino.slice(3))}: revisá que coincida con el verificado en Meta.` };
+    // Celulares de Argentina: la lista de números de prueba de Meta a veces los guarda sin el 9
+    // o con el 15 (54 11 15 xxxx-xxxx). Si Meta dice que el destinatario no está habilitado,
+    // se prueban esas otras formas del mismo número.
+    const formas = [destino];
+    if (destino.startsWith('549') && destino.length === 13) {
+      const n = destino.slice(3);
+      formas.push('54' + n);
+      for (const area of [2, 3, 4]) formas.push('54' + n.slice(0, area) + '15' + n.slice(area));
     }
+    let r = await enviarA(formas[0], plantilla, parametros);
+    for (const otra of formas.slice(1)) {
+      if (r.ok || !r.cuerpo?.includes('131030')) break;
+      r = await enviarA(otra, plantilla, parametros);
+    }
+    if (!r.ok && r.cuerpo?.includes('131030'))
+      return { ok: false, error: `Meta no tiene habilitado ese número (probé ${formas.map(tapar).join(', ')}): revisá que coincida con el verificado en Meta.` };
     if (!r.ok) return { ok: false, error: `WhatsApp ${r.status}: ${r.cuerpo}` };
     return { ok: true };
   } catch (e) {
