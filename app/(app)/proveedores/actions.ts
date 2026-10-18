@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { hoyAR, sumarDiasHabiles } from '@/lib/fechas';
-import { texto } from '@/lib/formato';
+import { leerMonto, texto } from '@/lib/formato';
 import { leerReglaPlazo } from '@/lib/parametros';
 import { miembroActual } from '@/lib/sesion';
 
@@ -15,6 +15,7 @@ function refrescar(pedidoId: string | null) {
   revalidatePath('/pedidos');
   revalidatePath('/produccion');
   revalidatePath('/proveedores');
+  revalidatePath('/proveedores/reporte');
 }
 
 export async function pedirAProveedor(pedidoId: string, _prev: EstadoProv, fd: FormData): Promise<EstadoProv> {
@@ -42,6 +43,7 @@ export async function pedirAProveedor(pedidoId: string, _prev: EstadoProv, fd: F
     fecha_pedido: fechaPedido,
     fecha_esperada: fechaEsperada,
     link_drive: link,
+    monto: fd.get('monto') ? leerMonto(fd.get('monto')) || null : null,
     creado_por: miembro.id,
   });
   if (error) return { error: `No se pudo guardar: ${error.message}` };
@@ -130,9 +132,20 @@ export async function pedirParaStock(_prev: EstadoProv, fd: FormData): Promise<E
     fecha_esperada: fechaEsperada,
     link_drive: link,
     nota: texto(fd.get('nota')),
+    monto: fd.get('monto') ? leerMonto(fd.get('monto')) || null : null,
     creado_por: miembro.id,
   });
   if (error) return { error: `No se pudo guardar: ${error.message}` };
   refrescar(null);
   return { ok: 'Pedido para stock registrado' };
+}
+
+export async function actualizarMonto(pedidoId: string | null, id: string, texto_monto: string): Promise<EstadoProv> {
+  const { supabase } = await miembroActual();
+  const monto = texto_monto.trim() ? leerMonto(texto_monto) : null;
+  const { error } = await supabase.from('pedidos_proveedor').update({ monto }).eq('id', id);
+  if (error) return { error: 'No se pudo guardar el precio.' };
+  refrescar(pedidoId);
+  revalidatePath('/proveedores/reporte');
+  return { ok: 'Precio guardado' };
 }

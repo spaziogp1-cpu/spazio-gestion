@@ -94,6 +94,10 @@ export default function NuevoStock({ proveedores, feriados }: { proveedores: Pro
             <input id="st_cant" name="cantidad" type="text" placeholder="10 unidades" />
           </div>
         </div>
+        <div className="campo" style={{ maxWidth: 280 }}>
+          <label htmlFor="st_monto">Precio total</label>
+          <input id="st_monto" name="monto" type="text" inputMode="numeric" className="num" placeholder="$" />
+        </div>
 
         <div className="fila fila-2m">
           <div className="campo">

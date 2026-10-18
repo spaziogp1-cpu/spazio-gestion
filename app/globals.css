@@ -320,3 +320,17 @@ details.mas[open] > summary::before { content: '– '; }
 .tarjeta-fecha { margin-top: 4px; color: var(--ink-3); }
 .tarjeta-fecha.mal { color: var(--danger); font-weight: 600; }
 .tarjeta-avanzar { margin: 0 8px 8px; min-height: 28px; font-size: 12px; width: calc(100% - 16px); }
+
+/* ---------- Reporte de gastos ---------- */
+.resumen-gastos { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .resumen-gastos { grid-template-columns: repeat(3, 1fr); } }
+.resumen-gastos .card + .card { margin-top: 0; }
+.barras { display: flex; flex-direction: column; gap: 8px; }
+.barra { display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 10px; font-size: 13px; padding: 2px 0; }
+.barra-mes { color: var(--ink-2); text-transform: capitalize; }
+.barra-pista { height: 10px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
+.barra-relleno { display: block; height: 100%; background: var(--accent); opacity: 0.55; border-radius: 5px; }
+.barra-activa .barra-relleno { opacity: 1; }
+.barra-activa .barra-mes, .barra-activa .barra-valor { font-weight: 600; color: var(--ink); }
+.barra-valor { color: var(--ink-2); min-width: 92px; text-align: right; }
+.tabla th { font-size: 12px; color: var(--ink-3); font-weight: 600; }

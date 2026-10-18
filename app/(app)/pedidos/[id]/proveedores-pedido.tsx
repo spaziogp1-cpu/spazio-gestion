@@ -2,8 +2,9 @@
 
 import { startTransition, useActionState, useEffect, useState, useTransition } from 'react';
 import { fechaCorta, hoyAR, sumarDiasHabiles } from '@/lib/fechas';
+import { plata } from '@/lib/formato';
 import type { PedidoProveedor, Proveedor } from '@/lib/tipos';
-import { borrarPedidoProveedor, cambiarEstadoProveedor, pedirAProveedor, type EstadoProv } from '../../proveedores/actions';
+import { actualizarMonto, borrarPedidoProveedor, cambiarEstadoProveedor, pedirAProveedor, type EstadoProv } from '../../proveedores/actions';
 
 export function ChipProveedor({ pp }: { pp: Pick<PedidoProveedor, 'estado' | 'demorado'> }) {
   if (pp.estado === 'recibido') return <span className="chip chip-lista">Recibido</span>;
@@ -15,6 +16,14 @@ export function ChipProveedor({ pp }: { pp: Pick<PedidoProveedor, 'estado' | 'de
 export function FilaProveedor({ pp, conPedido = false }: { pp: PedidoProveedor; conPedido?: boolean }) {
   const [pendiente, iniciar] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [editandoMonto, setEditandoMonto] = useState(false);
+  const [monto, setMonto] = useState(pp.monto != null ? String(Math.round(Number(pp.monto))) : '');
+  const guardarMonto = () =>
+    iniciar(async () => {
+      const r = await actualizarMonto(pp.pedido_id, pp.id, monto);
+      setError(r.error ?? null);
+      if (!r.error) setEditandoMonto(false);
+    });
   const cambiar = (estado: 'pedido' | 'recibido' | 'cancelado') =>
     iniciar(async () => {
       const r = await cambiarEstadoProveedor(pp.pedido_id, pp.id, estado);
@@ -60,8 +69,43 @@ export function FilaProveedor({ pp, conPedido = false }: { pp: PedidoProveedor; 
             )}
           </div>
         </div>
-        <ChipProveedor pp={pp} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+          <ChipProveedor pp={pp} />
+          {!editandoMonto && (
+            <button
+              type="button"
+              className="btn btn-fantasma btn-chico num"
+              style={{ minHeight: 24, padding: '0 4px', color: pp.monto != null ? 'var(--ink)' : 'var(--accent)' }}
+              onClick={() => setEditandoMonto(true)}
+              title="Precio pagado al proveedor"
+            >
+              {pp.monto != null ? plata(pp.monto) : '+ precio'}
+            </button>
+          )}
+        </div>
       </div>
+      {editandoMonto && (
+        <div className="acciones" style={{ marginTop: 6, flexWrap: 'nowrap' }}>
+          <input
+            type="text"
+            inputMode="numeric"
+            className="num"
+            placeholder="$ precio al proveedor"
+            value={monto}
+            onChange={(e) => setMonto(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && guardarMonto()}
+            autoFocus
+            aria-label="Precio al proveedor"
+            style={{ minHeight: 36 }}
+          />
+          <button type="button" className="btn btn-chico btn-primario" disabled={pendiente} onClick={guardarMonto}>
+            Guardar
+          </button>
+          <button type="button" className="btn btn-chico" onClick={() => setEditandoMonto(false)}>
+            ×
+          </button>
+        </div>
+      )}
       <div className="acciones" style={{ marginTop: 6 }}>
         {pp.estado === 'pedido' ? (
           <>
@@ -213,6 +257,10 @@ export function NuevoPedidoProveedor({
           <input id="pp_esperada" name="fecha_esperada" type="date" value={esperada} onChange={(e) => setFechaManual(e.target.value)} />
           <span className="ayuda">{fechaManual ? 'Cambiada a mano' : `${plazo} días hábiles después del pedido`}</span>
         </div>
+      </div>
+      <div className="campo">
+        <label htmlFor="pp_monto">Precio al proveedor (opcional)</label>
+        <input id="pp_monto" name="monto" type="text" inputMode="numeric" className="num" placeholder="$" />
       </div>
       <div className="campo">
         <label htmlFor="pp_link">Link al pedido en Drive (opcional)</label>

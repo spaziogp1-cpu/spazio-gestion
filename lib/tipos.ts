@@ -68,6 +68,7 @@ export type PedidoProveedor = {
   link_drive: string | null;
   nota: string | null;
   cantidad: string | null;
+  monto: number | null;
   proveedor_nombre: string;
   pedido_numero: number | null;
   pedido_etapa: string | null;

@@ -58,6 +58,9 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
             {!recibidos && demorados > 0 && <span style={{ color: 'var(--danger)', fontWeight: 600 }}> · {demorados} demorados</span>}
           </p>
         </div>
+        <Link href="/proveedores/reporte" className="btn">
+          Reporte de gastos
+        </Link>
       </div>
 
       <NuevoStock proveedores={proveedores} feriados={plazo.feriados} />
