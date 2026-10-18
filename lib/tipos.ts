@@ -150,6 +150,7 @@ export type Tarea = {
   objetivo_titulo: string | null;
   visita_nombre: string | null;
   vencida: boolean;
+  auto?: string | null;
 };
 
 export type Objetivo = {

@@ -1,8 +1,9 @@
 import { diasEntre, hoyAR, inicioSemana, sumarDiasCorridos } from '@/lib/fechas';
-import type { createClient } from '@/lib/supabase/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Objetivo, Tarea } from '@/lib/tipos';
 
-type Cliente = Awaited<ReturnType<typeof createClient>>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Cliente = SupabaseClient<any, any, any>;
 
 export type Avance = {
   objetivo: Objetivo;

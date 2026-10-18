@@ -23,6 +23,20 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 3. `supabase/migrations/0003_pedidos_stock.sql` — pedidos para stock
 4. `supabase/migrations/0004_monto_proveedores.sql` — precio de los pedidos a proveedor
 5. `supabase/migrations/0005_tareas_objetivos_visitas.sql` — tareas, objetivos, showroom
+6. `supabase/migrations/0006_avisos_y_automatismos.sql` — avisos y tareas automáticas por etapa
+
+## Variables en Vercel (Settings → Environment Variables)
+
+| Variable | Tipo | Para qué |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Config | Dirección de Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Config | Clave pública de Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Secret** | Proceso diario (lee los datos de todo el equipo) |
+| `CRON_SECRET` | **Secret** | Protege el proceso diario |
+| `RESEND_API_KEY` | **Secret** | Envío de emails |
+| `EMAIL_REMITENTE` | Config | Opcional, p. ej. `Spazio Gestión <gestion@spaziodesign.net>` |
+| `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID` | **Secret** | Más adelante, para avisos por WhatsApp |
+| `WHATSAPP_PLANTILLA_RESUMEN` | Config | Nombre de la plantilla aprobada (por defecto `resumen_diario`) |
 
 ## Puesta en marcha (una sola vez)
 
