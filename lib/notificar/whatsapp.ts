@@ -10,14 +10,30 @@ export function whatsappConfigurado() {
   return Boolean(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_ID);
 }
 
+/**
+ * Normaliza un celular argentino al formato internacional 549 + área + número (10 dígitos).
+ * Acepta "11 5555-5555", "011 15 5555-5555", "+54 9 11 5555 5555", "0221 15 555-5555", etc.
+ */
 export function telefonoWhatsApp(telefono: string | null | undefined): string | null {
   if (!telefono) return null;
-  let d = telefono.replace(/\D/g, '');
+  let d = telefono.replace(/\D/g, '').replace(/^00/, '');
   if (!d) return null;
-  if (!d.startsWith('54')) d = '54' + d.replace(/^0/, '');
-  if (!d.startsWith('549')) d = '549' + d.slice(2).replace(/^15/, '');
-  return d;
+  if (d.startsWith('54')) d = d.slice(2);
+  d = d.replace(/^0/, '');
+  if (d.startsWith('9') && d.length === 11) d = d.slice(1);
+  // Quita el "15" que va después del código de área (2, 3 o 4 dígitos).
+  if (d.length === 12) {
+    for (const i of [2, 3, 4]) {
+      if (d.slice(i, i + 2) === '15') {
+        d = d.slice(0, i) + d.slice(i + 2);
+        break;
+      }
+    }
+  }
+  return '549' + d;
 }
+
+const tapar = (n: string) => n.slice(0, -4).replace(/\d(?=\d{0,3}$)/g, '•') + n.slice(-4);
 
 async function enviarA(destino: string, plantilla: string, parametros: string[]): Promise<{ ok: boolean; status?: number; cuerpo?: string }> {
   const version = process.env.WHATSAPP_API_VERSION || 'v25.0';
@@ -53,6 +69,8 @@ export async function enviarPlantilla(telefono: string, plantilla: string, param
     // Si dice que el destinatario no está habilitado, se reintenta con ese formato.
     if (!r.ok && destino.startsWith('549') && r.cuerpo?.includes('131030')) {
       r = await enviarA('54' + destino.slice(3), plantilla, parametros);
+      if (!r.ok && r.cuerpo?.includes('131030'))
+        return { ok: false, error: `Meta no tiene habilitado ese número. Probé ${tapar(destino)} y ${tapar('54' + destino.slice(3))}: revisá que coincida con el verificado en Meta.` };
     }
     if (!r.ok) return { ok: false, error: `WhatsApp ${r.status}: ${r.cuerpo}` };
     return { ok: true };
