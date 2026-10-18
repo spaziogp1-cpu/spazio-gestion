@@ -74,7 +74,16 @@ export async function enviarmeResumen(): Promise<EstadoAjustes> {
     const [inf] = await procesoDiario(db, miembro.id);
     revalidatePath('/', 'layout');
     if (!inf) return { error: 'No se encontró tu usuario.' };
-    if (inf.email === 'enviado') return { ok: `Listo: te mandé el resumen a ${miembro.email}${inf.avisos ? ` y se crearon ${inf.avisos} avisos` : ''}.` };
+    const wa =
+      inf.whatsapp === 'enviado'
+        ? ' También por WhatsApp.'
+        : inf.whatsapp === 'sin teléfono'
+          ? ' Para recibirlo por WhatsApp, cargá tu teléfono en Equipo.'
+          : inf.whatsapp.startsWith('error')
+            ? ` WhatsApp no salió (${inf.whatsapp}).`
+            : '';
+    if (inf.email === 'enviado') return { ok: `Listo: te mandé el resumen a ${miembro.email}${inf.avisos ? ` y se crearon ${inf.avisos} avisos` : ''}.${wa}` };
+    if (inf.whatsapp === 'enviado') return { ok: `Te llegó por WhatsApp.${inf.email === 'sin configurar' ? '' : ` El email no salió: ${inf.email}`}` };
     if (inf.email === 'sin configurar') return { error: 'Falta configurar el envío de emails (RESEND_API_KEY en Vercel).' };
     return { error: `No se pudo mandar el email: ${inf.email}` };
   } catch (e) {
