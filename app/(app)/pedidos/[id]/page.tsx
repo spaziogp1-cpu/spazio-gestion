@@ -57,6 +57,13 @@ export default async function FichaPedido({
   const archivos = (archivosR.data ?? []) as Archivo[];
   const eventos = (eventosR.data ?? []) as Evento[];
   const equipo = (equipoR.data ?? []) as { id: string; nombre: string; email: string }[];
+  // A Vidpro se le pide el vidrio de todo menos las sillas; a STG, la estructura cromada (se elige a mano).
+  const describir = (it: Item) =>
+    [it.cantidad > 1 ? `${it.cantidad}×` : '', it.producto, it.modelo, it.material, it.medidas, it.color].filter(Boolean).join(' ');
+  const conVidrio = items.filter((it) => !/silla/i.test(it.producto));
+  const sugerencias: Record<string, string> = { STG: 'Estructura cromada · ' + items.map(describir).join(' · ') };
+  if (conVidrio.length > 0) sugerencias.Vidpro = conVidrio.map(describir).join(' · ');
+  const yaPedidos = pedidosProv.filter((x) => x.estado !== 'cancelado').map((x) => x.proveedor_id);
 
   // Links temporales (1 hora) para ver los archivos privados.
   const urls = new Map<string, string>();
@@ -145,7 +152,14 @@ export default async function FichaPedido({
               {pedidosProv.map((pp) => (
                 <FilaProveedor key={pp.id} pp={pp} />
               ))}
-              <NuevoPedidoProveedor pedidoId={p.id} proveedores={proveedores} feriados={plazo.feriados} abiertoInicial={false} />
+              <NuevoPedidoProveedor
+                pedidoId={p.id}
+                proveedores={proveedores}
+                feriados={plazo.feriados}
+                abiertoInicial={false}
+                sugerencias={sugerencias}
+                yaPedidos={yaPedidos}
+              />
             </div>
           </section>
 

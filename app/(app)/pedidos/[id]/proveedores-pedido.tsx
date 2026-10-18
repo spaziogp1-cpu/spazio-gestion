@@ -96,17 +96,24 @@ export function NuevoPedidoProveedor({
   proveedores,
   feriados,
   abiertoInicial,
+  sugerencias,
+  yaPedidos,
 }: {
   pedidoId: string;
   proveedores: Proveedor[];
   feriados: string[];
   abiertoInicial: boolean;
+  /** Qué pedirle a cada proveedor según los productos (por nombre de proveedor). */
+  sugerencias: Record<string, string>;
+  /** Proveedores que ya tienen un pedido activo para este pedido. */
+  yaPedidos: string[];
 }) {
   const [abierto, setAbierto] = useState(abiertoInicial);
   const [estado, accion, guardando] = useActionState<EstadoProv, FormData>(pedirAProveedor.bind(null, pedidoId), {});
   const [proveedorId, setProveedorId] = useState(proveedores[0]?.id ?? '');
   const [fechaPedido, setFechaPedido] = useState(hoyAR());
   const [fechaManual, setFechaManual] = useState('');
+  const [detalle, setDetalle] = useState(sugerencias[proveedores[0]?.nombre ?? ''] ?? '');
   const plazo = proveedores.find((p) => p.id === proveedorId)?.plazo_dias ?? 25;
   const esperada = fechaManual || sumarDiasHabiles(fechaPedido || hoyAR(), plazo, new Set(feriados));
 
@@ -117,11 +124,35 @@ export function NuevoPedidoProveedor({
     }
   }, [estado]);
 
+  // Registro en un toque: proveedor, hoy y el detalle armado con los productos.
+  const pedirYa = (prov: Proveedor) => {
+    const fd = new FormData();
+    fd.set('proveedor_id', prov.id);
+    fd.set('detalle', sugerencias[prov.nombre] ?? '');
+    fd.set('fecha_pedido', hoyAR());
+    startTransition(() => accion(fd));
+  };
+  const rapidos = proveedores.filter((p) => sugerencias[p.nombre] !== undefined && !yaPedidos.includes(p.id));
+
   if (!abierto)
     return (
-      <button type="button" className="btn btn-chico" style={{ marginTop: 8 }} onClick={() => setAbierto(true)}>
-        + Registrar pedido a proveedor
-      </button>
+      <div style={{ marginTop: 8 }} className="form-bloque">
+        {rapidos.length > 0 && (
+          <div className="acciones">
+            {rapidos.map((p) => (
+              <button key={p.id} type="button" className="btn btn-primario btn-chico" disabled={guardando} onClick={() => pedirYa(p)}>
+                {guardando ? 'Guardando…' : `✓ Ya se pidió a ${p.nombre}`}
+              </button>
+            ))}
+          </div>
+        )}
+        {estado.error && <p className="error-form">{estado.error}</p>}
+        <div>
+          <button type="button" className="btn btn-chico" onClick={() => setAbierto(true)}>
+            + Registrar pedido a proveedor (con detalle o fecha)
+          </button>
+        </div>
+      </div>
     );
 
   return (
@@ -138,7 +169,16 @@ export function NuevoPedidoProveedor({
         <div className="segmentado">
           {proveedores.map((p) => (
             <label key={p.id}>
-              <input type="radio" name="proveedor_id" value={p.id} checked={proveedorId === p.id} onChange={() => setProveedorId(p.id)} />
+              <input
+                type="radio"
+                name="proveedor_id"
+                value={p.id}
+                checked={proveedorId === p.id}
+                onChange={() => {
+                  setProveedorId(p.id);
+                  setDetalle(sugerencias[p.nombre] ?? '');
+                }}
+              />
               {p.nombre}
             </label>
           ))}
@@ -146,7 +186,14 @@ export function NuevoPedidoProveedor({
       </div>
       <div className="campo">
         <label htmlFor="pp_detalle">Qué se pidió</label>
-        <input id="pp_detalle" name="detalle" type="text" placeholder="Tapa 10mm 160x90, estructura bronce…" />
+        <input
+          id="pp_detalle"
+          name="detalle"
+          type="text"
+          placeholder="Tapa 10mm 160x90, estructura bronce…"
+          value={detalle}
+          onChange={(e) => setDetalle(e.target.value)}
+        />
       </div>
       <div className="fila fila-2m">
         <div className="campo">
