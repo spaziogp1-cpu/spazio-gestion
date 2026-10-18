@@ -12,7 +12,10 @@ export async function pedirLink(_prev: EstadoLogin, formData: FormData): Promise
 
   const supabase = await createClient();
   const { data: habilitado, error: errHab } = await supabase.rpc('email_habilitado', { p_email: email });
-  if (errHab) return { error: 'No pudimos verificar el email. Probá de nuevo en un rato.', email };
+  if (errHab) {
+    console.error('email_habilitado', errHab);
+    return { error: `No pudimos verificar el email (${errHab.code ?? ''} ${errHab.message}).`, email };
+  }
   if (!habilitado) return { error: 'Ese email no está en el equipo. Pedile a Teo que te agregue.', email };
 
   const h = await headers();
