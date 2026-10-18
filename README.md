@@ -12,7 +12,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 - Ficha del pedido: etapas, productos, pagos y saldo, notas, archivos (fotos,
   comprobantes) e historial automático de cambios.
 - Tablero de producción por etapa y ficha de clientes.
-- Fecha límite automática: 28 días corridos desde la venta, como la planilla
+- Fecha límite automática: 49 días corridos desde la venta, como la planilla
   (se cambia en la tabla `parametros`).
 - La numeración de pedidos sigue la de la planilla (arranca en 542).
 

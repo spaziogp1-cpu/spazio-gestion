@@ -70,7 +70,7 @@ create table public.parametros (
 );
 
 insert into public.parametros (clave, valor, nota) values
-  ('plazo_entrega_dias', '28', 'Días que se suman a la fecha de venta para la fecha límite'),
+  ('plazo_entrega_dias', '49', 'Días que se suman a la fecha de venta para la fecha límite'),
   ('plazo_entrega_tipo', 'corridos', 'corridos (como la planilla hoy) o habiles'),
   ('aviso_dias_antes',   '3', 'Días antes de la fecha límite para avisar (entrega 1d)');
 
