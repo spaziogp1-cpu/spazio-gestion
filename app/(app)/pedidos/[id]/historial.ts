@@ -1,0 +1,59 @@
+import { CANALES, ENVIOS, TIPOS_PAGO, TIPOS_VENTA, nombreDe, nombreEtapa } from '@/lib/constantes';
+import { fechaCorta } from '@/lib/fechas';
+import { plata } from '@/lib/formato';
+import type { Evento } from '@/lib/tipos';
+
+const CAMPOS: Record<string, string> = {
+  etapa: 'la etapa',
+  fecha_limite: 'la fecha límite',
+  fecha_entrega_programada: 'la entrega programada',
+  fecha_entrega_real: 'la fecha de entrega',
+  envio: 'la modalidad de envío',
+  total: 'el total',
+  precio_envio_cliente: 'el envío al cliente',
+  responsable_id: 'el vendedor',
+  canal: 'el canal',
+  tipo_venta: 'el tipo de venta',
+  forma_pago: 'la forma de pago',
+  observaciones: 'las observaciones',
+  direccion_entrega: 'la dirección de entrega',
+  cliente_id: 'el cliente',
+  producto: 'el producto',
+  modelo: 'el modelo',
+  medidas: 'las medidas',
+  color: 'el color',
+  material: 'el material',
+  cantidad: 'la cantidad',
+  precio: 'el precio',
+  monto: 'el monto',
+};
+
+const ENTIDAD: Record<string, string> = {
+  pedidos: 'el pedido',
+  pedido_items: 'un producto',
+  pagos: 'un pago',
+  archivos: 'un archivo',
+};
+
+function valor(campo: string, v: string | null): string {
+  if (v == null || v === '') return 'vacío';
+  if (campo === 'etapa') return nombreEtapa(v);
+  if (campo === 'canal') return nombreDe(CANALES, v);
+  if (campo === 'envio') return nombreDe(ENVIOS, v);
+  if (campo === 'tipo_venta') return nombreDe(TIPOS_VENTA, v);
+  if (campo === 'tipo') return nombreDe(TIPOS_PAGO, v);
+  if (campo.startsWith('fecha')) return fechaCorta(v);
+  if (['total', 'precio_envio_cliente', 'precio', 'monto'].includes(campo)) return plata(v);
+  return v.length > 40 ? v.slice(0, 40) + '…' : v;
+}
+
+export function textoEvento(ev: Evento): string {
+  const ent = ENTIDAD[ev.entidad] ?? ev.entidad;
+  if (ev.accion === 'creado') return ev.entidad === 'pedidos' ? 'creó el pedido' : `agregó ${ent}`;
+  if (ev.accion === 'eliminado') return `eliminó ${ent}`;
+  const campo = ev.campo ?? '';
+  const nombre = CAMPOS[campo] ?? campo.replace(/_/g, ' ');
+  if (campo === 'responsable_id' || campo === 'cliente_id') return `cambió ${nombre}`;
+  const donde = ev.entidad === 'pedidos' ? '' : ` de ${ent}`;
+  return `cambió ${nombre}${donde}: ${valor(campo, ev.valor_anterior)} → ${valor(campo, ev.valor_nuevo)}`;
+}
