@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { miembroActual } from '@/lib/sesion';
 import { fechaCorta } from '@/lib/fechas';
-import { AsistenteIA, FormMiembro, FormParametros, ImportarTiendaNube, ProbarPlanilla, ProbarResumen } from './partes';
+import { AsistenteIA, FormMiembro, MiContrasena, FormParametros, ImportarTiendaNube, ProbarPlanilla, ProbarResumen } from './partes';
 
 async function conexionTiendaNube() {
   try {
@@ -53,6 +53,15 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
       </div>
       <div className="grid-ficha">
         <div className="col">
+          <section className="card">
+            <div className="card-titulo">
+              <h2>Mi contraseña</h2>
+            </div>
+            <div className="seccion form-bloque">
+              <p className="small">Con una contraseña entrás directo con tu email, sin esperar el código. Sirve también en la app instalada en el celular.</p>
+              <MiContrasena />
+            </div>
+          </section>
           <section className="card">
             <div className="card-titulo">
               <h2>Equipo</h2>

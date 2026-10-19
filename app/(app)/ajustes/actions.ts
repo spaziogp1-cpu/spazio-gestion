@@ -155,3 +155,53 @@ export async function revocarClaveIA(id: string): Promise<EstadoAjustes> {
   revalidatePath('/ajustes');
   return { ok: 'Clave revocada' };
 }
+
+// ---------------------------------------------------------------------
+// Contraseñas
+// ---------------------------------------------------------------------
+const contrasenaValida = (p: string) => (p.length < 8 ? 'La contraseña tiene que tener al menos 8 caracteres.' : null);
+
+/** Cada persona cambia su propia contraseña. */
+export async function cambiarMiContrasena(_prev: EstadoAjustes, fd: FormData): Promise<EstadoAjustes> {
+  const { supabase } = await miembroActual();
+  const p1 = String(fd.get('password') ?? '');
+  const p2 = String(fd.get('password2') ?? '');
+  const mal = contrasenaValida(p1);
+  if (mal) return { error: mal };
+  if (p1 !== p2) return { error: 'Las dos contraseñas no coinciden.' };
+  const { error } = await supabase.auth.updateUser({ password: p1 });
+  if (error) return { error: /same|different/i.test(error.message) ? 'Es la misma contraseña que ya tenías.' : `No se pudo guardar: ${error.message}` };
+  return { ok: 'Listo. Desde ahora podés entrar con tu email y esta contraseña.' };
+}
+
+/** Un administrador define la contraseña inicial de alguien del equipo (para que no tenga que usar el email). */
+export async function definirContrasena(miembroId: string, _prev: EstadoAjustes, fd: FormData): Promise<EstadoAjustes> {
+  try {
+    const { supabase } = await soloAdmin();
+    const password = String(fd.get('password') ?? '');
+    const mal = contrasenaValida(password);
+    if (mal) return { error: mal };
+    const { data: m } = await supabase.from('equipo').select('email').eq('id', miembroId).single();
+    if (!m) return { error: 'No se encontró a esa persona.' };
+    const { crearAdmin } = await import('@/lib/supabase/admin');
+    const admin = crearAdmin();
+    const email = m.email.toLowerCase();
+    const creado = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+    if (creado.error) {
+      // Ya tenía usuario: se busca y se le cambia la contraseña.
+      let id: string | null = null;
+      for (let page = 1; page <= 10 && !id; page++) {
+        const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+        if (error) return { error: error.message };
+        id = data.users.find((u) => u.email?.toLowerCase() === email)?.id ?? null;
+        if (data.users.length < 200) break;
+      }
+      if (!id) return { error: `No se pudo crear el usuario: ${creado.error.message}` };
+      const { error } = await admin.auth.admin.updateUserById(id, { password, email_confirm: true });
+      if (error) return { error: `No se pudo cambiar la contraseña: ${error.message}` };
+    }
+    return { ok: `Listo. Pasale la contraseña por privado; la puede cambiar en Ajustes.` };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}

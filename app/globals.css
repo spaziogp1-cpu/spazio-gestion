@@ -213,7 +213,7 @@ p { margin: 0; }
 .campo { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .campo label, .etiqueta { font-size: 13px; font-weight: 550; color: var(--ink-2); }
 .campo .ayuda { font-size: 12px; color: var(--ink-3); }
-input[type='text'], input[type='email'], input[type='tel'], input[type='date'], input[type='number'], input[type='search'], select, textarea {
+input[type='text'], input[type='password'], input[type='time'], input[type='email'], input[type='tel'], input[type='date'], input[type='number'], input[type='search'], select, textarea {
   font: inherit; font-size: 16px; /* evita el zoom en iPhone */
   color: var(--ink); background: var(--surface);
   border: 1px solid var(--line); border-radius: 10px;

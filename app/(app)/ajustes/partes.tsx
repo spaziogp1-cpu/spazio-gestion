@@ -1,7 +1,7 @@
 'use client';
 
 import { startTransition, useActionState, useState, useTransition } from 'react';
-import { crearClaveIA, enviarmeResumen, guardarMiembro, guardarParametros, importarTiendaNube, probarPlanilla, revocarClaveIA, type EstadoAjustes } from './actions';
+import { cambiarMiContrasena, crearClaveIA, definirContrasena, enviarmeResumen, guardarMiembro, guardarParametros, importarTiendaNube, probarPlanilla, revocarClaveIA, type EstadoAjustes } from './actions';
 
 type Miembro = { id: string; nombre: string; alias_planilla: string | null; email: string; telefono: string | null; rol: string; activo: boolean };
 
@@ -77,6 +77,7 @@ export function FormMiembro({ m, editable }: { m: Miembro | null; editable: bool
           Cancelar
         </button>
       </div>
+      {m && <ContrasenaDe miembroId={m.id} />}
     </form>
   );
 }
@@ -228,5 +229,61 @@ export function AsistenteIA({ claves }: { claves: ClaveIA[] }) {
         </div>
       )}
     </div>
+  );
+}
+
+// Un admin le define la contraseña inicial a alguien del equipo.
+function ContrasenaDe({ miembroId }: { miembroId: string }) {
+  const [estado, accion, guardando] = useActionState<EstadoAjustes, FormData>(definirContrasena.bind(null, miembroId), {});
+  const [valor, setValor] = useState('');
+  return (
+    <div className="form-bloque" style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+      <div className="campo">
+        <label htmlFor={`pass-${miembroId}`}>Contraseña para entrar (mínimo 8 caracteres)</label>
+        <div className="acciones" style={{ flexWrap: 'nowrap' }}>
+          <input id={`pass-${miembroId}`} type="text" autoComplete="off" value={valor} onChange={(e) => setValor(e.target.value)} />
+          <button
+            type="button"
+            className="btn btn-chico"
+            disabled={guardando || valor.length < 8}
+            onClick={() => {
+              const fd = new FormData();
+              fd.set('password', valor);
+              startTransition(() => accion(fd));
+            }}
+          >
+            {guardando ? 'Guardando…' : 'Definir'}
+          </button>
+        </div>
+      </div>
+      {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}
+      {estado.error && <p className="error-form">{estado.error}</p>}
+    </div>
+  );
+}
+
+// Cada persona crea o cambia su propia contraseña.
+export function MiContrasena() {
+  const [estado, accion, guardando] = useActionState<EstadoAjustes, FormData>(cambiarMiContrasena, {});
+  return (
+    <form onSubmit={enviar(accion)} className="form-bloque">
+      <div className="fila fila-2">
+        <div className="campo">
+          <label htmlFor="mi-pass">Contraseña nueva</label>
+          <input id="mi-pass" name="password" type="password" autoComplete="new-password" minLength={8} required />
+        </div>
+        <div className="campo">
+          <label htmlFor="mi-pass2">Repetila</label>
+          <input id="mi-pass2" name="password2" type="password" autoComplete="new-password" minLength={8} required />
+        </div>
+      </div>
+      {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}
+      {estado.error && <p className="error-form">{estado.error}</p>}
+      <div>
+        <button className="btn btn-primario btn-chico" disabled={guardando}>
+          {guardando ? 'Guardando…' : 'Guardar contraseña'}
+        </button>
+      </div>
+    </form>
   );
 }

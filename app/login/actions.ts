@@ -48,3 +48,22 @@ export async function verificarCodigo(_prev: EstadoCodigo, formData: FormData): 
   if (error) return { error: 'El código no es válido o venció. Pedí uno nuevo.' };
   redirect('/');
 }
+
+// Ingreso con email y contraseña (la contraseña se crea en Ajustes o la define un administrador).
+export async function entrarConContrasena(_prev: EstadoLogin, formData: FormData): Promise<EstadoLogin> {
+  const email = String(formData.get('email') ?? '').trim().toLowerCase();
+  const password = String(formData.get('password') ?? '');
+  if (!/^\S+@\S+\.\S+$/.test(email)) return { error: 'Escribí un email válido.', email };
+  if (!password) return { error: 'Escribí tu contraseña.', email };
+
+  const supabase = await createClient();
+  const { data: habilitado } = await supabase.rpc('email_habilitado', { p_email: email });
+  if (habilitado === false) return { error: 'Ese email no está en el equipo. Pedile a Teo que te agregue.', email };
+
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    if (/rate|too many/i.test(error.message)) return { error: 'Demasiados intentos. Esperá un minuto.', email };
+    return { error: 'Email o contraseña incorrectos. Si todavía no tenés contraseña, entrá con un código por email y creala en Ajustes.', email };
+  }
+  redirect('/');
+}
