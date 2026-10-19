@@ -89,7 +89,7 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
         persona: p.responsable_id,
       });
     }
-    const activo = ['senado', 'en_fabricacion', 'lista', 'cliente_avisado'].includes(p.etapa);
+    const activo = ['senado', 'en_fabricacion', 'lista'].includes(p.etapa);
     if (activo && !prog && p.fecha_limite >= desde && p.fecha_limite <= hasta) {
       eventos.push({
         tipo: 'limite',

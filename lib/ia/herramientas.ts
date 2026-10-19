@@ -107,7 +107,7 @@ export const HERRAMIENTAS: Herramienta[] = [
     name: 'buscar_pedidos',
     title: 'Buscar pedidos',
     description:
-      'Busca pedidos por cliente, número, producto o localidad, y/o filtra por etapa. Por defecto trae solo los activos (no entregados ni cancelados). Etapas: senado, en_fabricacion, lista, cliente_avisado, envio_coordinado, entregado, cancelado.',
+      'Busca pedidos por cliente, número, producto o localidad, y/o filtra por etapa. Por defecto trae solo los activos (no entregados ni cancelados). Etapas: senado, en_fabricacion, lista, envio_coordinado, entregado, cancelado.',
     soloLectura: true,
     inputSchema: {
       type: 'object',
@@ -335,7 +335,7 @@ export const HERRAMIENTAS: Herramienta[] = [
     name: 'agendar_entrega',
     title: 'Agendar entrega',
     description:
-      'Programa la entrega o el retiro de un pedido: fecha (AAAA-MM-DD), horario opcional (HH:MM) y modalidad (retira, flete, expreso, coordinar). Si el pedido estaba listo o el cliente avisado, pasa a "Envío o retiro coordinado".',
+      'Programa la entrega o el retiro de un pedido: fecha (AAAA-MM-DD), horario opcional (HH:MM) y modalidad (retira, flete, expreso, coordinar). Si el pedido estaba listo, pasa a "Envío o retiro coordinado".',
     soloLectura: false,
     inputSchema: {
       type: 'object',
@@ -355,7 +355,7 @@ export const HERRAMIENTAS: Herramienta[] = [
         hora_entrega_programada: hora && /^\d{1,2}:\d{2}$/.test(hora) ? hora.padStart(5, '0') : null,
       };
       if (ENVIOS.some((e) => e.id === a.envio)) cambios.envio = a.envio;
-      if (p.etapa === 'lista' || p.etapa === 'cliente_avisado') cambios.etapa = 'envio_coordinado';
+      if (p.etapa === 'lista') cambios.etapa = 'envio_coordinado';
       const { error } = await db.from('pedidos').update(cambios).eq('id', p.id);
       if (error) throw new Error(error.message);
       if (cambios.etapa) await actualizarEnPlanilla(db, p.id);

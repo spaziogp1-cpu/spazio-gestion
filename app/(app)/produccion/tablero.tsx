@@ -15,10 +15,11 @@ export default function Tablero({ pedidos }: { pedidos: PedidoResumen[] }) {
   const [error, setError] = useState<string | null>(null);
   const [, iniciar] = useTransition();
 
-  const columnas = ETAPAS.filter((e) => ETAPAS_ACTIVAS.includes(e.id));
+  // Las etapas activas y, al final, los entregados de las últimas dos semanas.
+  const columnas = ETAPAS.filter((e) => ETAPAS_ACTIVAS.includes(e.id) || e.id === 'entregado');
   const etapaDe = (p: PedidoResumen) => movidos[p.id] ?? p.etapa;
   const visibles = useMemo(
-    () => pedidos.filter((p) => ETAPAS_ACTIVAS.includes((movidos[p.id] ?? p.etapa) as EtapaId) || movidos[p.id] === 'entregado'),
+    () => pedidos.filter((p) => ETAPAS_ACTIVAS.includes((movidos[p.id] ?? p.etapa) as EtapaId) || (movidos[p.id] ?? p.etapa) === 'entregado'),
     [pedidos, movidos],
   );
 
@@ -93,7 +94,9 @@ export default function Tablero({ pedidos }: { pedidos: PedidoResumen[] }) {
                         <div className="small quiet tarjeta-productos">{p.productos || '—'}</div>
                         {p.prov_resumen && <div className="xs faint">{p.prov_resumen}</div>}
                         <div className={`xs tarjeta-fecha${p.atrasado ? ' mal' : ''}`}>
-                          {fechaCorta(p.fecha_entrega_programada ?? p.fecha_limite)} · {relativo(p.dias_restantes)}
+                          {etapaDe(p) === 'entregado'
+                            ? `Entregado ${fechaCorta(p.fecha_entrega_real ?? p.fecha_entrega_programada)}`
+                            : `${fechaCorta(p.fecha_entrega_programada ?? p.fecha_limite)} · ${relativo(p.dias_restantes)}`}
                         </div>
                       </Link>
                       {sig && (

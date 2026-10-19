@@ -16,7 +16,7 @@ export default async function ContenidoPage({ searchParams }: { searchParams: Pr
   const { data: ps } = await supabase
     .from('pedidos_resumen')
     .select('*')
-    .in('etapa', ['en_fabricacion', 'lista', 'cliente_avisado', 'envio_coordinado'])
+    .in('etapa', ['en_fabricacion', 'lista', 'envio_coordinado'])
     .order('fecha_limite');
   const pedidos = (ps ?? []) as PedidoResumen[];
   const { data: its } = pedidos.length
