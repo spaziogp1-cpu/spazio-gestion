@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { miembroActual } from '@/lib/sesion';
 import { fechaCorta } from '@/lib/fechas';
-import { AsistenteIA, FormMiembro, MiContrasena, FormParametros, ImportarTiendaNube, ProbarPlanilla, ProbarResumen } from './partes';
+import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormParametros, ImportarTiendaNube, ProbarPlanilla, ProbarResumen } from './partes';
 
 async function conexionTiendaNube() {
   try {
@@ -114,6 +114,10 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
                 {syncErr[0]?.error && <li style={{ color: 'var(--danger)' }}>Último error: {syncErr[0].error}</li>}
               </ul>
               {admin && <ProbarPlanilla />}
+              <p className="small" style={{ marginTop: 6 }}>
+                <strong>Planilla original:</strong> cada 15 minutos la app revisa <em>Plantilla_Spazio_2026</em> y crea como pedidos las ventas nuevas que se cargaron ahí (sin duplicar las que ya están en la app).
+              </p>
+              {admin && <TraerDeOriginal />}
             </div>
           </section>
           <section className="card">

@@ -28,6 +28,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 8. `supabase/migrations/0008_tiendanube.sql` — ventas de Tienda Nube que entran solas
 9. `supabase/migrations/0009_etapas_y_entregas.sql` — sin la etapa "Pedido a fábrica" y entregas con horario
 10. `supabase/migrations/0010_asistente_ia.sql` — claves para conectar Claude o ChatGPT
+11. `supabase/migrations/0011_planilla_original.sql` — trae cada 15 minutos las ventas cargadas en la planilla original
 
 ## Variables en Vercel (Settings → Environment Variables)
 

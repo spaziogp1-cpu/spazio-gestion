@@ -64,8 +64,8 @@ export function idPlanilla(crudo: string | undefined): string | null {
   return id ? id[0] : null;
 }
 
-async function sheets(ruta: string, init?: RequestInit) {
-  const id = idPlanilla(process.env.PLANILLA_ID);
+async function sheets(ruta: string, init?: RequestInit, idPedido?: string) {
+  const id = idPedido ?? idPlanilla(process.env.PLANILLA_ID);
   if (!id) throw new Error('Falta PLANILLA_ID');
   const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}${ruta}`, {
     ...init,
@@ -87,6 +87,17 @@ const rango = (a1: string) => encodeURIComponent(a1);
 
 export async function leer(a1: string): Promise<string[][]> {
   const j = (await sheets(`/values/${rango(a1)}?valueRenderOption=FORMATTED_VALUE`)) as { values?: string[][] };
+  return j.values ?? [];
+}
+
+// Planilla donde el equipo carga las ventas a mano (la original). Solo se lee.
+const ORIGEN_POR_DEFECTO = '1ppckkUctylxwGsAm0cGToYjCkcEdgk7EUTcxdH9lqQA';
+export const idOrigen = () => idPlanilla(process.env.PLANILLA_ORIGEN_ID) ?? ORIGEN_POR_DEFECTO;
+
+/** Lee la planilla original con los números sin formato y las fechas como texto. */
+export async function leerOrigen(a1: string): Promise<(string | number | boolean)[][]> {
+  const q = 'valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING';
+  const j = (await sheets(`/values/${rango(a1)}?${q}`, undefined, idOrigen())) as { values?: (string | number | boolean)[][] };
   return j.values ?? [];
 }
 

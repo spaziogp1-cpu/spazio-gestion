@@ -205,3 +205,24 @@ export async function definirContrasena(miembroId: string, _prev: EstadoAjustes,
     return { error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+// Trae ahora las ventas nuevas de la planilla original (también corre sola cada 15 minutos).
+export async function traerDePlanillaOriginal(simular: boolean): Promise<EstadoAjustes> {
+  try {
+    const { miembro } = await soloAdmin();
+    const { crearAdmin } = await import('@/lib/supabase/admin');
+    const { importarDeOriginal } = await import('@/lib/planilla/importar-origen');
+    const r = await importarDeOriginal(crearAdmin(`${miembro.email}`), { simular });
+    revalidatePath('/ajustes');
+    revalidatePath('/pedidos');
+    const partes = [
+      `Revisé ${r.revisadas} ventas de la planilla original.`,
+      r.creadas.length ? `${simular ? 'Se crearían' : 'Pedidos nuevos'}: ${r.creadas.join(', ')}.` : 'No hay ventas nuevas para crear.',
+      r.vinculadas ? `${r.vinculadas} ya estaban en la app.` : '',
+    ].filter(Boolean);
+    if (r.errores.length) return { error: `${partes.join(' ')} Errores: ${r.errores.join(' · ')}` };
+    return { ok: partes.join(' ') };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}

@@ -1,7 +1,7 @@
 'use client';
 
 import { startTransition, useActionState, useState, useTransition } from 'react';
-import { cambiarMiContrasena, crearClaveIA, definirContrasena, enviarmeResumen, guardarMiembro, guardarParametros, importarTiendaNube, probarPlanilla, revocarClaveIA, type EstadoAjustes } from './actions';
+import { cambiarMiContrasena, crearClaveIA, traerDePlanillaOriginal, definirContrasena, enviarmeResumen, guardarMiembro, guardarParametros, importarTiendaNube, probarPlanilla, revocarClaveIA, type EstadoAjustes } from './actions';
 
 type Miembro = { id: string; nombre: string; alias_planilla: string | null; email: string; telefono: string | null; rol: string; activo: boolean };
 
@@ -285,5 +285,24 @@ export function MiContrasena() {
         </button>
       </div>
     </form>
+  );
+}
+
+export function TraerDeOriginal() {
+  const [pendiente, iniciar] = useTransition();
+  const [estado, setEstado] = useState<EstadoAjustes>({});
+  return (
+    <div className="form-bloque">
+      <div className="acciones">
+        <button type="button" className="btn btn-chico" disabled={pendiente} onClick={() => iniciar(async () => setEstado(await traerDePlanillaOriginal(true)))}>
+          Ver qué traería
+        </button>
+        <button type="button" className="btn btn-chico" disabled={pendiente} onClick={() => iniciar(async () => setEstado(await traerDePlanillaOriginal(false)))}>
+          {pendiente ? 'Revisando…' : 'Traer ahora'}
+        </button>
+      </div>
+      {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}
+      {estado.error && <p className="error-form">{estado.error}</p>}
+    </div>
   );
 }
