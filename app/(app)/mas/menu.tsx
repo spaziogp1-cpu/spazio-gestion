@@ -10,8 +10,8 @@ export default function MenuMas() {
         <h1>Secciones</h1>
       </div>
       <div className="menu-mas">
-        {SECCIONES.map(({ href, nombre, Icono }) => (
-          <Link key={href} href={href} className="card menu-mas-item">
+        {SECCIONES.map(({ href, nombre, Icono, color }) => (
+          <Link key={href} href={href} className={`card menu-mas-item vidrio-${color}`}>
             <Icono />
             <span>{nombre}</span>
           </Link>

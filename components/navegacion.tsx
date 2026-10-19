@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Marca } from './marca';
 import { usePathname } from 'next/navigation';
 import {
   IconoAjustes,
@@ -19,19 +20,20 @@ import {
   IconoTareas,
 } from './iconos';
 
+// Cada sección tiene su color de vidrio (se usa en el menú y en "Más").
 export const SECCIONES = [
-  { href: '/', nombre: 'Mi día', Icono: IconoInicio },
-  { href: '/pedidos', nombre: 'Pedidos', Icono: IconoPedidos },
-  { href: '/produccion', nombre: 'Producción', Icono: IconoProduccion },
-  { href: '/tareas', nombre: 'Tareas', Icono: IconoTareas },
-  { href: '/calendario', nombre: 'Calendario', Icono: IconoCalendario },
-  { href: '/showroom', nombre: 'Showroom', Icono: IconoShowroom },
-  { href: '/objetivos', nombre: 'Objetivos', Icono: IconoObjetivos },
-  { href: '/proveedores', nombre: 'Proveedores', Icono: IconoProveedores },
-  { href: '/clientes', nombre: 'Clientes', Icono: IconoClientes },
-  { href: '/contenido', nombre: 'Contenido', Icono: IconoContenido },
-  { href: '/avisos', nombre: 'Avisos', Icono: IconoAvisos },
-  { href: '/ajustes', nombre: 'Ajustes', Icono: IconoAjustes },
+  { href: '/', nombre: 'Mi día', Icono: IconoInicio, color: 'amarillo' },
+  { href: '/pedidos', nombre: 'Pedidos', Icono: IconoPedidos, color: 'naranja' },
+  { href: '/produccion', nombre: 'Producción', Icono: IconoProduccion, color: 'rosa' },
+  { href: '/tareas', nombre: 'Tareas', Icono: IconoTareas, color: 'violeta' },
+  { href: '/calendario', nombre: 'Calendario', Icono: IconoCalendario, color: 'azul' },
+  { href: '/showroom', nombre: 'Showroom', Icono: IconoShowroom, color: 'verde' },
+  { href: '/objetivos', nombre: 'Objetivos', Icono: IconoObjetivos, color: 'rojo' },
+  { href: '/proveedores', nombre: 'Proveedores', Icono: IconoProveedores, color: 'bronce' },
+  { href: '/clientes', nombre: 'Clientes', Icono: IconoClientes, color: 'naranja' },
+  { href: '/contenido', nombre: 'Contenido', Icono: IconoContenido, color: 'rosa' },
+  { href: '/avisos', nombre: 'Avisos', Icono: IconoAvisos, color: 'amarillo' },
+  { href: '/ajustes', nombre: 'Ajustes', Icono: IconoAjustes, color: 'gris' },
 ];
 
 function activo(path: string, href: string) {
@@ -44,16 +46,15 @@ export function Sidebar({ nombre, avisos }: { nombre: string; avisos: number }) 
   const path = usePathname();
   return (
     <nav className="sidebar" aria-label="Principal">
-      <Link href="/" className="marca">
-        <img src="/icon.svg" alt="" />
-        Spazio
+      <Link href="/" className="marca" aria-label="Spazio Gestión, Mi día">
+        <Marca />
       </Link>
       <Link href="/pedidos/nuevo" className="btn btn-primario" style={{ marginBottom: 12 }}>
         <IconoMas /> Nuevo pedido
       </Link>
-      {SECCIONES.map(({ href, nombre, Icono }) => (
+      {SECCIONES.map(({ href, nombre, color }) => (
         <Link key={href} href={href} className="navlink" aria-current={activo(path, href) ? 'page' : undefined}>
-          <Icono /> {nombre}
+          <span className="punto-seccion" style={{ background: `var(--c-${color})` }} aria-hidden="true" /> {nombre}
           {href === '/avisos' && avisos > 0 && <span className="insignia">{avisos > 99 ? '99+' : avisos}</span>}
         </Link>
       ))}

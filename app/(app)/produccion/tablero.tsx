@@ -45,7 +45,7 @@ export default function Tablero({ pedidos }: { pedidos: PedidoResumen[] }) {
           return (
             <section
               key={col.id}
-              className={`card columna${sobre === col.id ? ' columna-sobre' : ''}`}
+              className={`card columna etapa-${col.id}${sobre === col.id ? ' columna-sobre' : ''}`}
               onDragOver={(e) => {
                 e.preventDefault();
                 if (sobre !== col.id) setSobre(col.id);

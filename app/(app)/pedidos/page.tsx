@@ -94,7 +94,7 @@ export default async function PedidosPage({
       {!busqueda && (
         <div className="filtros" role="tablist">
           {filtros.map((x) => (
-            <Link key={x.id} href={x.id === 'activos' ? '/pedidos' : `/pedidos?f=${x.id}`} className="filtro" aria-current={filtro === x.id ? 'true' : undefined}>
+            <Link key={x.id} href={x.id === 'activos' ? '/pedidos' : `/pedidos?f=${x.id}`} className={`filtro etapa-${x.id}`} aria-current={filtro === x.id ? 'true' : undefined}>
               {x.nombre}
               {x.n !== undefined && <span className="n">{x.n}</span>}
             </Link>

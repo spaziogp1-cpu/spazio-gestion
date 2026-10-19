@@ -1,3 +1,4 @@
+import { Marca } from '@/components/marca';
 import type { Metadata } from 'next';
 import FormLogin from './form-login';
 
@@ -18,8 +19,7 @@ export default async function LoginPage({
     <main className="login">
       <div className="card">
         <div className="marca">
-          <img src="/icon.svg" alt="" />
-          Spazio · Gestión
+          <Marca />
         </div>
         {error && ERRORES[error] && <p className="aviso aviso-mal" style={{ marginBottom: 14 }}>{ERRORES[error]}</p>}
         <FormLogin />

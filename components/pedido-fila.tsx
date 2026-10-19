@@ -12,7 +12,7 @@ export function PedidoFila({ p }: { p: PedidoResumen }) {
   const fechaRef = p.fecha_entrega_programada ?? p.fecha_limite;
   return (
     <li>
-      <Link href={`/pedidos/${p.id}`} className="pedido-fila">
+      <Link href={`/pedidos/${p.id}`} className={`pedido-fila etapa-${p.atrasado ? 'atrasado' : p.etapa}`}>
         <div className="arriba">
           <span className="cliente">{p.cliente_nombre}</span>
           <span className="numero mono">#{p.numero}</span>

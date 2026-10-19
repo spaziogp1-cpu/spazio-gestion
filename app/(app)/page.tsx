@@ -57,7 +57,7 @@ export default async function MiDia({ searchParams }: { searchParams: Promise<{ 
     <>
       <div className="cabecera">
         <div>
-          <h1>{general ? 'Cómo viene el negocio' : `${saludo()}, ${miembro.nombre}`}</h1>
+          <h1>{general ? 'Cómo viene el negocio' : <>{saludo()}, <em>{miembro.nombre}</em></>}</h1>
           <p className="sub" style={{ textTransform: 'capitalize' }}>{fechaCorta(r.hoy)}</p>
         </div>
       </div>

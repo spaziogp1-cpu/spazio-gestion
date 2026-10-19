@@ -112,7 +112,7 @@ export default async function FichaPedido({
         <div className="col">
           <section className="card card-pad">
             {p.etapa !== 'cancelado' && (
-              <div className="etapas" aria-hidden>
+              <div className={`etapas etapa-${p.etapa}`} aria-hidden>
                 {pasos.map((e, i) => (
                   <span key={e.id} className={i <= iEtapa ? 'hecha' : ''} />
                 ))}
