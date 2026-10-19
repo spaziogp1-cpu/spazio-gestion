@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
   }
   const id = Number(aviso.id);
   if (Number.isFinite(id) && id > 0) {
-    if (aviso.event === 'order/paid') after(() => procesarOrden(crearAdmin(), id).then(() => undefined));
-    if (aviso.event === 'order/cancelled') after(() => avisarCancelacion(crearAdmin(), id));
+    if (aviso.event === 'order/paid') after(() => procesarOrden(crearAdmin('Tienda Nube'), id).then(() => undefined));
+    if (aviso.event === 'order/cancelled') after(() => avisarCancelacion(crearAdmin('Tienda Nube'), id));
   }
   // Otros avisos obligatorios de Tienda Nube (datos personales): la app no guarda nada aparte.
   return NextResponse.json({ ok: true });

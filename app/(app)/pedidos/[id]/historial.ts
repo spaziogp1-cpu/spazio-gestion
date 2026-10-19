@@ -61,6 +61,15 @@ function valor(campo: string, v: string | null): string {
   return v.length > 40 ? v.slice(0, 40) + '…' : v;
 }
 
+/** Quién hizo el cambio: persona del equipo, "Teo (con IA)", "Tienda Nube" o "Sistema". */
+export function autorEvento(valor: string | null, nombrePorEmail: Map<string, string>): string {
+  if (!valor) return 'Sistema';
+  const [email, via] = valor.split('#');
+  if (!email.includes('@')) return email;
+  const nombre = nombrePorEmail.get(email.toLowerCase()) ?? email;
+  return via === 'ia' ? `${nombre} (con IA)` : nombre;
+}
+
 export function textoEvento(ev: Evento): string {
   const ent = ENTIDAD[ev.entidad] ?? ev.entidad;
   if (ev.accion === 'creado') return ev.entidad === 'pedidos' ? 'creó el pedido' : `agregó ${ent}`;

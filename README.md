@@ -27,6 +27,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 7. `supabase/migrations/0007_planilla.sql` — registro de lo escrito en la planilla de ventas
 8. `supabase/migrations/0008_tiendanube.sql` — ventas de Tienda Nube que entran solas
 9. `supabase/migrations/0009_etapas_y_entregas.sql` — sin la etapa "Pedido a fábrica" y entregas con horario
+10. `supabase/migrations/0010_asistente_ia.sql` — claves para conectar Claude o ChatGPT
 
 ## Variables en Vercel (Settings → Environment Variables)
 
@@ -106,6 +107,15 @@ Desde ese momento, cada venta pagada crea un pedido (canal Tienda Nube, sin vend
 escribe en la planilla. Si la venta ya estaba cargada a mano (mismo email o teléfono, canal
 Tienda Nube, ±4 días), se une a ese pedido. El proceso diario repasa los últimos 3 días por si
 algún aviso no llegó. Si una venta se cancela en la tienda, avisa al equipo pero no cancela solo.
+
+## Asistente de IA (Claude o ChatGPT)
+
+La app funciona como conector MCP en `https://spazio-gestion.vercel.app/api/mcp/<clave>`.
+Cada persona crea su clave en **Ajustes → Asistente de IA** y la agrega en Claude
+(Configuración → Conectores → Agregar conector personalizado). Herramientas: resumen del día,
+buscar y ver pedidos, calendario, tareas, reporte de ventas, crear y completar tareas, cambiar
+etapa, agendar entrega, registrar pago y agregar notas. Los cambios quedan en el historial como
+"Nombre (con IA)". Las claves se pueden revocar desde Ajustes.
 
 ## Para desarrollar
 

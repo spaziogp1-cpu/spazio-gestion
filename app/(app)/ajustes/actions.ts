@@ -128,3 +128,30 @@ export async function importarTiendaNube(dias: number): Promise<EstadoAjustes> {
     return { error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+// ---------------------------------------------------------------------
+// Asistente de IA: claves personales para conectar Claude o ChatGPT
+// ---------------------------------------------------------------------
+export async function crearClaveIA(nombre: string): Promise<EstadoAjustes & { clave?: string; url?: string }> {
+  const { miembro, supabase } = await miembroActual();
+  const { randomBytes } = await import('node:crypto');
+  const { hashClave } = await import('@/lib/ia/mcp');
+  const clave = `spz_${randomBytes(24).toString('base64url')}`;
+  const { error } = await supabase.from('claves_ia').insert({
+    miembro_id: miembro.id,
+    nombre: ['Claude', 'ChatGPT', 'Otro'].includes(nombre) ? nombre : 'Claude',
+    hash: hashClave(clave),
+    ultimos: clave.slice(-4),
+  });
+  if (error) return { error: `No se pudo crear la clave: ${error.message}` };
+  revalidatePath('/ajustes');
+  return { ok: 'Clave creada', clave, url: `https://spazio-gestion.vercel.app/api/mcp/${clave}` };
+}
+
+export async function revocarClaveIA(id: string): Promise<EstadoAjustes> {
+  const { supabase } = await miembroActual();
+  const { error } = await supabase.from('claves_ia').update({ revocada_en: new Date().toISOString() }).eq('id', id);
+  if (error) return { error: error.message };
+  revalidatePath('/ajustes');
+  return { ok: 'Clave revocada' };
+}

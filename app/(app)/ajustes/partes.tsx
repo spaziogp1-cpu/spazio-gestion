@@ -1,7 +1,7 @@
 'use client';
 
 import { startTransition, useActionState, useState, useTransition } from 'react';
-import { enviarmeResumen, guardarMiembro, guardarParametros, importarTiendaNube, probarPlanilla, type EstadoAjustes } from './actions';
+import { crearClaveIA, enviarmeResumen, guardarMiembro, guardarParametros, importarTiendaNube, probarPlanilla, revocarClaveIA, type EstadoAjustes } from './actions';
 
 type Miembro = { id: string; nombre: string; alias_planilla: string | null; email: string; telefono: string | null; rol: string; activo: boolean };
 
@@ -168,6 +168,65 @@ export function ImportarTiendaNube() {
       </div>
       {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}
       {estado.error && <p className="error-form">{estado.error}</p>}
+    </div>
+  );
+}
+
+type ClaveIA = { id: string; nombre: string; ultimos: string; creada_en: string; ultimo_uso: string | null };
+
+export function AsistenteIA({ claves }: { claves: ClaveIA[] }) {
+  const [pendiente, iniciar] = useTransition();
+  const [nueva, setNueva] = useState<{ clave?: string; url?: string; error?: string } | null>(null);
+  const [copiado, setCopiado] = useState(false);
+  const crear = (nombre: string) =>
+    iniciar(async () => {
+      setCopiado(false);
+      setNueva(await crearClaveIA(nombre));
+    });
+  return (
+    <div className="form-bloque">
+      {claves.length > 0 && (
+        <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>
+          {claves.map((c) => (
+            <li key={c.id}>
+              {c.nombre} · termina en <span className="num">{c.ultimos}</span> ·{' '}
+              {c.ultimo_uso ? `usada ${new Date(c.ultimo_uso).toLocaleDateString('es-AR')}` : 'sin usar'}{' '}
+              <button type="button" className="btn btn-fantasma btn-chico" disabled={pendiente} onClick={() => iniciar(async () => void (await revocarClaveIA(c.id)))}>
+                Revocar
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="acciones">
+        <button type="button" className="btn" disabled={pendiente} onClick={() => crear('Claude')}>
+          {pendiente ? 'Creando…' : 'Conectar Claude'}
+        </button>
+        <button type="button" className="btn" disabled={pendiente} onClick={() => crear('ChatGPT')}>
+          Conectar ChatGPT
+        </button>
+      </div>
+      {nueva?.error && <p className="error-form">{nueva.error}</p>}
+      {nueva?.url && (
+        <div className="aviso aviso-ok" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <strong>Copiá esta dirección ahora: no se vuelve a mostrar.</strong>
+          <code style={{ wordBreak: 'break-all', fontSize: 12 }}>{nueva.url}</code>
+          <div>
+            <button
+              type="button"
+              className="btn btn-chico"
+              onClick={() => {
+                void navigator.clipboard?.writeText(nueva.url!).then(() => setCopiado(true));
+              }}
+            >
+              {copiado ? '✓ Copiada' : 'Copiar'}
+            </button>
+          </div>
+          <span className="small">
+            En Claude: Configuración → Conectores → Agregar conector personalizado. Nombre: Spazio, URL: esta dirección. Es personal: no la compartas.
+          </span>
+        </div>
+      )}
     </div>
   );
 }

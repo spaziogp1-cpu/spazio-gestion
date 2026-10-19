@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { miembroActual } from '@/lib/sesion';
 import { fechaCorta } from '@/lib/fechas';
-import { FormMiembro, FormParametros, ImportarTiendaNube, ProbarPlanilla, ProbarResumen } from './partes';
+import { AsistenteIA, FormMiembro, FormParametros, ImportarTiendaNube, ProbarPlanilla, ProbarResumen } from './partes';
 
 async function conexionTiendaNube() {
   try {
@@ -19,12 +19,13 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
   const { tiendanube: mensajeTN } = await searchParams;
   const { miembro, supabase } = await miembroActual();
   const admin = miembro.rol === 'admin';
-  const [{ data: eq }, { data: params }, { data: sync }, { data: tnOrdenes }, tn] = await Promise.all([
+  const [{ data: eq }, { data: params }, { data: sync }, { data: tnOrdenes }, tn, { data: clavesIA }] = await Promise.all([
     supabase.from('equipo').select('id, nombre, alias_planilla, email, telefono, rol, activo').order('activo', { ascending: false }).order('nombre'),
     supabase.from('parametros').select('clave, valor'),
     supabase.from('planilla_sync').select('estado, error, sincronizado_en').order('creado_en', { ascending: false }).limit(500),
     supabase.from('tiendanube_ordenes').select('numero, estado, detalle, recibido_en').order('recibido_en', { ascending: false }).limit(500),
     conexionTiendaNube(),
+    supabase.from('claves_ia').select('id, nombre, ultimos, creada_en, ultimo_uso').is('revocada_en', null).order('creada_en'),
   ]);
   const ordenesTN = (tnOrdenes ?? []) as { numero: number | null; estado: string; detalle: string | null; recibido_en: string }[];
   const tnCreadas = ordenesTN.filter((o) => o.estado === 'creado').length;
@@ -104,6 +105,17 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
                 {syncErr[0]?.error && <li style={{ color: 'var(--danger)' }}>Último error: {syncErr[0].error}</li>}
               </ul>
               {admin && <ProbarPlanilla />}
+            </div>
+          </section>
+          <section className="card">
+            <div className="card-titulo">
+              <h2>Asistente de IA</h2>
+            </div>
+            <div className="seccion form-bloque">
+              <p className="small">
+                Conectá tu Claude (o ChatGPT) a la app para preguntarle por pedidos, entregas, tareas y ventas, o pedirle que agende, cree tareas o registre pagos. Cada persona crea su propia conexión y los cambios quedan en el historial a su nombre.
+              </p>
+              <AsistenteIA claves={(clavesIA ?? []) as { id: string; nombre: string; ultimos: string; creada_en: string; ultimo_uso: string | null }[]} />
             </div>
           </section>
           <section className="card">

@@ -11,7 +11,7 @@ import { miembroActual } from '@/lib/sesion';
 import type { Archivo, Cliente, Comentario, Evento, Item, Pago, PedidoProveedor, PedidoResumen, Proveedor, Tarea } from '@/lib/tipos';
 import { FilaProveedor, NuevoPedidoProveedor } from './proveedores-pedido';
 import { ListaTareas, NuevaTarea } from '@/components/tareas';
-import { CAMPOS_OCULTOS, textoEvento } from './historial';
+import { CAMPOS_OCULTOS, autorEvento, textoEvento } from './historial';
 import { BorrarPago, EditarPedido, FormComentario, FormPago, ItemEditable, NuevoItem, SelectorEtapa, SubirArchivos, BorrarArchivo } from './partes';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -373,7 +373,7 @@ export default async function FichaPedido({
                     <li key={ev.id}>
                       <span className="cuando">{fechaHora(ev.creado_en)}</span>
                       <span>
-                        <strong>{(ev.usuario_email && nombrePorEmail.get(ev.usuario_email.toLowerCase())) ?? 'Sistema'}</strong>{' '}
+                        <strong>{autorEvento(ev.usuario_email, nombrePorEmail)}</strong>{' '}
                         {textoEvento(ev)}
                       </span>
                     </li>
