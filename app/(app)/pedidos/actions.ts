@@ -13,6 +13,7 @@ import { actualizarPedido as actualizarEnPlanilla, agregarPedido as agregarAPlan
 export type Estado = { error?: string; ok?: string };
 
 const fechaValida = (f: string | null) => (f && /^\d{4}-\d{2}-\d{2}$/.test(f) ? f : null);
+const horaValida = (h: string | null) => (h && /^\d{2}:\d{2}$/.test(h) ? h : null);
 
 // ---------------------------------------------------------------------
 // Alta de pedido
@@ -132,6 +133,7 @@ export async function actualizarPedido(pedidoId: string, _prev: Estado, fd: Form
       responsable_id: texto(fd.get('responsable_id')),
       fecha_limite: fechaLimite,
       fecha_entrega_programada: fechaValida(texto(fd.get('fecha_entrega_programada'))),
+      hora_entrega_programada: fechaValida(texto(fd.get('fecha_entrega_programada'))) ? horaValida(texto(fd.get('hora_entrega_programada'))) : null,
       fecha_entrega_real: fechaValida(texto(fd.get('fecha_entrega_real'))),
       envio: texto(fd.get('envio')) ?? 'coordinar',
       direccion_entrega: texto(fd.get('direccion_entrega')),

@@ -29,6 +29,7 @@ export type PedidoResumen = {
   fecha_venta: string;
   fecha_limite: string;
   fecha_entrega_programada: string | null;
+  hora_entrega_programada?: string | null;
   fecha_entrega_real: string | null;
   envio: string;
   direccion_entrega: string | null;

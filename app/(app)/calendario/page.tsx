@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { diaSemana, fechaCorta, hoyAR, horaCorta, inicioSemana, sumarDiasCorridos } from '@/lib/fechas';
+import { ETAPAS_ACTIVAS } from '@/lib/constantes';
 import { miembroActual } from '@/lib/sesion';
+import { AgendarEntrega, type PedidoParaAgendar } from './agendar';
 
 export const metadata: Metadata = { title: 'Calendario' };
 
@@ -43,11 +45,11 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
   }
 
   const { supabase } = await miembroActual();
-  const [eqR, pedR, visR, tarR, provR] = await Promise.all([
+  const [eqR, pedR, visR, tarR, provR, actR] = await Promise.all([
     supabase.from('equipo').select('id, nombre').eq('activo', true).order('nombre'),
     supabase
       .from('pedidos_resumen')
-      .select('id, numero, cliente_nombre, cliente_localidad, productos, etapa, envio, fecha_limite, fecha_entrega_programada, responsable_id, atrasado')
+      .select('id, numero, cliente_nombre, cliente_localidad, productos, etapa, envio, fecha_limite, fecha_entrega_programada, hora_entrega_programada, responsable_id, atrasado')
       .neq('etapa', 'cancelado')
       .or(`and(fecha_entrega_programada.gte.${desde},fecha_entrega_programada.lte.${hasta}),and(fecha_limite.gte.${desde},fecha_limite.lte.${hasta})`),
     supabase.from('visitas').select('id, nombre, fecha, hora, motivo, estado, atiende_id').gte('fecha', desde).lte('fecha', hasta).neq('estado', 'cancelada'),
@@ -63,7 +65,13 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
       .eq('estado', 'pedido')
       .gte('fecha_esperada', desde)
       .lte('fecha_esperada', hasta),
+    supabase
+      .from('pedidos_resumen')
+      .select('id, numero, cliente_nombre, cliente_localidad, productos, etapa, envio, fecha_entrega_programada')
+      .in('etapa', ETAPAS_ACTIVAS)
+      .order('numero'),
   ]);
+  const paraAgendar = (actR.data ?? []) as PedidoParaAgendar[];
   const equipo = (eqR.data ?? []) as { id: string; nombre: string }[];
   const nombre = (id: string | null) => equipo.find((m) => m.id === id)?.nombre ?? '';
 
@@ -74,13 +82,14 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
       eventos.push({
         tipo: 'entrega',
         fecha: prog,
+        hora: p.hora_entrega_programada,
         titulo: `${p.envio === 'retira' ? 'Retira' : 'Entrega'} #${p.numero} ${p.cliente_nombre}`,
         detalle: [p.productos, p.cliente_localidad].filter(Boolean).join(' · '),
         href: `/pedidos/${p.id}`,
         persona: p.responsable_id,
       });
     }
-    const activo = ['senado', 'pedido_fabrica', 'en_fabricacion', 'lista', 'cliente_avisado'].includes(p.etapa);
+    const activo = ['senado', 'en_fabricacion', 'lista', 'cliente_avisado'].includes(p.etapa);
     if (activo && !prog && p.fecha_limite >= desde && p.fecha_limite <= hasta) {
       eventos.push({
         tipo: 'limite',
@@ -211,6 +220,7 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
           <p className="sub">{visibles.length} eventos</p>
         </div>
         <div className="acciones" style={{ alignItems: 'center' }}>
+          <AgendarEntrega pedidos={paraAgendar} fechaInicial={vista === 'dia' || fecha > hoy ? fecha : hoy} />
           <Link href={href({ fecha: paso(-1) })} className="btn btn-chico" aria-label="Anterior">
             ←
           </Link>

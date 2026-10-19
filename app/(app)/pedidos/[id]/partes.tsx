@@ -475,6 +475,10 @@ export function EditarPedido({ p, equipo }: { p: PedidoResumen; equipo: { id: st
           </div>
         </div>
         <div className="campo">
+          <label>Horario de entrega</label>
+          <input name="hora_entrega_programada" type="time" defaultValue={p.hora_entrega_programada?.slice(0, 5) ?? ''} />
+        </div>
+        <div className="campo">
           <label>Fecha real de entrega</label>
           <input name="fecha_entrega_real" type="date" defaultValue={p.fecha_entrega_real ?? ''} />
         </div>

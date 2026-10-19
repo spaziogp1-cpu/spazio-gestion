@@ -70,7 +70,7 @@ export async function cambiarEstadoProveedor(
   if (estado === 'recibido' && pedidoId) {
     const { data: pend } = await supabase.from('pedidos_proveedor').select('id').eq('pedido_id', pedidoId).eq('estado', 'pedido');
     if (!pend?.length) {
-      await supabase.from('pedidos').update({ etapa: 'en_fabricacion' }).eq('id', pedidoId).in('etapa', ['senado', 'pedido_fabrica']);
+      await supabase.from('pedidos').update({ etapa: 'en_fabricacion' }).eq('id', pedidoId).eq('etapa', 'senado');
     }
   }
   if (pedidoId) after(() => actualizarEnPlanilla(supabase, pedidoId));

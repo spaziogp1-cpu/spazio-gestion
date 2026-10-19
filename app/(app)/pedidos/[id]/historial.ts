@@ -7,6 +7,7 @@ const CAMPOS: Record<string, string> = {
   etapa: 'la etapa',
   fecha_limite: 'la fecha límite',
   fecha_entrega_programada: 'la entrega programada',
+  hora_entrega_programada: 'el horario de entrega',
   fecha_entrega_real: 'la fecha de entrega',
   envio: 'la modalidad de envío',
   total: 'el total',
@@ -54,6 +55,7 @@ function valor(campo: string, v: string | null): string {
   if (campo === 'tipo_venta') return nombreDe(TIPOS_VENTA, v);
   if (campo === 'tipo') return nombreDe(TIPOS_PAGO, v);
   if (campo === 'estado') return ({ pedido: 'pedido', recibido: 'recibido', cancelado: 'cancelado', pendiente: 'pendiente', en_curso: 'en curso', bloqueada: 'trabada', hecha: 'hecha' } as Record<string, string>)[v] ?? v;
+  if (campo.startsWith('hora')) return v.slice(0, 5);
   if (campo.startsWith('fecha') || campo === 'vencimiento') return fechaCorta(v);
   if (['total', 'precio_envio_cliente', 'precio', 'monto'].includes(campo)) return plata(v);
   return v.length > 40 ? v.slice(0, 40) + '…' : v;

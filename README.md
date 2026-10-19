@@ -26,6 +26,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 6. `supabase/migrations/0006_avisos_y_automatismos.sql` — avisos y tareas automáticas por etapa
 7. `supabase/migrations/0007_planilla.sql` — registro de lo escrito en la planilla de ventas
 8. `supabase/migrations/0008_tiendanube.sql` — ventas de Tienda Nube que entran solas
+9. `supabase/migrations/0009_etapas_y_entregas.sql` — sin la etapa "Pedido a fábrica" y entregas con horario
 
 ## Variables en Vercel (Settings → Environment Variables)
 

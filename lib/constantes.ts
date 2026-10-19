@@ -1,6 +1,5 @@
 export const ETAPAS = [
   { id: 'senado', nombre: 'Señado', corto: 'Señado' },
-  { id: 'pedido_fabrica', nombre: 'Pedido a fábrica', corto: 'A fábrica' },
   { id: 'en_fabricacion', nombre: 'En fabricación', corto: 'Fabricando' },
   { id: 'lista', nombre: 'Lista', corto: 'Lista' },
   { id: 'cliente_avisado', nombre: 'Cliente avisado', corto: 'Avisado' },
@@ -13,7 +12,6 @@ export type EtapaId = (typeof ETAPAS)[number]['id'];
 
 export const ETAPAS_ACTIVAS: EtapaId[] = [
   'senado',
-  'pedido_fabrica',
   'en_fabricacion',
   'lista',
   'cliente_avisado',
@@ -21,6 +19,7 @@ export const ETAPAS_ACTIVAS: EtapaId[] = [
 ];
 
 export function nombreEtapa(id: string): string {
+  if (id === 'pedido_fabrica') return 'Pedido a fábrica'; // etapa vieja, sigue en el historial
   return ETAPAS.find((e) => e.id === id)?.nombre ?? id;
 }
 

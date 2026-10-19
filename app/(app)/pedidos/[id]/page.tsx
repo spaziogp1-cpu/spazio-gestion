@@ -297,7 +297,10 @@ export default async function FichaPedido({
                 </div>
                 <div className="dato">
                   <dt>Programada</dt>
-                  <dd>{fechaCorta(p.fecha_entrega_programada)}</dd>
+                  <dd>
+                    {fechaCorta(p.fecha_entrega_programada)}
+                    {p.fecha_entrega_programada && p.hora_entrega_programada && <span className="faint"> · {p.hora_entrega_programada.slice(0, 5)} h</span>}
+                  </dd>
                 </div>
                 <div className="dato">
                   <dt>Entregado</dt>

@@ -450,3 +450,19 @@ details.mas[open] > summary::before { content: '– '; }
 .tab { position: relative; }
 .tab .insignia { position: absolute; top: 0; right: 6px; margin: 0; min-width: 16px; height: 16px; font-size: 10px; padding: 0 4px; }
 .contenido-tarjeta:hover { border-color: var(--accent); }
+
+/* Entregas: se destacan en el calendario */
+.cal-chip.ev-entrega:not(.ev-alerta) { background: var(--ev); color: var(--surface); }
+.cal-evento.ev-entrega .cal-titulo { color: var(--ev); }
+.cal-evento.ev-entrega { border-left-width: 5px; }
+
+/* Agendar entrega desde el calendario */
+.acciones:has(.agendar-entrega) { flex-basis: 100%; }
+.agendar-entrega { width: 100%; padding: 14px 16px; }
+.agendar-elegido { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); }
+.agendar-lista { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; max-height: 280px; overflow-y: auto; }
+.agendar-opcion {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
+  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; font: inherit;
+}
+.agendar-opcion:hover { border-color: var(--accent); }
