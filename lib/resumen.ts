@@ -32,7 +32,7 @@ export async function armarResumen(supabase: SupabaseClient<any, any, any>, miem
   const en7 = sumarDiasCorridos(hoy, 6);
 
   let tareasQ = supabase.from('tareas_resumen').select('*').neq('estado', 'hecha').lte('vencimiento', en3);
-  if (miembroId) tareasQ = tareasQ.eq('responsable_id', miembroId);
+  if (miembroId) tareasQ = tareasQ.or(`responsable_id.eq.${miembroId},responsable_id.is.null`);
   let visitasQ = supabase.from('visitas').select('*').eq('fecha', hoy).in('estado', ['agendada', 'confirmada', 'vino']).order('hora');
   if (miembroId) visitasQ = visitasQ.eq('atiende_id', miembroId);
 

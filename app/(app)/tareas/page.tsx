@@ -17,7 +17,8 @@ export default async function TareasPage({ searchParams }: { searchParams: Promi
   const hechas = ver === 'hechas';
 
   let consulta = supabase.from('tareas_resumen').select('*');
-  if (persona) consulta = consulta.eq('responsable_id', persona);
+  // Las tareas de todo el equipo (sin responsable) aparecen en la lista de cada uno.
+  if (persona) consulta = consulta.or(`responsable_id.eq.${persona},responsable_id.is.null`);
   consulta = hechas
     ? consulta.eq('estado', 'hecha').order('completada_en', { ascending: false }).limit(60)
     : consulta.neq('estado', 'hecha').order('vencimiento', { ascending: true, nullsFirst: false }).order('creado_en').limit(400);

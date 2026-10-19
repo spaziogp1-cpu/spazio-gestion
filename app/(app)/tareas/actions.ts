@@ -6,6 +6,13 @@ import { miembroActual } from '@/lib/sesion';
 
 export type EstadoTarea = { error?: string; ok?: string };
 
+// "equipo" = tarea de todo el equipo (sin responsable): la ve cada uno en su lista.
+function responsable(fd: FormData, porDefecto: string | null): string | null {
+  const v = texto(fd.get('responsable_id'));
+  if (v === 'equipo') return null;
+  return v ?? porDefecto;
+}
+
 const fechaValida = (f: string | null) => (f && /^\d{4}-\d{2}-\d{2}$/.test(f) ? f : null);
 const PRIORIDADES = ['baja', 'media', 'alta'];
 const ESTADOS = ['pendiente', 'en_curso', 'bloqueada', 'hecha'];
@@ -28,7 +35,7 @@ export async function crearTarea(_prev: EstadoTarea, fd: FormData): Promise<Esta
   const { error } = await supabase.from('tareas').insert({
     titulo,
     descripcion: texto(fd.get('descripcion')),
-    responsable_id: texto(fd.get('responsable_id')) ?? miembro.id,
+    responsable_id: responsable(fd, miembro.id),
     creado_por: miembro.id,
     prioridad: PRIORIDADES.includes(prioridad) ? prioridad : 'media',
     vencimiento: fechaValida(texto(fd.get('vencimiento'))),
@@ -63,7 +70,7 @@ export async function actualizarTarea(id: string, _prev: EstadoTarea, fd: FormDa
     .update({
       titulo,
       descripcion: texto(fd.get('descripcion')),
-      responsable_id: texto(fd.get('responsable_id')),
+      responsable_id: responsable(fd, null),
       prioridad: PRIORIDADES.includes(prioridad) ? prioridad : 'media',
       vencimiento: fechaValida(texto(fd.get('vencimiento'))),
     })

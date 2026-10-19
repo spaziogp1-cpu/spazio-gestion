@@ -8,7 +8,7 @@ import { AgendarEntrega, type PedidoParaAgendar } from './agendar';
 export const metadata: Metadata = { title: 'Calendario' };
 
 type Tipo = 'entrega' | 'limite' | 'visita' | 'tarea' | 'proveedor';
-type Evento = { tipo: Tipo; fecha: string; hora?: string | null; titulo: string; detalle?: string; href: string; persona: string | null; alerta?: boolean };
+type Evento = { tipo: Tipo; fecha: string; hora?: string | null; titulo: string; detalle?: string; href: string; persona: string | null; todos?: boolean; alerta?: boolean };
 
 const TIPOS: { id: Tipo; nombre: string }[] = [
   { id: 'entrega', nombre: 'Entregas' },
@@ -118,9 +118,10 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
       tipo: 'tarea',
       fecha: t.vencimiento,
       titulo: t.titulo,
-      detalle: t.responsable_nombre ?? undefined,
+      detalle: t.responsable_nombre ?? 'Todo el equipo',
       href: t.pedido_id ? `/pedidos/${t.pedido_id}` : '/tareas?de=todos',
       persona: t.responsable_id,
+      todos: !t.responsable_id,
       alerta: t.vencida,
     });
   }
@@ -138,7 +139,7 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
 
   const visibles = eventos
     .filter((e) => tiposActivos.has(e.tipo))
-    .filter((e) => !persona || e.persona === persona)
+    .filter((e) => !persona || e.persona === persona || e.todos)
     .sort((a, b) => a.fecha.localeCompare(b.fecha) || (a.hora ?? '').localeCompare(b.hora ?? '') || a.tipo.localeCompare(b.tipo));
   const porDia = new Map<string, Evento[]>();
   for (const e of visibles) porDia.set(e.fecha, [...(porDia.get(e.fecha) ?? []), e]);

@@ -63,6 +63,7 @@ export function NuevaTarea({
           <div className="campo">
             <label>Responsable</label>
             <select name="responsable_id" defaultValue={yo}>
+              <option value="equipo">Todo el equipo</option>
               {equipo.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.nombre}
@@ -141,7 +142,7 @@ export function FilaTarea({ t, equipo, contexto = true }: { t: Tarea; equipo: Mi
           {t.titulo}
         </button>
         <div className="tarea-meta">
-          {t.responsable_nombre && <span>{t.responsable_nombre}</span>}
+          <span>{t.responsable_nombre ?? 'Todo el equipo'}</span>
           {t.vencimiento && !hecha && (
             <span className={t.vencida ? 'mal' : dias === 0 ? 'hoy' : ''}>
               {dias !== null && dias >= -1 && dias <= 1 ? relativo(dias) : fechaCorta(t.vencimiento)}
@@ -175,7 +176,8 @@ export function FilaTarea({ t, equipo, contexto = true }: { t: Tarea; equipo: Mi
             <div className="fila fila-3">
               <div className="campo">
                 <label>Responsable</label>
-                <select name="responsable_id" defaultValue={t.responsable_id ?? ''}>
+                <select name="responsable_id" defaultValue={t.responsable_id ?? 'equipo'}>
+                  <option value="equipo">Todo el equipo</option>
                   {equipo.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.nombre}

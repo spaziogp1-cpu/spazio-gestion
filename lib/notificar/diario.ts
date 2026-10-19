@@ -21,7 +21,7 @@ async function crearAvisos(db: Cliente, m: Miembro, r: Resumen): Promise<number>
   for (const p of r.porVencer)
     filas.push({ usuario_id: m.id, tipo: 'pedido_por_vencer', titulo: `Vence pronto: #${p.numero} ${p.cliente_nombre}`, cuerpo: `Fecha límite ${p.fecha_limite.split('-').reverse().join('/')}`, link: `/pedidos/${p.id}`, clave: `porvencer:${p.id}:${p.fecha_limite}:${m.id}` });
   for (const t of r.tareasVencidas)
-    filas.push({ usuario_id: m.id, tipo: 'tarea_vencida', titulo: `Tarea vencida: ${t.titulo}`, link: t.pedido_id ? `/pedidos/${t.pedido_id}` : '/tareas', clave: `tvencida:${t.id}:${t.vencimiento}` });
+    filas.push({ usuario_id: m.id, tipo: 'tarea_vencida', titulo: `Tarea vencida: ${t.titulo}`, link: t.pedido_id ? `/pedidos/${t.pedido_id}` : '/tareas', clave: `tvencida:${t.id}:${t.vencimiento}${t.responsable_id ? '' : `:${m.id}`}` });
   if (m.rol === 'admin')
     for (const x of r.proveedoresDemorados)
       filas.push({ usuario_id: m.id, tipo: 'proveedor_demorado', titulo: `Demorado: ${x.proveedor_nombre}${x.es_stock ? ' (stock)' : ` · #${x.pedido_numero}`}`, cuerpo: x.detalle ?? undefined, link: x.pedido_id ? `/pedidos/${x.pedido_id}` : '/proveedores', clave: `provdem:${x.id}:${x.fecha_esperada}:${m.id}` });
