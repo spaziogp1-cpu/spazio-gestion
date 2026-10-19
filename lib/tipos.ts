@@ -3,7 +3,7 @@ export type Miembro = {
   nombre: string;
   alias_planilla: string | null;
   email: string;
-  rol: 'admin' | 'equipo';
+  rol: 'admin' | 'equipo' | 'vendedor';
 };
 
 export type Cliente = {

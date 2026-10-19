@@ -25,7 +25,7 @@ export async function guardarMiembro(id: string | null, _prev: EstadoAjustes, fd
       email,
       alias_planilla: texto(fd.get('alias_planilla')),
       telefono: texto(fd.get('telefono')),
-      rol: fd.get('rol') === 'admin' ? 'admin' : 'equipo',
+      rol: fd.get('rol') === 'admin' ? 'admin' : fd.get('rol') === 'vendedor' ? 'vendedor' : 'equipo',
       activo: fd.get('activo') === 'on',
     };
     const { error } = id ? await supabase.from('equipo').update(fila).eq('id', id) : await supabase.from('equipo').insert(fila);

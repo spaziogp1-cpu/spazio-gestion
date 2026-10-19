@@ -22,7 +22,7 @@ export function FormMiembro({ m, editable }: { m: Miembro | null; editable: bool
       <div className="item acciones" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ fontWeight: 600 }}>
-            {m.nombre} {m.rol === 'admin' && <span className="chip">admin</span>} {!m.activo && <span className="chip chip-cancelado">sin acceso</span>}
+            {m.nombre} {m.rol === 'admin' && <span className="chip">admin</span>} {m.rol === 'vendedor' && <span className="chip">vendedor</span>} {!m.activo && <span className="chip chip-cancelado">sin acceso</span>}
           </div>
           <div className="small quiet">{[m.email, m.telefono, m.alias_planilla && `en la planilla: ${m.alias_planilla}`].filter(Boolean).join(' · ')}</div>
         </div>
@@ -65,7 +65,12 @@ export function FormMiembro({ m, editable }: { m: Miembro | null; editable: bool
           <input type="checkbox" name="activo" defaultChecked={m?.activo ?? true} /> Tiene acceso
         </label>
         <label className="small" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <input type="checkbox" name="rol" value="admin" defaultChecked={m?.rol === 'admin'} /> Administrador
+          Rol
+          <select name="rol" defaultValue={m?.rol ?? 'equipo'}>
+            <option value="equipo">Equipo</option>
+            <option value="vendedor">Vendedor (no ve costos)</option>
+            <option value="admin">Administrador</option>
+          </select>
         </label>
       </div>
       {estado.error && <p className="error-form">{estado.error}</p>}

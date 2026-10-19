@@ -30,6 +30,8 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 10. `supabase/migrations/0010_asistente_ia.sql` — claves para conectar Claude o ChatGPT
 11. `supabase/migrations/0011_planilla_original.sql` — trae cada 15 minutos las ventas cargadas en la planilla original
 12. `supabase/migrations/0012_sin_cliente_avisado.sql` — sin la etapa "Cliente avisado"
+13. `supabase/migrations/0013_cotizador_costos.sql` — cotizador: insumos, precios con historial, rol "vendedor"
+14. `supabase/importaciones/2026-10_listas_cotizador.sql` — carga las listas de Vidpro (15/10) y STG (19/10)
 
 ## Variables en Vercel (Settings → Environment Variables)
 
@@ -118,6 +120,22 @@ Cada persona crea su clave en **Ajustes → Asistente de IA** y la agrega en Cla
 buscar y ver pedidos, calendario, tareas, reporte de ventas, crear y completar tareas, cambiar
 etapa, agendar entrega, registrar pago y agregar notas. Los cambios quedan en el historial como
 "Nombre (con IA)". Las claves se pueden revocar desde Ajustes.
+
+## Cotizador (fase 1: costos)
+
+El motor de cálculo está en `lib/cotizador/` y no depende de la base ni de las pantallas:
+`motor.ts` recibe una receta, el catálogo de costos, las medidas y las opciones, y devuelve
+piezas, costos y precio. Las fórmulas de las recetas (`H - espesor / 10`, `si(L > 160, 3, 2)`)
+las evalúa `formula.ts`, un intérprete propio que nunca ejecuta código.
+
+- **Precios del cotizador** (Ajustes → Cotizador, o `/cotizador/admin`): grilla de precios de
+  Vidpro y STG editable, colores con su columna de precio, aumento por proveedor y reglas
+  generales (recargo en cuotas, redondeo, ajuste de Vidpro, tope de descuento, validez).
+- Cambiar un precio nunca lo pisa: cierra la tarifa vigente y abre una nueva (`cot_tarifas`).
+- **Quién ve costos:** los admin y los roles con el permiso `cotizador.costos` (tabla `permisos`;
+  hoy, "equipo"). Para que alguien cotice sin ver costos, ponele el rol **Vendedor** en Ajustes → Equipo.
+- Para cargar una lista nueva de Vidpro desde su Excel: `python3 scripts/cotizador/generar_listas.py
+  lista.xlsx salida.sql` genera el SQL (solo agrega lo que falta; los cambios de precio se hacen en el panel).
 
 ## Para desarrollar
 

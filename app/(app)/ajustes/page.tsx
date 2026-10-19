@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { miembroActual } from '@/lib/sesion';
 import { fechaCorta } from '@/lib/fechas';
 import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormParametros, ImportarTiendaNube, ProbarPlanilla, ProbarResumen } from './partes';
@@ -19,6 +20,7 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
   const { tiendanube: mensajeTN } = await searchParams;
   const { miembro, supabase } = await miembroActual();
   const admin = miembro.rol === 'admin';
+  const { data: verCostos } = admin ? { data: true } : await supabase.rpc('puede', { p_permiso: 'cotizador.costos' });
   const [{ data: eq }, { data: params }, { data: sync }, { data: tnOrdenes }, tn, { data: clavesIA }] = await Promise.all([
     supabase.from('equipo').select('id, nombre, alias_planilla, email, telefono, rol, activo').order('activo', { ascending: false }).order('nombre'),
     supabase.from('parametros').select('clave, valor'),
@@ -62,6 +64,21 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
               <MiContrasena />
             </div>
           </section>
+          {verCostos === true && (
+            <section className="card">
+              <div className="card-titulo">
+                <h2>Cotizador</h2>
+              </div>
+              <div className="seccion form-bloque">
+                <p className="small">Precios de Vidpro, STG y otros proveedores, colores, aumentos y reglas del cotizador.</p>
+                <div>
+                  <Link href="/cotizador/admin" className="btn btn-chico">
+                    Precios del cotizador
+                  </Link>
+                </div>
+              </div>
+            </section>
+          )}
           <section className="card">
             <div className="card-titulo">
               <h2>Equipo</h2>

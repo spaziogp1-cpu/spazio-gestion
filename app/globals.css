@@ -565,8 +565,7 @@ details.mas[open] > summary::before { content: '– '; }
 }
 .agendar-opcion:hover { border-color: var(--accent); }
 
-/* =================================================================
-   Mi día: tablero de inicio
+/* ==========================================================   Mi día: tablero de inicio
    ================================================================= */
 .dash { display: flex; flex-direction: column; gap: 18px; }
 .dash-cabecera { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; }
@@ -663,3 +662,24 @@ details.mas[open] > summary::before { content: '– '; }
 .menu-mas .tema, .tema-claro { background: var(--surface-2); }
 .tema-claro button { color: var(--ink-2); }
 .tema-claro button[aria-pressed='true'] { background: var(--ink); color: var(--bg); }
+=======
+/* ---------- Cotizador: panel de precios ---------- */
+.grilla-precios { overflow-x: auto; margin: 0 -16px; padding: 0 16px; }
+.grilla-precios .tabla { min-width: max-content; }
+.grilla-precios .tabla th, .grilla-precios .tabla td { padding: 4px 6px; white-space: nowrap; }
+.grilla-precios .tabla th[scope='row'] { padding-left: 0; }
+.precio-celda { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.precio-celda input {
+  width: 112px; min-height: 36px; padding: 6px 8px; font-size: 16px; text-align: right;
+  font-variant-numeric: tabular-nums; border-color: transparent; background: var(--surface-2);
+  transition: border-color .15s, background .15s;
+}
+.precio-celda input:hover { border-color: var(--line); }
+.precio-celda input:focus { background: var(--surface); }
+.precio-celda input::placeholder { color: var(--ink-3); }
+.precio-celda[data-estado='guardando'] input { opacity: .6; }
+.precio-celda[data-estado='ok'] input { border-color: var(--ok); background: var(--ok-soft); }
+.precio-celda[data-estado='error'] input { border-color: var(--danger); background: var(--danger-soft); }
+.precio-error { font-size: 12px; color: var(--danger); max-width: 200px; white-space: normal; text-align: right; }
+.muestra-color { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--line); flex-shrink: 0; }
+input[type='color'] { width: 100%; min-height: 44px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
