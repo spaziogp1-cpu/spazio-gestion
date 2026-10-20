@@ -4,6 +4,10 @@
 -- (correr este archivo antes). Se puede correr de nuevo: no duplica nada.
 -- =====================================================================
 
+insert into public.proveedores (nombre, que_provee, plazo_dias)
+values ('Guido', 'Tapas de melamina', 25)
+on conflict (nombre) do nothing;
+
 insert into public.cot_insumos (codigo, tipo, nombre, unidad, atributos, orden, notas)
 values
   ('tapa-melamina-redonda', 'madera', 'Tapa redonda de melamina 18 mm', 'unidad', '{}', 600,
@@ -11,6 +15,9 @@ values
   ('tapa-melamina-rectangular', 'madera', 'Tapa rectangular de melamina 18 mm', 'unidad', '{}', 610,
    'Precio por medida: la referencia es largo + profundidad (cm). Otras medidas se estiman')
 on conflict (codigo) do nothing;
+
+update public.cot_insumos set proveedor_id = (select id from public.proveedores where nombre = 'Guido')
+where codigo in ('tapa-melamina-redonda', 'tapa-melamina-rectangular') and proveedor_id is null;
 
 insert into public.cot_tarifas (insumo_id, variante, referencia, precio, nota, vigente_desde)
 select i.id, '{}'::jsonb, v.ref, v.precio, v.nota, '2026-10-20'

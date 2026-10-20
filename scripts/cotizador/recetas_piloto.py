@@ -59,13 +59,14 @@ def helios(modelo):
 
 # Mesa Aire Alta Redonda: tapa de melamina por diámetro y dos bases de vidrio en T
 # (planos del 20/10/2026). Mesa alta: vidrio 6+6 y ajuste del 20% solo sobre las bases.
-LARGA = "si(D <= 140, 80, si(D <= 160, 90, 110.4))"
-CORTA = "si(D <= 140, 55, 80)"
-ALTO_BASE = "H - 1.8"  # alto total menos la tapa de 18 mm
+# Menos de Ø 120 no hay plano: se escalan las bases de la Ø 120 en proporción al diámetro.
+LARGA = "si(D < 120, redondear(D * 80 / 120), si(D <= 140, 80, si(D <= 160, 90, 110.4)))"
+CORTA = "si(D < 120, redondear(D * 55 / 120), si(D <= 140, 55, 80))"
+ALTO_BASE = "H - 1.8"  # alto total menos la tapa de 1,8 cm; las bases van pegadas a los perfiles (sin UV)
 AIRE = {
     "orden": ["D", "H", "terminacion", "color"],
     "entradas": {
-        "D": {"tipo": "medida", "nombre": "Diámetro", "min": 120, "max": 180, "def": 120},
+        "D": {"tipo": "medida", "nombre": "Diámetro", "min": 100, "max": 180, "def": 120},
         "H": {"tipo": "medida", "nombre": "Alto", "def": 76},
         "terminacion": {"tipo": "opcion", "nombre": "Tapa",
                  "permitidos": ["Madera clara", "Madera negra mate", "Madera oscura", "Madera roble", "Melamina lisa de color"],
@@ -76,10 +77,10 @@ AIRE = {
         {"id": "tapa", "nombre": "Tapa de melamina", "regla": "tabla", "insumo": "tapa-melamina-redonda", "referencia": "D"},
         {"id": "base_larga", "nombre": "Base larga", "regla": "m2", "insumo": "vidrio-laminado",
          "variante": {"composicion": "'6+6'", "color": "color"}, "ancho": LARGA, "largo": ALTO_BASE,
-         "nota": "80 cm hasta Ø 140, 90 en Ø 160, 110,4 en Ø 180"},
+         "nota": "Planos: 80 cm de Ø 120 a 140, 90 en Ø 160, 110,4 en Ø 180. Menos de Ø 120: proporcional"},
         {"id": "base_corta", "nombre": "Base corta", "regla": "m2", "insumo": "vidrio-laminado",
          "variante": {"composicion": "'6+6'", "color": "color"}, "ancho": CORTA, "largo": ALTO_BASE,
-         "nota": "55 cm hasta Ø 140, 80 desde Ø 160"},
+         "nota": "Planos: 55 cm de Ø 120 a 140, 80 desde Ø 160. Menos de Ø 120: proporcional"},
         {"id": "ajuste", "nombre": "Ajuste", "regla": "porcentaje", "porcentaje": "aj.ajuste_vidpro",
          "sobre": ["base_larga", "base_corta"], "nota": "Mesa alta: 20% solo sobre las bases"},
         {"id": "silicona", "nombre": "Pegado con silicona", "regla": "fijo", "insumo": "silicona"},
