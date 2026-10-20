@@ -64,12 +64,26 @@ def helios(modelo, estante=False):
 LARGA = "si(D < 120, redondear(D * 80 / 120), si(D <= 140, 80, si(D <= 160, 90, 110.4)))"
 CORTA = "si(D < 120, redondear(D * 55 / 120), si(D <= 140, 55, 80))"
 ALTO_BASE = "H - 1.8"  # alto total menos la tapa de 1,8 cm; las bases van pegadas a los perfiles (sin UV)
-def aire(alta):
+# Mesa Aire rectangular (planos del 20/10/2026): una base transversal (P − 10, hasta 90) y
+# una longitudinal en T. Con 120 de profundidad lleva dos transversales de 90.
+# Longitudinal: 38,5 en 120 de largo, 62 en 160, 80 de 190 a 220, 90 en 250
+# (con dos transversales: 80 en 250 y 90 en 300). Entre medidas, proporcional.
+NT_RECT = "si(P >= 120, 2, 1)"
+TRANS_RECT = "si(P - 10 < 90, P - 10, 90)"
+LONG_RECT = ("si(P >= 120, si(L < 300, 80, 90), si(L <= 120, L * 38.5 / 120, si(L < 160, 38.5 + (L - 120) * 23.5 / 40, "
+             "si(L < 190, 62 + (L - 160) * 18 / 30, si(L < 250, 80, 90)))))")
+# Ratona rectangular: no hay planos; se escalan las bases de la 120 × 90.
+LONG_RAT = "redondear(L * 38.5 / 120)"
+TRANS_RAT = "redondear(P * 80 / 90)"
+
+TERMINACION = {"tipo": "opcion", "nombre": "Tapa",
+               "permitidos": ["Madera clara", "Madera negra mate", "Madera oscura", "Madera roble", "Melamina lisa de color"],
+               "def": "Madera clara"}
+
+def aire(alta, redonda=True):
     if alta:
         vidrio = {"insumo": "vidrio-laminado", "variante": {"composicion": "'6+6'", "color": "color"}}
         entradas_vidrio = {}
-        orden = ["D", "H", "terminacion", "color"]
-        diam = {"tipo": "medida", "nombre": "Diámetro", "min": 100, "max": 180, "def": 120}
         alto = {"tipo": "medida", "nombre": "Alto", "def": 76}
         nota_ajuste = "Mesa alta: 20% solo sobre las bases"
     else:
@@ -78,34 +92,49 @@ def aire(alta):
         vidrio = {"insumoFormula": f"si({flot}, 'vidrio-float', 'vidrio-laminado')",
                   "variante": {"espesor": "'10'", "composicion": "'5+5'", "color": "color"}}
         entradas_vidrio = {"espesor": {"tipo": "opcion", "nombre": "Espesor del vidrio", "permitidos": ["5+5", "10"], "def": "5+5"}}
-        orden = ["D", "H", "terminacion", "color", "espesor"]
-        diam = {"tipo": "medida", "nombre": "Diámetro", "min": 60, "max": 140, "def": 80}
         alto = {"tipo": "medida", "nombre": "Alto", "def": 40}
         nota_ajuste = "Mesa baja: 20% sobre todos los vidrios (son solo las bases)"
-    return {
-        "orden": orden,
-        "entradas": {
-            "D": diam,
-            "H": alto,
-            "terminacion": {"tipo": "opcion", "nombre": "Tapa",
-                     "permitidos": ["Madera clara", "Madera negra mate", "Madera oscura", "Madera roble", "Melamina lisa de color"],
-                     "def": "Madera clara"},
-            "color": {"tipo": "opcion", "nombre": "Vidrio", "atributo": "color", "def": "incoloro"},
-            **entradas_vidrio,
-        },
-        "lineas": [
-            {"id": "tapa", "nombre": "Tapa de melamina", "regla": "tabla", "insumo": "tapa-melamina-redonda", "referencia": "D"},
+    if redonda:
+        medidas = {"D": {"tipo": "medida", "nombre": "Diámetro", "min": 100, "max": 180, "def": 120} if alta
+                   else {"tipo": "medida", "nombre": "Diámetro", "min": 60, "max": 140, "def": 80}}
+        tapa = {"id": "tapa", "nombre": "Tapa de melamina", "regla": "tabla", "insumo": "tapa-melamina-redonda", "referencia": "D"}
+        bases = [
             {"id": "base_larga", "nombre": "Base larga", "regla": "m2", **vidrio, "ancho": LARGA, "largo": ALTO_BASE,
              "nota": "Planos: 80 cm de Ø 120 a 140, 90 en Ø 160, 110,4 en Ø 180. Menos de Ø 120: proporcional"},
             {"id": "base_corta", "nombre": "Base corta", "regla": "m2", **vidrio, "ancho": CORTA, "largo": ALTO_BASE,
              "nota": "Planos: 55 cm de Ø 120 a 140, 80 desde Ø 160. Menos de Ø 120: proporcional"},
+        ]
+        perfiles = [("perfil_larga", "Perfiles L (base larga)", "2", LARGA), ("perfil_corta", "Perfiles L (base corta)", "2", CORTA)]
+    else:
+        if alta:
+            medidas = {"L": {"tipo": "medida", "nombre": "Largo", "min": 120, "max": 300, "def": 160},
+                       "P": {"tipo": "medida", "nombre": "Profundidad", "min": 90, "max": 120, "def": 90}}
+            nt, trans, lon = NT_RECT, TRANS_RECT, LONG_RECT
+            nota_t = "Planos: profundidad − 10, hasta 90. Con 120 de profundidad van dos"
+            nota_l = "Planos: 38,5 en 120 de largo, 62 en 160, 80 de 190 a 220, 90 en 250 (con dos transversales: 80 en 250, 90 en 300)"
+        else:
+            medidas = {"L": {"tipo": "medida", "nombre": "Largo", "min": 80, "max": 160, "def": 100},
+                       "P": {"tipo": "medida", "nombre": "Profundidad", "min": 40, "max": 90, "def": 70}}
+            nt, trans, lon = "1", TRANS_RAT, LONG_RAT
+            nota_t = nota_l = "Sin plano: proporcional a la base de la Aire Alta 120 × 90"
+        tapa = {"id": "tapa", "nombre": "Tapa de melamina", "regla": "tabla", "insumo": "tapa-melamina-rectangular", "referencia": "L + P"}
+        bases = [
+            {"id": "base_larga", "nombre": "Base longitudinal", "regla": "m2", **vidrio, "ancho": lon, "largo": ALTO_BASE, "nota": nota_l},
+            {"id": "base_corta", "nombre": "Base transversal", "regla": "m2", **vidrio, "cantidad": nt, "ancho": trans, "largo": ALTO_BASE, "nota": nota_t},
+        ]
+        perfiles = [("perfil_larga", "Perfiles L (base longitudinal)", "2", lon),
+                    ("perfil_corta", "Perfiles L (bases transversales)", f"2 * {nt}" if nt != "1" else "2", trans)]
+    return {
+        "orden": [*medidas, "H", "terminacion", "color", *entradas_vidrio],
+        "entradas": {**medidas, "H": alto, "terminacion": TERMINACION,
+                     "color": {"tipo": "opcion", "nombre": "Vidrio", "atributo": "color", "def": "incoloro"}, **entradas_vidrio},
+        "lineas": [
+            tapa, *bases,
             {"id": "ajuste", "nombre": "Ajuste", "regla": "porcentaje", "porcentaje": "aj.ajuste_vidpro",
              "sobre": ["base_larga", "base_corta"], "nota": nota_ajuste},
             {"id": "silicona", "nombre": "Pegado con silicona", "regla": "fijo", "insumo": "silicona"},
-            {"id": "perfil_larga", "nombre": "Perfiles L (base larga)", "regla": "ml", "insumo": "perfil-l-aluminio",
-             "cantidad": "2", "metros": f"({LARGA}) / 100"},
-            {"id": "perfil_corta", "nombre": "Perfiles L (base corta)", "regla": "ml", "insumo": "perfil-l-aluminio",
-             "cantidad": "2", "metros": f"({CORTA}) / 100"},
+            *[{"id": i, "nombre": n, "regla": "ml", "insumo": "perfil-l-aluminio", "cantidad": c, "metros": f"({m}) / 100"}
+              for i, n, c, m in perfiles],
         ],
     }
 AIRE = aire(True)
@@ -116,6 +145,8 @@ RECETAS = [
     ("Mesa Helios con estante", helios("helios-estante", estante=True), "Estante del medio (60 × 70 en la 100 × 70) y 4 regatones"),
     ("Mesa Aire Alta Redonda", AIRE, "Carga inicial con los planos de las bases"),
     ("Mesa Aire Ratona Redonda", aire(False), "Como la alta, en 5+5 o 10 mm; bases proporcionales a las de la Ø 120"),
+    ("Mesa Aire Alta Rectangular", aire(True, redonda=False), "Carga inicial con los planos de las bases"),
+    ("Mesa Aire Ratona Rectangular", aire(False, redonda=False), "Sin planos: bases proporcionales a la Alta 120 × 90"),
 ]
 
 q = lambda s: "'" + s.replace("'", "''") + "'"

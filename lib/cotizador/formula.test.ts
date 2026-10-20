@@ -78,3 +78,9 @@ test('lista las variables de una fórmula', () => {
   assert.deepEqual(variablesDe('si(L > 160, tapa.m2, H - espesor / 10)').sort(), ['H', 'L', 'espesor', 'tapa.m2']);
   assert.deepEqual(variablesDe(12), []);
 });
+
+test('admite varios si() anidados', () => {
+  const f = 'si(P >= 120, si(L < 300, 80, 90), si(L >= 250, 90, si(L >= 190, 80, si(L >= 160, 62 + (L - 160) * 0.6, si(L > 120, 38.5 + (L - 120) * 0.5875, L * 38.5 / 120)))))';
+  assert.equal(evaluarNumero(f, { L: 175, P: 90 }), 71);
+  assert.equal(evaluarNumero(f, { L: 250, P: 120 }), 80);
+});

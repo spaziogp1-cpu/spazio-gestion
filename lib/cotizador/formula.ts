@@ -120,7 +120,9 @@ class Lector {
   }
 
   private expresion(nivel: number): Nodo {
-    if (++this.profundidad > MAX_PROFUNDIDAD) throw new ErrorFormula('La fórmula está demasiado anidada');
+    // Cuenta solo el anidamiento real (paréntesis y funciones), no los niveles de precedencia.
+    const sube = nivel === 0;
+    if (sube && ++this.profundidad > MAX_PROFUNDIDAD) throw new ErrorFormula('La fórmula está demasiado anidada');
     try {
       if (nivel >= NIVELES.length) return this.unario();
       let a = this.expresion(nivel + 1);
@@ -133,7 +135,7 @@ class Lector {
         } else return a;
       }
     } finally {
-      this.profundidad--;
+      if (sube) this.profundidad--;
     }
   }
 
