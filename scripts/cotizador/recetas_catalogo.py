@@ -10,12 +10,12 @@ de la web. Cada receta dice de dónde sale en su nota.
 import json
 
 # ---------------------------------------------------------------- vidrio
-from vidrio import COLOR, COMBINADA, COLOR_BASES, FLOTA, vidrio  # noqa: E402
+from vidrio import COLOR, COMBINADA, COLOR_BASES, FLOTA_V10, espesor_v10, vidrio  # noqa: E402
 
 FAMILIAS = {
     # Ratonas, auxiliares y estanterías: 10 mm de estándar (float en incoloro, gris y bronce; colores laminado 5+5).
-    "v10": {"entradas": {"espesor": {"tipo": "opcion", "nombre": "Espesor (mm)", "permitidos": ["10", "8", "12", "16", "20"], "def": "10"}},
-            "uv": lambda cs: "si(en(espesor, '8', '10') && " + " && ".join(FLOTA(c) for c in cs) + ", 'float', 'laminado')"},
+    "v10": {"entradas": None,  # dependen de si es combinada: espesor_v10()
+            "uv": lambda cs: "si(" + " && ".join(FLOTA_V10(c) for c in cs) + ", 'float', 'laminado')"},
     # Mesas altas: laminado 5+5 de estándar; más grueso si el cliente lo pide.
     "alta": {"entradas": {"espesor": {"tipo": "opcion", "nombre": "Vidrio", "permitidos": ["5+5", "6+6", "8+8", "10+10"], "def": "5+5"}},
              "uv": lambda cs: "'laminado'"},
@@ -39,7 +39,8 @@ def receta(medidas, fam, piezas, ajuste, uv=None, extras=(), entradas_extra=None
     """ajuste: 'total' (mesa baja), 'bases' (mesa alta) o None."""
     f = FAMILIAS[fam]
     combinada = fam != "v8" and any(p["base"] for p in piezas) and any(not p["base"] for p in piezas)
-    entradas = {**medidas, "color": COLOR, **(COMBINADA if combinada else {}), **f.get("entradas", {}), **(entradas_extra or {})}
+    entradas_fam = espesor_v10(combinada) if fam == "v10" else f.get("entradas", {})
+    entradas = {**medidas, "color": COLOR, **(COMBINADA if combinada else {}), **entradas_fam, **(entradas_extra or {})}
     lineas = []
     for p in piezas:
         c = COLOR_BASES if combinada and p["base"] else "color"

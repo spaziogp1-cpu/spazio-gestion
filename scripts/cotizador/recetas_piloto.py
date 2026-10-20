@@ -5,9 +5,9 @@ versión nueva si cambió (archiva la anterior). Se puede correr las veces que h
 """
 import json
 
-from vidrio import COLOR, COMBINADA, COLOR_BASES, FLOTA, vidrio
+from vidrio import COLOR, COMBINADA, COLOR_BASES, FLOTA_V10, espesor_v10, vidrio
 
-ESPESOR_V10 = {"espesor": {"tipo": "opcion", "nombre": "Espesor (mm)", "permitidos": ["10", "8", "12", "16", "20"], "def": "10"}}
+ESPESOR_V10 = espesor_v10(True)
 ESPESOR_V8 = {"espesor": {"tipo": "opcion", "nombre": "Espesor (mm)", "permitidos": ["8", "10"], "def": "8"}}
 
 LUNA_ENTRADAS = {
@@ -28,7 +28,7 @@ LUNA = {
         {"id": "bases", "nombre": "Bases", "regla": "m2", **vidrio("v10", COLOR_BASES),
          "cantidad": "4", "ancho": "25", "largo": "H"},
         {"id": "uv", "nombre": "Pegado UV", "regla": "ml", "insumo": "pegado-uv",
-         "variante": {"tipo_vidrio": f"si(en(espesor, '8', '10') && {FLOTA('color')} && {FLOTA(COLOR_BASES)}, 'float', 'laminado')"},
+         "variante": {"tipo_vidrio": f"si({FLOTA_V10('color')} && {FLOTA_V10(COLOR_BASES)}, 'float', 'laminado')"},
          "cantidad": "4", "metros": "25 / 100", "nota": "4 bases pegadas por su lado de 25 cm"},
     ],
 }

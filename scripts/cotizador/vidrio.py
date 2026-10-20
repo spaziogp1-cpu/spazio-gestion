@@ -12,11 +12,23 @@ COMPOSICION = ("si(espesor == '8', '4+4', si(espesor == '10', '5+5', si(espesor 
                "si(espesor == '16', '8+8', '10+10'))))")
 
 
+def espesor_v10(combinada):
+    """Espesor en mm y, donde existe el float (incoloro, gris y bronce de 8 o 10 mm), float o laminado."""
+    colores = f"{FLOTA('color')} || (combinada == 'si' && {FLOTA('color_bases')})" if combinada else FLOTA("color")
+    return {"espesor": {"tipo": "opcion", "nombre": "Espesor (mm)", "permitidos": ["10", "8", "12", "16", "20"], "def": "10"},
+            "tipo_vidrio": {"tipo": "opcion", "nombre": "Vidrio", "permitidos": ["float", "laminado"], "def": "float",
+                            "mostrarSi": f"en(espesor, '8', '10') && ({colores})"}}
+
+
+# Va en float si es de 8 o 10 mm, eligieron float y el color existe en float; si no, laminado.
+FLOTA_V10 = lambda c: f"en(espesor, '8', '10') && tipo_vidrio == 'float' && {FLOTA(c)}"
+
+
 def vidrio(fam, c):
     """Insumo y variante del vidrio de una pieza de color c (nombre de variable o fórmula)."""
     if fam == "v10":
-        # Float en incoloro, gris y bronce de 8 o 10 mm; el resto, laminado.
-        flota = f"en(espesor, '8', '10') && {FLOTA(c)}"
+        # Float en incoloro, gris y bronce de 8 o 10 mm (si lo eligen); el resto, laminado de seguridad.
+        flota = FLOTA_V10(c)
         return {"insumoFormula": f"si({flota}, 'vidrio-float', 'vidrio-laminado')",
                 "variante": {"espesor": "espesor", "composicion": COMPOSICION, "color": c}}
     if fam == "alta":
