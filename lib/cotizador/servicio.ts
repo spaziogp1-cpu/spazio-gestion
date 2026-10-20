@@ -103,7 +103,7 @@ export async function calcularItem(
   const p = prod as unknown as { id: string; nombre: string; activo: boolean; receta_publicada_id: string | null; cot_recetas: { definicion: unknown } | null } | null;
   if (!p || !p.activo) throw new Error('Ese producto no existe o no se cotiza.');
   if (!p.receta_publicada_id || !p.cot_recetas) throw new Error(`${p.nombre} no tiene una receta publicada.`);
-  if (!margen) throw new Error(`${p.nombre} no tiene margen cargado.`);
+  if (!margen) throw new Error(`Falta cargar el margen de ${p.nombre} (Ajustes → Cotizador → Productos y recetas).`);
 
   const receta = leerReceta(p.cot_recetas.definicion);
   const catalogo = cache?.catalogo ?? (await cargarCatalogo(db));

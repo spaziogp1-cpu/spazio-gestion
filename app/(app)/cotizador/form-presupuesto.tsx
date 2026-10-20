@@ -368,6 +368,11 @@ function ItemPresupuesto({
           <span className="small quiet" style={{ display: 'block' }}>
             {r?.detalle || 'Completá medidas y opciones'}
           </span>
+          {!item.cargando && (item.error || errores[0]) && (
+            <span className="small" style={{ display: 'block', color: 'var(--danger)' }}>
+              Sin precio: {item.error ?? errores[0].mensaje}
+            </span>
+          )}
         </span>
         <span className="num" style={{ fontWeight: 600 }}>
           {item.cargando ? '…' : r?.ok ? plata(r.precioTotal) : '—'}
