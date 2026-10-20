@@ -81,6 +81,8 @@ export type CalculoItem = {
   margen: number;
   margenProducto: number | null;
   margenManual: number | null;
+  /** Sin margen (ni del producto ni escrito): hay costo pero no precio. */
+  sinMargen: boolean;
   valores: Record<string, number | string>;
   resultado: ResultadoCalculo;
   detalle: string;
@@ -131,6 +133,7 @@ export async function calcularItem(
     recetaId: p.receta_publicada_id,
     receta,
     margen: margenUsado ?? 0,
+    sinMargen: margenUsado == null,
     margenProducto,
     margenManual: manual,
     valores: limpios,
@@ -174,6 +177,8 @@ export type ResultadoVenta = {
   precioTotal: number;
   precioTotalCuotas: number;
   estimado: boolean;
+  /** Le falta el margen para tener precio (el resto está bien). */
+  faltaMargen: boolean;
   avisos: Aviso[];
   detalle: string;
   // Solo con permiso de costos:
@@ -196,6 +201,7 @@ export function paraVenta(c: CalculoItem, verCostos: boolean): ResultadoVenta {
     precioTotal: r.precioTotal,
     precioTotalCuotas: r.precioTotalCuotas,
     estimado: r.lineas.some((l) => l.estimado),
+    faltaMargen: c.sinMargen,
     // Los avisos dicen qué falta o qué está estimado, sin montos.
     avisos: r.avisos.map((a) => ({ nivel: a.nivel, mensaje: a.mensaje })),
     detalle: c.detalle,

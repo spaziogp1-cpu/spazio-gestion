@@ -26,8 +26,9 @@ export async function crearProducto(_prev: EstadoProducto, fd: FormData): Promis
     const { supabase } = await exigirPermisoCostos();
     const nombre = texto(fd.get('nombre'));
     if (!nombre) return { error: 'Escribí el nombre del producto.' };
+    // El margen es opcional: sin él, se escribe en cada presupuesto.
     const margen = leerMargen(fd.get('margen'));
-    if (margen === null || Number.isNaN(margen)) return { error: 'Escribí el margen (entre 0 y 94%).' };
+    if (Number.isNaN(margen)) return { error: 'El margen tiene que estar entre 0 y 94%.' };
     const { data, error } = await supabase
       .from('cot_productos')
       .insert({ nombre, categoria_id: texto(fd.get('categoria_id')) })
@@ -35,8 +36,10 @@ export async function crearProducto(_prev: EstadoProducto, fd: FormData): Promis
       .single();
     if (error) return { error: error.message.includes('duplicate') ? 'Ya hay un producto con ese nombre.' : error.message };
     id = data.id as string;
-    const { error: e2 } = await supabase.from('cot_margenes').insert({ producto_id: id, margen });
-    if (e2) return { error: `Se creó el producto, pero no el margen: ${e2.message}` };
+    if (margen != null) {
+      const { error: e2 } = await supabase.from('cot_margenes').insert({ producto_id: id, margen });
+      if (e2) return { error: `Se creó el producto, pero no el margen: ${e2.message}` };
+    }
     const { error: e3 } = await supabase.rpc('cot_borrador', { p_producto: id });
     if (e3) return { error: e3.message };
   } catch (e) {
@@ -56,7 +59,7 @@ export async function guardarProducto(id: string, _prev: EstadoProducto, fd: For
     const link = texto(fd.get('tiendanube_url'));
     if (link && !/^https:\/\//.test(link)) return { error: 'El link de la tienda tiene que empezar con https://' };
     const margen = leerMargen(fd.get('margen'));
-    if (margen === null || Number.isNaN(margen)) return { error: 'Escribí el margen (entre 0 y 94%).' };
+    if (Number.isNaN(margen)) return { error: 'El margen tiene que estar entre 0 y 94%.' };
 
     const { error } = await supabase
       .from('cot_productos')
@@ -70,7 +73,10 @@ export async function guardarProducto(id: string, _prev: EstadoProducto, fd: For
       })
       .eq('id', id);
     if (error) return { error: error.message.includes('duplicate') ? 'Ya hay un producto con ese nombre.' : error.message };
-    const { error: e2 } = await supabase.from('cot_margenes').upsert({ producto_id: id, margen }, { onConflict: 'producto_id' });
+    const { error: e2 } =
+      margen == null
+        ? await supabase.from('cot_margenes').delete().eq('producto_id', id)
+        : await supabase.from('cot_margenes').upsert({ producto_id: id, margen }, { onConflict: 'producto_id' });
     if (e2) return { error: e2.message };
     revalidatePath(`/cotizador/admin/productos/${id}`);
     revalidatePath('/cotizador/admin/productos');

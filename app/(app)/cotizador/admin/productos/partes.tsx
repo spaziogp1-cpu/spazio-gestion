@@ -33,8 +33,8 @@ export function FormNuevoProducto({ categorias }: { categorias: Categoria[] }) {
           </select>
         </div>
         <div className="campo">
-          <label htmlFor="np-margen">Margen (%)</label>
-          <input id="np-margen" name="margen" type="number" step="0.5" min={0} max={94} placeholder="45" required />
+          <label htmlFor="np-margen">Margen fijo (%) <span className="quiet">opcional</span></label>
+          <input id="np-margen" name="margen" type="number" step="0.5" min={0} max={94} placeholder="Se pone en el presupuesto" />
         </div>
       </div>
       <p className="small quiet">Precio = costo ÷ (1 − margen). Con 45%, un costo de $100 da $182.</p>
@@ -77,8 +77,8 @@ export function FormProducto({
           </select>
         </div>
         <div className="campo">
-          <label htmlFor="p-margen">Margen (%)</label>
-          <input id="p-margen" name="margen" type="number" step="0.5" min={0} max={94} defaultValue={margen != null ? Math.round(margen * 1000) / 10 : ''} required />
+          <label htmlFor="p-margen">Margen fijo (%) <span className="quiet">opcional</span></label>
+          <input id="p-margen" name="margen" type="number" step="0.5" min={0} max={94} defaultValue={margen != null ? Math.round(margen * 1000) / 10 : ''} placeholder="Se pone en el presupuesto" />
           <span className="ayuda">Se aplica enseguida, sin publicar.</span>
         </div>
       </div>

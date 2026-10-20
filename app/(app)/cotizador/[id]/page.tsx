@@ -119,7 +119,7 @@ export default async function PresupuestoPage({ params }: { params: Promise<{ id
                     {verCostos && c && (
                       <details style={{ marginTop: 8 }}>
                         <summary className="small quiet">
-                          Costo {plata(Number(c.costo_unitario) * i.cantidad)} · margen del producto {Math.round(Number(c.margen) * 1000) / 10}% · calculado el {fechaHora(c.creado_en)}
+                          Costo {plata(Number(c.costo_unitario) * i.cantidad)} · margen {Math.round(Number(c.margen) * 1000) / 10}% · calculado el {fechaHora(c.creado_en)}
                         </summary>
                         <table className="tabla probador-tabla" style={{ marginTop: 6 }}>
                           <tbody>
