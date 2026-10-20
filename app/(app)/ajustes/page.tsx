@@ -93,7 +93,10 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
               <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>
                 <li>Proceso diario: {cron ? '✓ configurado' : '✗ falta CRON_SECRET y la clave de servicio de Supabase'}</li>
                 <li>Email: {email ? '✓ configurado' : '✗ falta RESEND_API_KEY'}</li>
-                <li>WhatsApp: {whatsapp ? '✓ configurado' : '— todavía no (se conecta más adelante)'}</li>
+                <li>
+                  WhatsApp:{' '}
+                  {!whatsapp ? '— todavía no (se conecta más adelante)' : valores.whatsapp_activo === 'si' ? '✓ configurado y activo' : '✓ configurado, apagado (se prende en Plazos)'}
+                </li>
               </ul>
               <ProbarResumen />
             </div>

@@ -103,6 +103,10 @@ export function FormParametros({ valores, editable }: { valores: Record<string, 
           <input name="aviso_dias_antes" type="number" min={0} defaultValue={valores.aviso_dias_antes ?? '3'} disabled={!editable} />
         </div>
       </div>
+      <label className="small" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <input type="checkbox" name="whatsapp_activo" defaultChecked={valores.whatsapp_activo === 'si'} disabled={!editable} /> Mandar el resumen
+        diario por WhatsApp (si no, llega solo por email)
+      </label>
       {estado.error && <p className="error-form">{estado.error}</p>}
       {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}
       {editable && (

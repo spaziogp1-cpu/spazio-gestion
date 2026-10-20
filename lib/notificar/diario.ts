@@ -40,6 +40,9 @@ export async function procesoDiario(db: Cliente, soloMiembro?: string): Promise<
 
   const { data: param } = await db.from('parametros').select('valor').eq('clave', 'aviso_dias_antes').maybeSingle();
   const avisoDias = Number(param?.valor ?? 3) || 3;
+  // Los WhatsApp automáticos quedan apagados hasta que se prendan en Ajustes (whatsapp_activo = 'si').
+  const { data: paramWa } = await db.from('parametros').select('valor').eq('clave', 'whatsapp_activo').maybeSingle();
+  const whatsappActivo = paramWa?.valor === 'si';
 
   if (!soloMiembro) {
     // Ventas de Tienda Nube de los últimos 3 días que no hayan llegado por aviso.
@@ -58,7 +61,9 @@ export async function procesoDiario(db: Cliente, soloMiembro?: string): Promise<
     const mail = await enviarEmail(m.email, asunto, html, texto);
 
     let wa = 'sin configurar';
-    if (whatsappConfigurado() && m.telefono) {
+    if (whatsappConfigurado() && !whatsappActivo) {
+      wa = 'apagado en Ajustes';
+    } else if (whatsappConfigurado() && m.telefono) {
       const plantilla = process.env.WHATSAPP_PLANTILLA_RESUMEN || 'resumen_diario';
       const res = await enviarPlantilla(m.telefono, plantilla, [m.nombre, lineaWhatsApp(r)]);
       wa = res.ok ? 'enviado' : `error: ${res.error}`;

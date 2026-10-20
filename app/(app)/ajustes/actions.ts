@@ -53,6 +53,12 @@ export async function guardarParametros(_prev: EstadoAjustes, fd: FormData): Pro
       const { error } = await supabase.from('parametros').update({ valor: f.valor }).eq('clave', f.clave);
       if (error) return { error: `No se pudo guardar: ${error.message}` };
     }
+    // Interruptor de los WhatsApp automáticos (la fila se crea la primera vez).
+    const { error: eWa } = await supabase.from('parametros').upsert(
+      { clave: 'whatsapp_activo', valor: fd.get('whatsapp_activo') === 'on' ? 'si' : 'no', nota: 'Avisos automáticos por WhatsApp (si / no)' },
+      { onConflict: 'clave' },
+    );
+    if (eWa) return { error: `No se pudo guardar: ${eWa.message}` };
     revalidatePath('/ajustes');
     return { ok: 'Guardado' };
   } catch (e) {
