@@ -63,7 +63,7 @@ def helios(modelo, estante=False):
 # Menos de Ø 120 no hay plano: se escalan las bases de la Ø 120 en proporción al diámetro.
 LARGA = "si(D < 120, redondear(D * 80 / 120), si(D <= 140, 80, si(D <= 160, 90, 110.4)))"
 CORTA = "si(D < 120, redondear(D * 55 / 120), si(D <= 140, 55, 80))"
-ALTO_BASE = "H - 1.8"  # alto total menos la tapa de 1,8 cm; las bases van pegadas a los perfiles (sin UV)
+ALTO_BASE = "H"  # se calcula con el alto total de la mesa (20/10/2026); las bases van pegadas a los perfiles (sin UV)
 # Mesa Aire rectangular (planos del 20/10/2026): una base transversal (P − 10, hasta 90) y
 # una longitudinal en T. Con 120 de profundidad lleva dos transversales de 90.
 # Longitudinal: 38,5 en 120 de largo, 62 en 160, 80 de 190 a 220, 90 en 250

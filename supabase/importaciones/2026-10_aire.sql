@@ -64,3 +64,23 @@ select 'Mesa Aire Ratona Rectangular', c.id,
        'Mesa ratona con tapa de melamina Egger 18 mm y bases de vidrio.'
 from public.cot_categorias c where c.nombre = 'Mesas ratonas'
   and not exists (select 1 from public.cot_productos x where lower(x.nombre) = 'mesa aire ratona rectangular' and x.activo);
+
+-- Medidas de los planos que no estaban en la lista de Guido (20/10/2026): precio estimado
+-- con el promedio del precio por m² de las dos medidas vecinas de la lista.
+insert into public.cot_tarifas (insumo_id, variante, referencia, precio, nota, vigente_desde)
+select i.id, '{}'::jsonb, v.ref, v.precio, v.nota, '2026-10-20'
+from public.cot_insumos i
+join (values
+  ('tapa-melamina-redonda', 160, 287000, 'Ø 160 · estimado por m²'),
+  ('tapa-melamina-redonda', 180, 364000, 'Ø 180 · estimado por m²'),
+  ('tapa-melamina-rectangular', 210, 185000, '120 × 90 · estimado por m²'),
+  ('tapa-melamina-rectangular', 250, 210000, '160 × 90 · estimado por m²'),
+  ('tapa-melamina-rectangular', 280, 249000, '190 × 90 · estimado por m²'),
+  ('tapa-melamina-rectangular', 320, 310000, '220 × 100 · estimado por m²'),
+  ('tapa-melamina-rectangular', 350, 352000, '250 × 100 · estimado por m²'),
+  ('tapa-melamina-rectangular', 420, 456000, '300 × 120 · estimado por m²')
+) as v(codigo, ref, precio, nota) on v.codigo = i.codigo
+where not exists (
+  select 1 from public.cot_tarifas t
+  where t.insumo_id = i.id and t.referencia = v.ref and t.vigente_hasta is null
+);
