@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { conPermisoCostos } from '@/lib/cotizador/permisos';
 import { armarGrilla, claveCelda, etiquetaValor, PESTANAS, UNIDADES, type TarifaPanel, type ValorAtributo } from '@/lib/cotizador/grilla';
 import { fechaCorta } from '@/lib/fechas';
-import { CeldaPrecio, FilaColor, FormAjustes, FormAumento } from './partes';
+import { AgregarOpcion, BotonBaja, CeldaPrecio, FilaColor, FormAjustes, FormAumento, FormNuevoInsumo } from './partes';
 
 export const metadata: Metadata = { title: 'Precios del cotizador' };
 
@@ -209,6 +209,10 @@ export default async function PreciosCotizadorPage({ searchParams }: { searchPar
                       </tbody>
                     </table>
                   )}
+                  <div className="acciones" style={{ marginTop: 10, justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>{i.atributos.length === 1 && i.atributos[0].startsWith('v_') && <AgregarOpcion insumoId={i.id} />}</div>
+                    <BotonBaja insumoId={i.id} nombre={i.nombre} />
+                  </div>
                 </div>
               </section>
             );
@@ -216,6 +220,18 @@ export default async function PreciosCotizadorPage({ searchParams }: { searchPar
         </div>
 
         <div className="col">
+          <section className="card">
+            <div className="card-titulo">
+              <h2>Nuevo costo</h2>
+            </div>
+            <div className="seccion">
+              <p className="small quiet" style={{ marginBottom: 10 }}>
+                Cualquier cosa que compres para armar un producto: madera, ruedas, herrajes, embalaje… De un proveedor que ya está o de uno nuevo.
+              </p>
+              <FormNuevoInsumo proveedores={(provs ?? []) as { id: string; nombre: string }[]} />
+            </div>
+          </section>
+
           <section className="card">
             <div className="card-titulo">
               <h2>Aumento por proveedor</h2>

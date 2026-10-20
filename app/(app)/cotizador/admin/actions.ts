@@ -133,3 +133,151 @@ export async function guardarColor(id: string | null, _prev: EstadoPanel, fd: Fo
     return error(e);
   }
 }
+
+const TIPOS = ['vidrio', 'espejo', 'madera', 'estructura', 'herraje', 'proceso', 'mano_obra', 'embalaje', 'flete', 'otro'];
+const UNIDADES = ['m2', 'ml', 'unidad', 'fijo', 'kg', 'hora'];
+const PESTANA_DE: Record<string, string> = {
+  vidrio: 'Vidrios',
+  espejo: 'Espejos',
+  proceso: 'Procesos',
+  mano_obra: 'Mano de obra',
+  estructura: 'Estructuras',
+};
+
+/**
+ * Alta de un costo nuevo (con su proveedor, que puede ser nuevo).
+ * Si tiene opciones (ej. especies de madera), cada opción lleva su precio.
+ */
+export async function crearInsumo(_prev: EstadoPanel, fd: FormData): Promise<EstadoPanel> {
+  try {
+    const { supabase } = await exigirPermisoCostos();
+    const nombre = texto(fd.get('nombre'));
+    const tipo = String(fd.get('tipo') ?? '');
+    const unidad = String(fd.get('unidad') ?? '');
+    if (!nombre) return { error: 'Escribí qué es (ej. Ruedas con freno).' };
+    if (!TIPOS.includes(tipo)) return { error: 'Elegí el tipo de costo.' };
+    if (!UNIDADES.includes(unidad)) return { error: 'Elegí cómo se cobra.' };
+
+    const minimoTxt = texto(fd.get('minimo'));
+    const minimo = minimoTxt ? Number(minimoTxt.replace(',', '.')) : null;
+    if (minimo != null && !(minimo > 0)) return { error: 'El mínimo tiene que ser mayor a cero.' };
+    const minimoPor = minimo != null ? (fd.get('minimo_por') === 'item' ? 'item' : 'pieza') : null;
+
+    // Opciones con su precio, o un solo precio.
+    const nombresOp = fd.getAll('op_nombre').map((v) => String(v).trim());
+    const preciosOp = fd.getAll('op_precio').map((v) => String(v).trim());
+    const opciones = nombresOp
+      .map((n, i) => ({ etiqueta: n, valor: slug(n), precio: leerMonto(preciosOp[i] ?? '') }))
+      .filter((o) => o.etiqueta !== '');
+    if (opciones.some((o) => !o.valor)) return { error: 'Revisá los nombres de las opciones.' };
+    if (new Set(opciones.map((o) => o.valor)).size !== opciones.length) return { error: 'Hay opciones repetidas.' };
+    if (opciones.some((o) => !(o.precio > 0))) return { error: 'Cada opción necesita su precio.' };
+    const precioUnico = leerMonto(String(fd.get('precio') ?? ''));
+    if (!opciones.length && !(precioUnico > 0)) return { error: 'Escribí el precio.' };
+
+    // Proveedor: uno existente o uno nuevo.
+    let proveedorId = texto(fd.get('proveedor_id'));
+    if (proveedorId === 'nuevo') {
+      const nombreProv = texto(fd.get('proveedor_nombre'));
+      if (!nombreProv) return { error: 'Escribí el nombre del proveedor nuevo.' };
+      const { data: existe } = await supabase.from('proveedores').select('id').ilike('nombre', nombreProv).maybeSingle();
+      if (existe) proveedorId = existe.id as string;
+      else {
+        const { data: nuevo, error: e } = await supabase
+          .from('proveedores')
+          .insert({ nombre: nombreProv, que_provee: nombre })
+          .select('id')
+          .single();
+        if (e) return { error: `No se pudo crear el proveedor: ${e.message}` };
+        proveedorId = nuevo.id as string;
+      }
+    }
+
+    // Código único para las recetas (ej. ruedas-con-freno, ruedas-con-freno-2).
+    const base = slug(nombre) || 'insumo';
+    const { data: parecidos } = await supabase.from('cot_insumos').select('codigo').like('codigo', `${base}%`);
+    const usados = new Set(((parecidos ?? []) as { codigo: string }[]).map((x) => x.codigo));
+    let codigo = base;
+    for (let n = 2; usados.has(codigo); n++) codigo = `${base}-${n}`;
+
+    let atributos: string[] = [];
+    if (opciones.length) {
+      const clave = `v_${codigo.replace(/-/g, '_')}`.slice(0, 60);
+      const { error: e1 } = await supabase.from('cot_atributos').insert({ clave, nombre: `Opción de ${nombre}`, orden: 100 });
+      if (e1) return { error: `No se pudieron crear las opciones: ${e1.message}` };
+      const { error: e2 } = await supabase
+        .from('cot_atributo_valores')
+        .insert(opciones.map((o, orden) => ({ atributo: clave, valor: o.valor, etiqueta: o.etiqueta, orden })));
+      if (e2) return { error: `No se pudieron crear las opciones: ${e2.message}` };
+      atributos = [clave];
+    }
+
+    const { data: ins, error: e3 } = await supabase
+      .from('cot_insumos')
+      .insert({ codigo, tipo, nombre, unidad, atributos, proveedor_id: proveedorId, minimo, minimo_por: minimoPor, orden: 1000 })
+      .select('id')
+      .single();
+    if (e3) return { error: `No se pudo guardar: ${e3.message}` };
+
+    const precios = opciones.length
+      ? opciones.map((o) => ({ variante: { [atributos[0]]: o.valor }, precio: o.precio }))
+      : [{ variante: {}, precio: precioUnico }];
+    for (const p of precios) {
+      const { error: e4 } = await supabase.rpc('cot_cambiar_precio', {
+        p_insumo: ins.id,
+        p_variante: p.variante,
+        p_precio: p.precio,
+        p_referencia: null,
+        p_nota: null,
+      });
+      if (e4) return { error: `Se creó, pero falló un precio: ${e4.message}` };
+    }
+    revalidatePath(RUTA);
+    return { ok: `Agregado en la pestaña ${PESTANA_DE[tipo] ?? 'Otros'}` };
+  } catch (e) {
+    return error(e);
+  }
+}
+
+/** Suma una opción con su precio a un costo que tiene opciones. */
+export async function agregarOpcion(insumoId: string, _prev: EstadoPanel, fd: FormData): Promise<EstadoPanel> {
+  try {
+    const { supabase } = await exigirPermisoCostos();
+    const etiqueta = texto(fd.get('etiqueta'));
+    const precio = leerMonto(String(fd.get('precio') ?? ''));
+    if (!etiqueta) return { error: 'Escribí el nombre de la opción.' };
+    if (!(precio > 0)) return { error: 'Escribí el precio.' };
+    const { data: ins } = await supabase.from('cot_insumos').select('atributos').eq('id', insumoId).maybeSingle();
+    const clave = ((ins?.atributos ?? []) as string[])[0];
+    if (!clave || !clave.startsWith('v_')) return { error: 'Este costo no admite opciones nuevas desde acá.' };
+    const valor = slug(etiqueta);
+    if (!valor) return { error: 'El nombre no es válido.' };
+    const { error: e1 } = await supabase.from('cot_atributo_valores').insert({ atributo: clave, valor, etiqueta, orden: 100 });
+    if (e1) return { error: e1.message.includes('duplicate') ? 'Ya existe esa opción.' : e1.message };
+    const { error: e2 } = await supabase.rpc('cot_cambiar_precio', {
+      p_insumo: insumoId,
+      p_variante: { [clave]: valor },
+      p_precio: precio,
+      p_referencia: null,
+      p_nota: null,
+    });
+    if (e2) return { error: e2.message };
+    revalidatePath(RUTA);
+    return { ok: 'Opción agregada' };
+  } catch (e) {
+    return error(e);
+  }
+}
+
+/** Deja de ofrecer un costo. Los presupuestos hechos con él no cambian. */
+export async function darDeBajaInsumo(insumoId: string): Promise<EstadoPanel> {
+  try {
+    const { supabase } = await exigirPermisoCostos();
+    const { error: e } = await supabase.from('cot_insumos').update({ activo: false }).eq('id', insumoId);
+    if (e) return { error: e.message };
+    revalidatePath(RUTA);
+    return { ok: 'Dado de baja' };
+  } catch (e) {
+    return error(e);
+  }
+}
