@@ -32,6 +32,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 12. `supabase/migrations/0012_sin_cliente_avisado.sql` — sin la etapa "Cliente avisado"
 16. `supabase/migrations/0016_etapa_embalada.sql` — etapa "Embalada"; "Lista" pasa a llamarse "Fabricada" (13 a 15 son las del cotizador)
 17. `supabase/migrations/0017_avisos_reportes_recordatorios.sql` — reportes de la mañana y de la tarde y recordatorios antes de entregas y visitas, dentro de la app (pg_cron cada minuto)
+18. `supabase/migrations/0018_notificaciones_celular.sql` — notificaciones en el celular (Web Push): cada aviso nuevo se manda a los dispositivos activados en Ajustes
 
 ## Variables en Vercel (Settings → Environment Variables)
 

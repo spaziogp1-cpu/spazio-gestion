@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { miembroActual } from '@/lib/sesion';
+import { NotificacionesCelular } from './push';
 import { fechaCorta } from '@/lib/fechas';
 import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormAvisos, FormParametros, ImportarTiendaNube, ProbarPlanilla, ProbarReportes, ProbarResumen } from './partes';
 
@@ -93,6 +94,17 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
               </p>
               <FormAvisos valores={valores} editable={admin} />
               <ProbarReportes />
+            </div>
+          </section>
+          <section className="card">
+            <div className="card-titulo">
+              <h2>Notificaciones en el celular</h2>
+            </div>
+            <div className="seccion form-bloque">
+              <p className="small">
+                Activalas en cada celular o compu donde quieras recibirlas. Cada persona activa las suyas; llegan aunque la app esté cerrada.
+              </p>
+              <NotificacionesCelular />
             </div>
           </section>
         </div>

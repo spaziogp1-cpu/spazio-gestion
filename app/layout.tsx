@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   title: { default: 'Spazio · Gestión', template: '%s · Spazio' },
   description: 'Gestión interna de Spazio Design',
   appleWebApp: { capable: true, title: 'Spazio', statusBarStyle: 'default' },
+  icons: { icon: '/icon.svg', apple: '/apple-touch-icon.png' },
 };
 
 export const viewport: Viewport = {
