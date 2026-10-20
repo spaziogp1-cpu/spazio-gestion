@@ -23,7 +23,8 @@ values
   ('cinta-doble-faz', 'herraje', 'Cinta doble faz (fijación de la tapa)', 'fijo', '{}', 760, 'Por mesa'),
   ('perfil-j-aluminio', 'herraje', 'Perfil J de aluminio (espejos)', 'ml', '{}', 770,
    'Barra de 6 m a $18.000: se cobra por metro. Cada espejo lleva 3 tiras de 40 cm'),
-  ('silicona-espejo', 'proceso', 'Pegado con silicona (espejo)', 'fijo', '{}', 780, 'Precio fijo por espejo')
+  ('silicona-espejo', 'proceso', 'Pegado con silicona (espejo)', 'fijo', '{}', 780, 'Precio fijo por espejo'),
+  ('bisagra', 'herraje', 'Bisagra', 'unidad', '{}', 790, 'Puertas de vidrio')
 on conflict (codigo) do nothing;
 
 insert into public.cot_tarifas (insumo_id, variante, precio, nota, vigente_desde)
@@ -41,7 +42,8 @@ join (values
   ('patas-cilindricas-aluminio-ratona', 85000, 'Estimado'),
   ('cinta-doble-faz', 0, 'Precio a definir'),
   ('perfil-j-aluminio', 3000, '$18.000 la barra de 6 m'),
-  ('silicona-espejo', 5000, null)
+  ('silicona-espejo', 5000, null),
+  ('bisagra', 7000, null)
 ) as v(codigo, precio, nota) on v.codigo = i.codigo
 where not exists (
   select 1 from public.cot_tarifas t where t.insumo_id = i.id and t.vigente_hasta is null

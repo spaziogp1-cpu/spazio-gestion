@@ -95,8 +95,8 @@ def alta(medidas, piezas, uv="2 * (H - 1)"):
     return receta(medidas, "alta", piezas, "bases", uv, INSERTOS_ALTA, ENT_INSERTOS)
 
 
-def cromada(medidas, modelo, ref, piezas):
-    return receta(medidas, "v8", piezas, None, None, [estructura(modelo, ref), REGATONES])
+def cromada(medidas, modelo, ref, piezas, regatones=4):
+    return receta(medidas, "v8", piezas, None, None, [estructura(modelo, ref), {**REGATONES, "cantidad": str(regatones)}])
 
 
 TAPA = pieza("tapa", "Tapa", 1, "L", "P")
@@ -112,7 +112,7 @@ PLANO = "Según el plano"
 WEB = "Proporciones del cotizador de la web (sin plano)"
 
 # ---------------------------------------------------------------- espejos
-TONO = {"tono": {"tipo": "opcion", "nombre": "Espejo", "permitidos": ["plata", "bronce", "gris"], "def": "plata"}}
+TONO = {"tono": {"tipo": "opcion", "nombre": "Espejo", "permitidos": ["plata", "bronce", "gris", "color"], "def": "plata"}}
 
 
 def espejo(l, a, forma, molde, redondo=False):
@@ -121,9 +121,13 @@ def espejo(l, a, forma, molde, redondo=False):
                {"L": {"tipo": "medida", "nombre": "Ancho", "def": l}, "H": {"tipo": "medida", "nombre": "Alto", "def": a}})
     ancho, largo = ("D", "D") if redondo else ("L", "H")
     lineas = [{"id": "espejo", "nombre": "Espejo", "regla": "m2",
-               "insumoFormula": "si(tono == 'plata', 'espejo', 'espejo-color')",
-               "variante": {"espesor": "'4'", "terminacion_espejo": term}, "ancho": ancho, "largo": largo,
-               "nota": "Espejo 4 mm pulido" + (" con forma" if forma else "") + "; bronce y gris, espejo color"}]
+               "insumoFormula": "si(tono == 'plata', 'espejo', si(tono == 'color', 'espejo-laminado-color', 'espejo-color'))",
+               "variante": {"espesor": "'4'", "terminacion_espejo": term, "composicion_espejo": "'3e+3'"}, "ancho": ancho, "largo": largo,
+               "nota": "Espejo 4 mm pulido" + (" con forma" if forma else "") + "; bronce y gris, espejo color; de color, laminado 3+3"}]
+    if forma:
+        # El laminado de color no tiene precio con forma: se le suma el recargo de forma.
+        lineas.append({"id": "forma", "nombre": "Recargo por forma", "regla": "porcentaje", "condicion": "tono == 'color'",
+                       "porcentaje": "aj.recargo_forma", "sobre": ["espejo"]})
     if molde:
         lineas.append({"id": "molde", "nombre": "Mano de obra del molde", "regla": "porcentaje",
                        "porcentaje": "aj.recargo_molde", "sobre": ["espejo"]})
@@ -270,7 +274,8 @@ C.append(("Recibidor Tori", REC, receta(RECT(110, 30, 100), "v10",
 C.append(("Estantería Aurora", EST, receta(RECT(110, 45, 101), "v10",
           [TAPA, pieza("base", "Base", 1, "L", "P"), pieza("laterales", "Laterales", 2, "P", "H - 2"),
            pieza("estantes", "Estantes", 2, "L - 2", "P"),
-           pieza("puertas", "Puertas", 2, "L / 2 - 1", "redondear(H / 2)", nota="54 × 50 en la 110 × 45 × 101")], None, "8 * P"), PLANO))
+           pieza("puertas", "Puertas", 2, "L / 2 - 1", "redondear(H / 2)", nota="54 × 50 en la 110 × 45 × 101")], None, "8 * P",
+          [{"id": "bisagras", "nombre": "Bisagras", "regla": "unidad", "insumo": "bisagra", "cantidad": "4", "nota": "2 por puerta"}]), PLANO))
 
 # --- Estructura cromada (STG + vidrios + 4 regatones, sin ajuste)
 for nombre, cat, modelo, (l, p, h) in [("Módulo", REC, "modulo", (110, 45, 65)), ("Módulo II", REC, "modulo-ii", (60, 45, 65)),
@@ -279,7 +284,7 @@ for nombre, cat, modelo, (l, p, h) in [("Módulo", REC, "modulo", (110, 45, 65))
 C.append(("Mesa Binario", R, cromada(
     {**RECT(130, 45, 35), "La": {"tipo": "medida", "nombre": "Largo de la auxiliar", "def": 55},
      "Pa": {"tipo": "medida", "nombre": "Profundidad de la auxiliar", "def": 50}}, "binario", "L",
-    [pieza("vidrio_larga", "Vidrio mesa larga", 1, "L", "P"), pieza("vidrio_aux", "Vidrio mesa auxiliar", 1, "La", "Pa")]),
+    [pieza("vidrio_larga", "Vidrio mesa larga", 1, "L", "P"), pieza("vidrio_aux", "Vidrio mesa auxiliar", 1, "La", "Pa")], regatones=8),
     "Juego de 2 mesas; cada vidrio a la medida de su mesa"))
 C.append(("Mesa Saturno", R, cromada(REDONDA(80, 40), "saturno", "D", [pieza("vidrio", "Vidrio redondo", 1, "D", "D", forma=True)]),
           PLANO + ": un vidrio redondo del diámetro de la estructura"))
