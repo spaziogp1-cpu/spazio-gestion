@@ -20,6 +20,7 @@ type Item = {
   precio_unitario_cuotas: number;
   total: number;
   estimado: boolean;
+  cot_productos: { foto_url: string | null } | null;
 };
 type Calculo = {
   item_id: string;
@@ -41,7 +42,7 @@ export default async function PresupuestoPage({ params }: { params: Promise<{ id
       .select('*, vendedor:vendedor_id(nombre), aprobador:aprobado_por(nombre)')
       .eq('id', id)
       .maybeSingle(),
-    supabase.from('cot_presupuesto_items').select('*').eq('presupuesto_id', id).order('orden'),
+    supabase.from('cot_presupuesto_items').select('*, cot_productos(foto_url)').eq('presupuesto_id', id).order('orden'),
     verCostos ? supabase.from('cot_presupuesto_calculos').select('item_id, costo_unitario, margen, resultado, creado_en').eq('presupuesto_id', id) : Promise.resolve({ data: [] }),
   ]);
   if (!p) notFound();
@@ -93,8 +94,12 @@ export default async function PresupuestoPage({ params }: { params: Promise<{ id
                 const c = calculos.get(i.id);
                 return (
                   <li key={i.id} className="seccion">
-                    <div className="acciones" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div style={{ minWidth: 0 }}>
+                    <div className="acciones" style={{ justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'nowrap' }}>
+                      {i.cot_productos?.foto_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={i.cot_productos.foto_url} alt="" className="presu-miniatura" />
+                      )}
+                      <div style={{ minWidth: 0, flex: 1 }}>
                         <div className="item-titulo">
                           {i.cantidad > 1 ? `${i.cantidad} × ` : ''}
                           {i.titulo}

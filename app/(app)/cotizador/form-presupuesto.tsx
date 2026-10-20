@@ -377,7 +377,12 @@ function ItemPresupuesto({
   return (
     <section className="card presu-item">
       <button type="button" className="presu-item-cabecera" onClick={onAbrir} aria-expanded={abierto}>
-        <span className="editor-numero">{numero}</span>
+        {producto.foto_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={producto.foto_url} alt="" className="presu-miniatura" />
+        ) : (
+          <span className="editor-numero">{numero}</span>
+        )}
         <span style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
           <strong>
             {item.cantidad > 1 ? `${item.cantidad} × ` : ''}
