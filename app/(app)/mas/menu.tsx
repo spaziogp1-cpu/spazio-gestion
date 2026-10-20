@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { SECCIONES } from '@/components/navegacion';
+import { SelectorTema } from '@/components/tema';
 
 export default function MenuMas() {
   return (
@@ -17,7 +18,11 @@ export default function MenuMas() {
           </Link>
         ))}
       </div>
-      <form action="/auth/salir" method="post" style={{ marginTop: 20 }}>
+      <div className="acciones" style={{ marginTop: 20, alignItems: 'center', justifyContent: 'space-between' }}>
+        <span className="small quiet">Tema</span>
+        <SelectorTema claro />
+      </div>
+      <form action="/auth/salir" method="post" style={{ marginTop: 16 }}>
         <button className="btn btn-bloque">Salir</button>
       </form>
     </>

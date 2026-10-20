@@ -16,6 +16,7 @@ export type Resumen = {
   porVencer: PedidoResumen[];
   listasSinAvisar: PedidoResumen[];
   saldos: PedidoResumen[];
+  activos: PedidoResumen[];
   proveedoresDemorados: PedidoProveedor[];
   objetivos: Avance[];
 };
@@ -68,6 +69,7 @@ export async function armarResumen(supabase: SupabaseClient<any, any, any>, miem
     listasSinAvisar: activos.filter((p) => p.etapa === 'lista'),
     saldos: mios.filter((p) => Number(p.saldo) > 0 && ['lista', 'envio_coordinado', 'entregado'].includes(p.etapa)),
     proveedoresDemorados: (provR.data ?? []) as PedidoProveedor[],
+    activos,
     objetivos: await calcularAvances(supabase, objetivos),
   };
 }

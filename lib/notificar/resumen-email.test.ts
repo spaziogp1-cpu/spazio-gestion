@@ -5,7 +5,8 @@ import type { Resumen } from '../resumen';
 
 const vacio: Resumen = {
   hoy: '2026-10-19', tareasVencidas: [], tareasHoy: [], tareasProximas: [], visitasHoy: [], entregasHoy: [], entregasSemana: [],
-  atrasados: [], porVencer: [], listasSinAvisar: [], saldos: [], proveedoresDemorados: [], objetivos: [],
+  atrasados: [], porVencer: [], listasSinAvisar: [], saldos: [],
+  activos: [], proveedoresDemorados: [], objetivos: [],
 };
 
 test('resumen vacío', () => {

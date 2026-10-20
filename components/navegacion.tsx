@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Marca } from './marca';
+import { SelectorTema } from './tema';
 import { usePathname } from 'next/navigation';
 import {
   IconoAjustes,
@@ -59,7 +60,8 @@ export function Sidebar({ nombre, avisos }: { nombre: string; avisos: number }) 
         </Link>
       ))}
       <div className="pie">
-        <div>{nombre}</div>
+        <SelectorTema />
+        <div style={{ marginTop: 10 }}>{nombre}</div>
         <form action="/auth/salir" method="post">
           <button className="btn btn-fantasma btn-chico" style={{ paddingLeft: 0 }}>
             Salir
