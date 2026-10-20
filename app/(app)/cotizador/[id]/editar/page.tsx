@@ -14,14 +14,19 @@ export default async function EditarPresupuestoPage({ params }: { params: Promis
   const { supabase } = await miembroActual();
   const [{ data: p }, { data: items }, verCostos, catalogo, reglas] = await Promise.all([
     supabase.from('cot_presupuestos').select('id, numero, estado, pedido_id, cliente_id, cliente_nombre, cliente_telefono, descuento_pct, observaciones').eq('id', id).maybeSingle(),
-    supabase.from('cot_presupuesto_items').select('producto_id, valores, cantidad').eq('presupuesto_id', id).order('orden'),
+    supabase.from('cot_presupuesto_items').select('producto_id, valores, cantidad, cot_presupuesto_calculos(margen)').eq('presupuesto_id', id).order('orden'),
     puedeVerCostos(),
     catalogoVenta(),
     reglasPresupuesto(),
   ]);
   if (!p) notFound();
   if (p.pedido_id || p.estado === 'aprobado') redirect(`/cotizador/${id}`);
-  const lista = ((items ?? []) as { producto_id: string | null; valores: Record<string, number | string>; cantidad: number }[]).filter(
+  type Fila = { producto_id: string | null; valores: Record<string, number | string>; cantidad: number; cot_presupuesto_calculos: { margen: number } | { margen: number }[] | null };
+  const margenDe = (f: Fila) => {
+    const c = Array.isArray(f.cot_presupuesto_calculos) ? f.cot_presupuesto_calculos[0] : f.cot_presupuesto_calculos;
+    return c ? Number(c.margen) : null;
+  };
+  const lista = ((items ?? []) as unknown as Fila[]).filter(
     (i) => i.producto_id && catalogo.productos.some((x) => x.id === i.producto_id),
   );
   return (
@@ -41,7 +46,7 @@ export default async function EditarPresupuestoPage({ params }: { params: Promis
         inicial={{
           id: p.id,
           cliente: { id: p.cliente_id, nombre: p.cliente_nombre, telefono: p.cliente_telefono },
-          items: lista.map((i) => ({ productoId: i.producto_id!, valores: i.valores, cantidad: i.cantidad })),
+          items: lista.map((i) => ({ productoId: i.producto_id!, valores: i.valores, cantidad: i.cantidad, margen: verCostos ? margenDe(i) : null })),
           descuentoPct: Number(p.descuento_pct),
           observaciones: p.observaciones,
         }}

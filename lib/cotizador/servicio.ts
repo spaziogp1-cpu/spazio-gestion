@@ -79,6 +79,8 @@ export type CalculoItem = {
   recetaId: string;
   receta: Receta;
   margen: number;
+  margenProducto: number | null;
+  margenManual: number | null;
   valores: Record<string, number | string>;
   resultado: ResultadoCalculo;
   detalle: string;
@@ -90,6 +92,8 @@ export async function calcularItem(
   valores: Record<string, number | string>,
   cantidad: number,
   cache?: { catalogo?: Catalogo; db?: Db },
+  /** Margen puesto a mano en el presupuesto (solo quien ve costos). Si falta, se usa el del producto. */
+  margenManual?: number | null,
 ): Promise<CalculoItem> {
   const db = cache?.db ?? crearAdmin();
   const [{ data: prod }, { data: margen }] = await Promise.all([
@@ -103,7 +107,9 @@ export async function calcularItem(
   const p = prod as unknown as { id: string; nombre: string; activo: boolean; receta_publicada_id: string | null; cot_recetas: { definicion: unknown } | null } | null;
   if (!p || !p.activo) throw new Error('Ese producto no existe o no se cotiza.');
   if (!p.receta_publicada_id || !p.cot_recetas) throw new Error(`${p.nombre} no tiene una receta publicada.`);
-  if (!margen) throw new Error(`Falta cargar el margen de ${p.nombre} (Ajustes → Cotizador → Productos y recetas).`);
+  const margenProducto = margen ? Number(margen.margen) : null;
+  const manual = margenManual != null && Number.isFinite(margenManual) ? margenManual : null;
+  const margenUsado = manual ?? margenProducto;
 
   const receta = leerReceta(p.cot_recetas.definicion);
   const catalogo = cache?.catalogo ?? (await cargarCatalogo(db));
@@ -112,13 +118,21 @@ export async function calcularItem(
   const visibles = new Set(entradasVisibles(receta, valores));
   const limpios: Record<string, number | string> = {};
   for (const k of Object.keys(receta.entradas)) if (visibles.has(k) && valores[k] != null && valores[k] !== '') limpios[k] = valores[k];
-  const resultado = cotizar({ receta, catalogo, valores: limpios, cantidad, margen: Number(margen.margen) });
+  // Sin margen se calcula igual el costo (para quien lo ve), pero no hay precio.
+  const resultado = cotizar({ receta, catalogo, valores: limpios, cantidad, margen: margenUsado ?? 0 });
+  if (margenUsado == null) {
+    resultado.ok = false;
+    resultado.precioUnitario = resultado.precioUnitarioCuotas = resultado.precioTotal = resultado.precioTotalCuotas = 0;
+    resultado.avisos.unshift({ nivel: 'error', mensaje: `Falta el margen de ${p.nombre}` });
+  }
   return {
     productoId: p.id,
     productoNombre: p.nombre,
     recetaId: p.receta_publicada_id,
     receta,
-    margen: Number(margen.margen),
+    margen: margenUsado ?? 0,
+    margenProducto,
+    margenManual: manual,
     valores: limpios,
     resultado,
     detalle: describirItem(receta, limpios, catalogo),
@@ -156,7 +170,9 @@ export type ResultadoVenta = {
   // Solo con permiso de costos:
   costos?: {
     costoUnitario: number;
+    costoTotal: number;
     margen: number;
+    margenProducto: number | null;
     margenReal: number;
     lineas: { nombre: string; costo: number; estimado?: string; minimoAplicado?: string }[];
   };
@@ -180,7 +196,9 @@ export function paraVenta(c: CalculoItem, verCostos: boolean): ResultadoVenta {
     ...base,
     costos: {
       costoUnitario: r.costoUnitario,
-      margen: r.margen,
+      costoTotal: r.costoTotal,
+      margen: c.margen,
+      margenProducto: c.margenProducto,
       margenReal: r.margenReal,
       lineas: r.lineas.map((l) => ({ nombre: l.nombre, costo: l.costo, estimado: l.estimado, minimoAplicado: l.minimoAplicado })),
     },

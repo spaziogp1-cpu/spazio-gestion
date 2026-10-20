@@ -8,11 +8,20 @@ import { guardarPresupuesto, precioItem } from './actions';
 
 type Catalogo = { productos: ProductoVenta[]; etiquetas: Record<string, Record<string, string>>; muestras: Record<string, string> };
 type ClienteSel = { id: string | null; nombre: string; telefono: string | null };
-type Item = { key: number; productoId: string; valores: Record<string, string>; cantidad: number; resultado?: ResultadoVenta; error?: string; cargando?: boolean };
+type Item = {
+  key: number;
+  productoId: string;
+  valores: Record<string, string>;
+  cantidad: number;
+  margen: string; // % escrito en el presupuesto; vacío = el del producto
+  resultado?: ResultadoVenta;
+  error?: string;
+  cargando?: boolean;
+};
 export type InicialPresupuesto = {
   id: string;
   cliente: ClienteSel;
-  items: { productoId: string; valores: Record<string, number | string>; cantidad: number }[];
+  items: { productoId: string; valores: Record<string, number | string>; cantidad: number; margen?: number | null }[];
   descuentoPct: number;
   observaciones: string | null;
 };
@@ -20,6 +29,14 @@ export type InicialPresupuesto = {
 const pesos = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });
 const plata = (n: number) => pesos.format(n);
 const subirA = (n: number, m: number) => (m > 0 ? Math.ceil(n / m - 1e-9) * m : Math.round(n));
+/** "45" o "45,5" → 0.45 / 0.455; vacío o inválido → null (se usa el del producto). */
+function margenFraccion(s: string): number | null {
+  const t = s.trim().replace(',', '.').replace('%', '');
+  if (t === '') return null;
+  const n = Number(t);
+  return Number.isFinite(n) && n >= 0 && n < 95 ? n / 100 : null;
+}
+const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
 let siguiente = 1;
 
 export default function FormPresupuesto({
@@ -39,6 +56,7 @@ export default function FormPresupuesto({
       key: siguiente++,
       productoId: i.productoId,
       cantidad: i.cantidad,
+      margen: i.margen != null ? String(Math.round(i.margen * 1000) / 10) : '',
       valores: Object.fromEntries(Object.entries(i.valores).map(([k, v]) => [k, String(v)])),
     })),
   );
@@ -65,7 +83,7 @@ export default function FormPresupuesto({
     setItems((xs) => xs.map((x) => (x.key === it.key ? { ...x, cargando: true } : x)));
     setTimeout(async () => {
       if (turnos.current.get(it.key) !== n) return;
-      const r = await precioItem(it.productoId, valores, it.cantidad);
+      const r = await precioItem(it.productoId, valores, it.cantidad, margenFraccion(it.margen));
       if (turnos.current.get(it.key) !== n) return;
       setItems((xs) => xs.map((x) => (x.key === it.key ? { ...x, resultado: r.resultado, error: r.error, cargando: false } : x)));
     }, 350);
@@ -87,7 +105,7 @@ export default function FormPresupuesto({
     if (!p) return;
     const valores: Record<string, string> = {};
     for (const [k, e] of Object.entries(p.entradas)) if (e.def != null) valores[k] = String(e.def);
-    const it: Item = { key: siguiente++, productoId, valores, cantidad: 1 };
+    const it: Item = { key: siguiente++, productoId, valores, cantidad: 1, margen: '' };
     setItems((xs) => [...xs, it]);
     setAbierto(it.key);
     pedirPrecio(it);
@@ -111,7 +129,7 @@ export default function FormPresupuesto({
           const p = productos.get(i.productoId)!;
           const valores: Record<string, number | string> = {};
           for (const [k, v] of Object.entries(i.valores)) if (v !== '') valores[k] = p.entradas[k]?.tipo === 'medida' ? Number(v.replace(',', '.')) : v;
-          return { productoId: i.productoId, valores, cantidad: i.cantidad };
+          return { productoId: i.productoId, valores, cantidad: i.cantidad, margen: verCostos ? margenFraccion(i.margen) : null };
         }),
         descuentoPct: pct,
         observaciones,
@@ -374,8 +392,13 @@ function ItemPresupuesto({
             </span>
           )}
         </span>
-        <span className="num" style={{ fontWeight: 600 }}>
+        <span className="num" style={{ fontWeight: 600, textAlign: 'right' }}>
           {item.cargando ? '…' : r?.ok ? plata(r.precioTotal) : '—'}
+          {verCostos && !item.cargando && r?.costos && (
+            <span className="small quiet" style={{ display: 'block', fontWeight: 400 }}>
+              costo {plata(r.costos.costoTotal)}
+            </span>
+          )}
         </span>
       </button>
 
@@ -426,6 +449,38 @@ function ItemPresupuesto({
                 </div>
               );
             })}
+          {verCostos && (
+            <div className="presu-costo">
+              <div className="campo">
+                <span className="etiqueta">Costo</span>
+                <span className="num presu-costo-valor">{item.cargando ? '…' : r?.costos ? plata(r.costos.costoUnitario) : '—'}</span>
+                <span className="ayuda">por unidad · no lo ve el cliente</span>
+              </div>
+              <div className="campo">
+                <label htmlFor={`mg-${item.key}`}>Margen (%)</label>
+                <input
+                  id={`mg-${item.key}`}
+                  type="number"
+                  inputMode="decimal"
+                  step="0.5"
+                  min={0}
+                  max={94}
+                  value={item.margen}
+                  placeholder={r?.costos?.margenProducto != null ? String(Math.round(r.costos.margenProducto * 1000) / 10) : 'Escribí el margen'}
+                  onChange={(x) => onCambiar({ margen: x.target.value })}
+                />
+                <span className="ayuda">
+                  {item.margen.trim() === ''
+                    ? r?.costos?.margenProducto != null
+                      ? `Usa el del producto (${pct(r.costos.margenProducto)})`
+                      : 'El producto no tiene margen: escribilo'
+                    : r?.costos?.margenProducto != null
+                      ? `El del producto es ${pct(r.costos.margenProducto)}`
+                      : 'Solo para este presupuesto'}
+                </span>
+              </div>
+            </div>
+          )}
           <div className="fila fila-2m">
             <div className="campo">
               <label htmlFor={`c-${item.key}`}>Cantidad</label>
@@ -470,7 +525,7 @@ function ItemPresupuesto({
               {verCostos && r.costos && (
                 <details>
                   <summary className="small quiet">
-                    Costo {plata(r.costos.costoUnitario)} · margen real {Math.round(r.costos.margenReal * 1000) / 10}%
+                    Ganancia {plata(r.precioUnitario - r.costos.costoUnitario)} c/u · margen real {pct(r.costos.margenReal)} (con redondeo) · ver el detalle
                   </summary>
                   <table className="tabla probador-tabla">
                     <tbody>

@@ -770,3 +770,5 @@ input.formula { font-size: 16px; }
   white-space: pre-wrap; font-family: var(--font); font-size: 14px; margin: 0; padding: 12px; border-radius: 10px;
   background: var(--surface-2); border: 1px solid var(--line); max-height: 320px; overflow-y: auto;
 }
+.presu-costo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border: 1px dashed var(--line); }
+.presu-costo-valor { font-size: 20px; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
