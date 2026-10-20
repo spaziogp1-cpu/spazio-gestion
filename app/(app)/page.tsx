@@ -21,6 +21,7 @@ const COLOR_ETAPA: Record<string, string> = {
   senado: 'violeta',
   en_fabricacion: 'naranja',
   lista: 'verde',
+  embalada: 'azul',
   envio_coordinado: 'rosa',
 };
 
@@ -117,7 +118,7 @@ export default async function MiDia({ searchParams }: { searchParams: Promise<{ 
   const atencion = [
     { n: r.atrasados.length, txt: r.atrasados.length === 1 ? 'pedido atrasado' : 'pedidos atrasados', href: '/pedidos?f=atrasados', color: 'rojo' },
     { n: r.tareasVencidas.length, txt: r.tareasVencidas.length === 1 ? 'tarea vencida' : 'tareas vencidas', href: equipoVista ? '/tareas?de=todos' : '/tareas', color: 'rojo' },
-    { n: r.listasSinAvisar.length, txt: r.listasSinAvisar.length === 1 ? 'lista para avisar' : 'listas para avisar', href: '/pedidos?f=lista', color: 'verde' },
+    { n: r.listasSinAvisar.length, txt: r.listasSinAvisar.length === 1 ? 'terminada para avisar' : 'terminadas para avisar', href: '/pedidos?f=lista', color: 'verde' },
     { n: r.porVencer.length, txt: 'vencen en los próximos días', href: '/pedidos', color: 'amarillo' },
     { n: equipoVista ? r.proveedoresDemorados.length : 0, txt: r.proveedoresDemorados.length === 1 ? 'proveedor demorado' : 'proveedores demorados', href: '/proveedores', color: 'bronce' },
   ].filter((a) => a.n > 0);
@@ -252,7 +253,7 @@ export default async function MiDia({ searchParams }: { searchParams: Promise<{ 
           </Tarjeta>
 
           {r.listasSinAvisar.length > 0 && (
-            <Tarjeta titulo={<>Listas: avisar y coordinar <span className="dash-cant num">{r.listasSinAvisar.length}</span></>} href="/pedidos?f=lista">
+            <Tarjeta titulo={<>Terminadas: avisar y coordinar <span className="dash-cant num">{r.listasSinAvisar.length}</span></>} href="/pedidos?f=lista">
               <div className="dash-lista">
                 {r.listasSinAvisar.slice(0, 6).map((p) => (
                   <FilaPedido key={p.id} p={p} derecha={<span>{p.envio === 'retira' ? 'Retira' : 'Envío'}</span>} />

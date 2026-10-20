@@ -34,6 +34,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 14. `supabase/importaciones/2026-10_listas_cotizador.sql` — carga las listas de Vidpro (15/10) y STG (19/10)
 15. `supabase/migrations/0014_cotizador_productos.sql` — cotizador: productos, recetas con versiones y márgenes
 16. `supabase/migrations/0015_cotizador_presupuestos.sql` — cotizador: presupuestos con la foto del cálculo
+17. `supabase/migrations/0016_etapa_embalada.sql` — etapa "Embalada"; "Lista" pasa a llamarse "Fabricada"
 
 ## Variables en Vercel (Settings → Environment Variables)
 

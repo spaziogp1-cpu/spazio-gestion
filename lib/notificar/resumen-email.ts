@@ -53,7 +53,7 @@ function secciones(r: Resumen): Seccion[] {
     });
   if (r.listasSinAvisar.length)
     s.push({
-      titulo: 'Listas para avisar al cliente',
+      titulo: 'Terminadas, para avisar al cliente',
       lineas: r.listasSinAvisar.map((p) => ({ texto: `#${p.numero} ${p.cliente_nombre}`, detalle: p.productos, link: `${base}/pedidos/${p.id}` })),
     });
   if (r.objetivos.length)
@@ -132,6 +132,6 @@ export function lineaWhatsApp(r: Resumen): string {
   if (r.visitasHoy.length) partes.push(`${r.visitasHoy.length} ${r.visitasHoy.length === 1 ? 'visita' : 'visitas'}`);
   if (r.entregasHoy.length) partes.push(`${r.entregasHoy.length} ${r.entregasHoy.length === 1 ? 'entrega' : 'entregas'}`);
   if (r.atrasados.length) partes.push(`${r.atrasados.length} pedidos atrasados`);
-  if (r.listasSinAvisar.length) partes.push(`${r.listasSinAvisar.length} listos para avisar`);
+  if (r.listasSinAvisar.length) partes.push(`${r.listasSinAvisar.length} terminados para avisar`);
   return partes.length ? partes.join(', ') : 'nada pendiente';
 }

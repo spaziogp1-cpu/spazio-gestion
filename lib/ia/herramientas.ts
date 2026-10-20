@@ -107,7 +107,7 @@ export const HERRAMIENTAS: Herramienta[] = [
     name: 'buscar_pedidos',
     title: 'Buscar pedidos',
     description:
-      'Busca pedidos por cliente, número, producto o localidad, y/o filtra por etapa. Por defecto trae solo los activos (no entregados ni cancelados). Etapas: senado, en_fabricacion, lista, envio_coordinado, entregado, cancelado.',
+      'Busca pedidos por cliente, número, producto o localidad, y/o filtra por etapa. Por defecto trae solo los activos (no entregados ni cancelados). Etapas: senado, en_fabricacion, lista (se muestra como Fabricada), embalada, envio_coordinado, entregado, cancelado.',
     soloLectura: true,
     inputSchema: {
       type: 'object',
@@ -355,7 +355,7 @@ export const HERRAMIENTAS: Herramienta[] = [
         hora_entrega_programada: hora && /^\d{1,2}:\d{2}$/.test(hora) ? hora.padStart(5, '0') : null,
       };
       if (ENVIOS.some((e) => e.id === a.envio)) cambios.envio = a.envio;
-      if (p.etapa === 'lista') cambios.etapa = 'envio_coordinado';
+      if (p.etapa === 'lista' || p.etapa === 'embalada') cambios.etapa = 'envio_coordinado';
       const { error } = await db.from('pedidos').update(cambios).eq('id', p.id);
       if (error) throw new Error(error.message);
       if (cambios.etapa) await actualizarEnPlanilla(db, p.id);

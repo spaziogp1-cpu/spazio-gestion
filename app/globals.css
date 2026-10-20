@@ -297,6 +297,7 @@ details.mas[open] > summary::before { content: '– '; }
 .chip-pedido_fabrica   { background: var(--c-violeta-bg); color: var(--c-violeta-tx); }
 .chip-en_fabricacion   { background: var(--c-naranja-bg); color: var(--c-naranja-tx); }
 .chip-lista            { background: var(--c-verde-bg); color: var(--c-verde-tx); }
+.chip-embalada         { background: var(--c-azul-bg); color: var(--c-azul-tx); }
 .chip-cliente_avisado  { background: var(--c-azul-bg); color: var(--c-azul-tx); }
 .chip-envio_coordinado { background: var(--c-rosa-bg); color: var(--c-rosa-tx); }
 .chip-entregado        { background: var(--c-gris-bg); color: var(--c-gris-tx); }
@@ -307,6 +308,7 @@ details.mas[open] > summary::before { content: '– '; }
 .etapa-senado { --etapa: var(--c-violeta); }
 .etapa-en_fabricacion { --etapa: var(--c-naranja); }
 .etapa-lista { --etapa: var(--c-verde); }
+.etapa-embalada { --etapa: var(--c-azul); }
 .etapa-cliente_avisado { --etapa: var(--c-azul); }
 .etapa-envio_coordinado { --etapa: var(--c-rosa); }
 .etapa-entregado, .etapa-cancelado { --etapa: var(--c-gris); }
@@ -608,7 +610,7 @@ details.mas[open] > summary::before { content: '– '; }
 .dash-pie { font-size: 13px; color: var(--ink-3); margin-top: 8px; }
 .dash-vacio { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 16px; border-radius: 14px; background: var(--surface-2); color: var(--ink-2); font-size: 14px; }
 
-.dash-etapas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.dash-etapas { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
 .dash-etapa { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 14px; background: var(--surface-2); min-width: 0; }
 .dash-etapa:hover { outline: 1px solid var(--line); }
 .dash-etapa-n { font-family: var(--serif); font-size: 34px; line-height: 1; }

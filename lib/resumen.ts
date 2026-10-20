@@ -66,8 +66,8 @@ export async function armarResumen(supabase: SupabaseClient<any, any, any>, miem
     porVencer: activos.filter(
       (p) => !p.atrasado && ['senado', 'en_fabricacion'].includes(p.etapa) && p.dias_restantes >= 0 && p.dias_restantes <= avisoDias,
     ),
-    listasSinAvisar: activos.filter((p) => p.etapa === 'lista'),
-    saldos: mios.filter((p) => Number(p.saldo) > 0 && ['lista', 'envio_coordinado', 'entregado'].includes(p.etapa)),
+    listasSinAvisar: activos.filter((p) => p.etapa === 'lista' || p.etapa === 'embalada'),
+    saldos: mios.filter((p) => Number(p.saldo) > 0 && ['lista', 'embalada', 'envio_coordinado', 'entregado'].includes(p.etapa)),
     proveedoresDemorados: (provR.data ?? []) as PedidoProveedor[],
     activos,
     objetivos: await calcularAvances(supabase, objetivos),
