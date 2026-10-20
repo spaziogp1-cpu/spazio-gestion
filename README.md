@@ -30,6 +30,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 10. `supabase/migrations/0010_asistente_ia.sql` — claves para conectar Claude o ChatGPT
 11. `supabase/migrations/0011_planilla_original.sql` — trae cada 15 minutos las ventas cargadas en la planilla original
 12. `supabase/migrations/0012_sin_cliente_avisado.sql` — sin la etapa "Cliente avisado"
+16. `supabase/migrations/0016_etapa_embalada.sql` — etapa "Embalada"; "Lista" pasa a llamarse "Fabricada" (13 a 15 son las del cotizador)
 
 ## Variables en Vercel (Settings → Environment Variables)
 

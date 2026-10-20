@@ -28,8 +28,8 @@ export async function agendarEntrega(_prev: EstadoEntrega, fd: FormData): Promis
     hora_entrega_programada: hora && /^\d{2}:\d{2}$/.test(hora) ? hora : null,
   };
   if (envio && ENVIOS.includes(envio)) cambios.envio = envio;
-  // Si ya estaba lista, agendar la entrega es coordinarla.
-  if (p.etapa === 'lista') cambios.etapa = 'envio_coordinado';
+  // Si ya estaba fabricada o embalada, agendar la entrega es coordinarla.
+  if (p.etapa === 'lista' || p.etapa === 'embalada') cambios.etapa = 'envio_coordinado';
 
   const { error } = await supabase.from('pedidos').update(cambios).eq('id', pedidoId);
   if (error) return { error: `No se pudo guardar: ${error.message}` };

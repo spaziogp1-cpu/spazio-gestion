@@ -1,7 +1,8 @@
 export const ETAPAS = [
   { id: 'senado', nombre: 'Señado', corto: 'Señado' },
   { id: 'en_fabricacion', nombre: 'En fabricación', corto: 'Fabricando' },
-  { id: 'lista', nombre: 'Lista', corto: 'Lista' },
+  { id: 'lista', nombre: 'Fabricada', corto: 'Fabricada' },
+  { id: 'embalada', nombre: 'Embalada', corto: 'Embalada' },
   { id: 'envio_coordinado', nombre: 'Envío o retiro coordinado', corto: 'Coordinado' },
   { id: 'entregado', nombre: 'Entregado', corto: 'Entregado' },
   { id: 'cancelado', nombre: 'Cancelado', corto: 'Cancelado' },
@@ -13,6 +14,7 @@ export const ETAPAS_ACTIVAS: EtapaId[] = [
   'senado',
   'en_fabricacion',
   'lista',
+  'embalada',
   'envio_coordinado',
 ];
 

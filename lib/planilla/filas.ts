@@ -39,6 +39,7 @@ export function estadoPlanilla(etapa: string): string {
     case 'en_fabricacion':
       return 'en producción';
     case 'lista':
+    case 'embalada':
     case 'cliente_avisado':
     case 'envio_coordinado':
       return 'Listo';

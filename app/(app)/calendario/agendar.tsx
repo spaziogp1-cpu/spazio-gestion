@@ -33,7 +33,7 @@ export function AgendarEntrega({ pedidos, fechaInicial }: { pedidos: PedidoParaA
   const lista = useMemo(() => {
     const q = buscar.trim().toLowerCase();
     // Primero los que están listos y todavía no tienen fecha.
-    const orden = (p: PedidoParaAgendar) => (p.fecha_entrega_programada ? 2 : p.etapa === 'lista' ? 0 : 1);
+    const orden = (p: PedidoParaAgendar) => (p.fecha_entrega_programada ? 2 : p.etapa === 'lista' || p.etapa === 'embalada' ? 0 : 1);
     return pedidos
       .filter((p) => !q || `${p.numero} ${p.cliente_nombre} ${p.cliente_localidad ?? ''} ${p.productos}`.toLowerCase().includes(q))
       .sort((a, b) => orden(a) - orden(b) || a.numero - b.numero)
