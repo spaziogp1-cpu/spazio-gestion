@@ -10,21 +10,18 @@ de la web. Cada receta dice de dónde sale en su nota.
 import json
 
 # ---------------------------------------------------------------- vidrio
-COLOR = {"tipo": "opcion", "nombre": "Color", "atributo": "color", "def": "incoloro"}
-FLOAT = "en(color, 'incoloro', 'gris', 'bronce')"
+from vidrio import COLOR, COMBINADA, COLOR_BASES, FLOTA, vidrio  # noqa: E402
+
 FAMILIAS = {
-    # Ratonas, auxiliares y estanterías: float 10 en incoloro, gris y bronce; los colores, laminado 5+5.
-    "v10": {"vidrio": {"insumoFormula": f"si({FLOAT}, 'vidrio-float', 'vidrio-laminado')",
-                       "variante": {"espesor": "'10'", "composicion": "'5+5'", "color": "color"}},
-            "uv": f"si({FLOAT}, 'float', 'laminado')", "nota": "Float 10 mm; los colores, laminado 5+5"},
+    # Ratonas, auxiliares y estanterías: 10 mm de estándar (float en incoloro, gris y bronce; colores laminado 5+5).
+    "v10": {"entradas": {"espesor": {"tipo": "opcion", "nombre": "Espesor (mm)", "permitidos": ["10", "8", "12", "16", "20"], "def": "10"}},
+            "uv": lambda cs: "si(en(espesor, '8', '10') && " + " && ".join(FLOTA(c) for c in cs) + ", 'float', 'laminado')"},
     # Mesas altas: laminado 5+5 de estándar; más grueso si el cliente lo pide.
-    "alta": {"vidrio": {"insumo": "vidrio-laminado", "variante": {"composicion": "espesor", "color": "color"}},
-             "uv": "'laminado'", "nota": "Laminado 5+5 de estándar",
-             "entradas": {"espesor": {"tipo": "opcion", "nombre": "Vidrio", "permitidos": ["5+5", "6+6", "8+8", "10+10"], "def": "5+5"}}},
-    # Estructura cromada: laminado 4+4; bronce float 8, gris float 10.
-    "v8": {"vidrio": {"insumoFormula": "si(en(color, 'gris', 'bronce'), 'vidrio-float', 'vidrio-laminado')",
-                      "variante": {"espesor": "si(color == 'gris', '10', '8')", "composicion": "'4+4'", "color": "color"}},
-           "uv": None, "nota": "Incoloro y colores: laminado 4+4. Bronce: float 8. Gris: float 10"},
+    "alta": {"entradas": {"espesor": {"tipo": "opcion", "nombre": "Vidrio", "permitidos": ["5+5", "6+6", "8+8", "10+10"], "def": "5+5"}},
+             "uv": lambda cs: "'laminado'"},
+    # Estructura cromada: laminado 4+4 de estándar; bronce float 8, gris float 10.
+    "v8": {"entradas": {"espesor": {"tipo": "opcion", "nombre": "Espesor (mm)", "permitidos": ["8", "10"], "def": "8"}},
+           "uv": None},
 }
 
 RECT = lambda l, p, h: {"L": {"tipo": "medida", "nombre": "Largo", "def": l},
@@ -41,10 +38,12 @@ def pieza(id, nombre, cant, ancho, largo, forma=False, base=False, nota=None):
 def receta(medidas, fam, piezas, ajuste, uv=None, extras=(), entradas_extra=None, puntas=False):
     """ajuste: 'total' (mesa baja), 'bases' (mesa alta) o None."""
     f = FAMILIAS[fam]
-    entradas = {**medidas, "color": COLOR, **f.get("entradas", {}), **(entradas_extra or {})}
+    combinada = fam != "v8" and any(p["base"] for p in piezas) and any(not p["base"] for p in piezas)
+    entradas = {**medidas, "color": COLOR, **(COMBINADA if combinada else {}), **f.get("entradas", {}), **(entradas_extra or {})}
     lineas = []
     for p in piezas:
-        l = {"id": p["id"], "nombre": p["nombre"], "regla": "m2", **f["vidrio"], "ancho": p["ancho"], "largo": p["largo"]}
+        c = COLOR_BASES if combinada and p["base"] else "color"
+        l = {"id": p["id"], "nombre": p["nombre"], "regla": "m2", **vidrio(fam, c), "ancho": p["ancho"], "largo": p["largo"]}
         if p["cant"] not in (1, "1"):
             l["cantidad"] = str(p["cant"])
         if p["nota"]:
@@ -67,7 +66,8 @@ def receta(medidas, fam, piezas, ajuste, uv=None, extras=(), entradas_extra=None
                        "sobre": [p["id"] for p in piezas if p["base"]], "nota": "Mesa alta: 20% solo sobre las bases"})
     if uv:
         lineas.append({"id": "uv", "nombre": "Pegado UV", "regla": "ml", "insumo": "pegado-uv",
-                       "variante": {"tipo_vidrio": f["uv"]}, "metros": f"({uv}) / 100"})
+                       "variante": {"tipo_vidrio": f["uv"](["color", COLOR_BASES] if combinada else ["color"])},
+                       "metros": f"({uv}) / 100"})
     lineas.extend(extras)
     orden = [k for k in entradas]
     return {"orden": orden, "entradas": entradas, "lineas": lineas}

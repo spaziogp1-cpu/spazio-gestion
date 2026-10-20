@@ -151,7 +151,16 @@ export function describirItem(receta: Receta, valores: Record<string, number | s
     if (e.tipo === 'medida') medidas.push(`${/^di[aá]metro$/i.test(e.nombre) ? 'Ø ' : ''}${String(v).replace('.', ',')}`);
     else {
       const etq = (e.atributo && catalogo.valores[e.atributo]?.[String(v)]?.etiqueta) || String(v);
-      opciones.push(e.nombre.toLowerCase() === 'color' ? etq : `${e.nombre.toLowerCase()} ${etq}`);
+      const nombre = e.nombre.toLowerCase();
+      const sino = e.permitidos?.length === 2 && e.permitidos.includes('si') && e.permitidos.includes('no');
+      const unidad = /^(.*?)\s*\((\w+)\)$/.exec(nombre);
+      if (k === 'combinada' || (sino && v === 'no')) continue; // mesa combinada: lo dicen los colores
+      if (sino) opciones.push(`con ${nombre}`);
+      else if (k === 'color' && visibles.has('color_bases')) opciones.push(`tapa ${etq}`);
+      else if (k === 'color_bases') opciones.push(`bases ${etq}`);
+      else if (nombre === 'color') opciones.push(etq);
+      else if (unidad) opciones.push(`${etq} ${unidad[2]}`); // "Espesor (mm)" → "10 mm"
+      else opciones.push(`${nombre} ${etq}`);
     }
   }
   return [medidas.length ? `${medidas.join(' × ')} cm` : '', ...opciones].filter(Boolean).join(' · ');

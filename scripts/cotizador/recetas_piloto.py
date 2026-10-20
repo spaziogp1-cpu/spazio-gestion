@@ -5,54 +5,55 @@ versión nueva si cambió (archiva la anterior). Se puede correr las veces que h
 """
 import json
 
-FLOAT_LUNA = "en(color, 'incoloro', 'gris', 'bronce')"
-FLOAT_HELIOS = "en(color, 'gris', 'bronce')"
+from vidrio import COLOR, COMBINADA, COLOR_BASES, FLOTA, vidrio
 
+ESPESOR_V10 = {"espesor": {"tipo": "opcion", "nombre": "Espesor (mm)", "permitidos": ["10", "8", "12", "16", "20"], "def": "10"}}
+ESPESOR_V8 = {"espesor": {"tipo": "opcion", "nombre": "Espesor (mm)", "permitidos": ["8", "10"], "def": "8"}}
+
+LUNA_ENTRADAS = {
+    "L": {"tipo": "medida", "nombre": "Largo", "def": 100},
+    "P": {"tipo": "medida", "nombre": "Profundidad", "def": 70},
+    "H": {"tipo": "medida", "nombre": "Alto de las bases", "def": 35},
+    "color": COLOR, **COMBINADA, **ESPESOR_V10,
+    "puntas": {"tipo": "opcion", "nombre": "Puntas", "permitidos": ["redondeadas", "rectas"], "def": "redondeadas"},
+}
 LUNA = {
-    "orden": ["L", "P", "H", "color", "puntas"],
-    "entradas": {
-        "L": {"tipo": "medida", "nombre": "Largo", "def": 100},
-        "P": {"tipo": "medida", "nombre": "Profundidad", "def": 70},
-        "H": {"tipo": "medida", "nombre": "Alto de las bases", "def": 35},
-        "color": {"tipo": "opcion", "nombre": "Color", "atributo": "color", "def": "incoloro"},
-        "puntas": {"tipo": "opcion", "nombre": "Puntas", "permitidos": ["redondeadas", "rectas"], "def": "redondeadas"},
-    },
+    "orden": list(LUNA_ENTRADAS),
+    "entradas": LUNA_ENTRADAS,
     "lineas": [
-        {"id": "tapa", "nombre": "Tapa", "regla": "m2",
-         "insumoFormula": f"si({FLOAT_LUNA}, 'vidrio-float', 'vidrio-laminado')",
-         "variante": {"espesor": "'10'", "composicion": "'5+5'", "color": "color"},
-         "ancho": "L", "largo": "P", "nota": "Float 10 mm; los colores, laminado 5+5"},
+        {"id": "tapa", "nombre": "Tapa", "regla": "m2", **vidrio("v10", "color"),
+         "ancho": "L", "largo": "P", "nota": "10 mm: float; los colores, laminado 5+5"},
         {"id": "forma", "nombre": "Tapa con forma (puntas redondeadas)", "regla": "porcentaje",
          "condicion": "puntas == 'redondeadas'", "porcentaje": "aj.recargo_forma", "sobre": ["tapa"]},
-        {"id": "bases", "nombre": "Bases", "regla": "m2",
-         "insumoFormula": f"si({FLOAT_LUNA}, 'vidrio-float', 'vidrio-laminado')",
-         "variante": {"espesor": "'10'", "composicion": "'5+5'", "color": "color"},
+        {"id": "bases", "nombre": "Bases", "regla": "m2", **vidrio("v10", COLOR_BASES),
          "cantidad": "4", "ancho": "25", "largo": "H"},
         {"id": "uv", "nombre": "Pegado UV", "regla": "ml", "insumo": "pegado-uv",
-         "variante": {"tipo_vidrio": f"si({FLOAT_LUNA}, 'float', 'laminado')"},
+         "variante": {"tipo_vidrio": f"si(en(espesor, '8', '10') && {FLOTA('color')} && {FLOTA(COLOR_BASES)}, 'float', 'laminado')"},
          "cantidad": "4", "metros": "25 / 100", "nota": "4 bases pegadas por su lado de 25 cm"},
     ],
 }
 
 def helios(modelo, estante=False):
-    vidrio = {"insumoFormula": f"si({FLOAT_HELIOS}, 'vidrio-float', 'vidrio-laminado')",
-              "variante": {"espesor": "si(color == 'gris', '10', '8')", "composicion": "'4+4'", "color": "color"}}
+    entradas = {
+        "L": {"tipo": "medida", "nombre": "Largo", "def": 100},
+        "P": {"tipo": "medida", "nombre": "Profundidad", "def": 70},
+        "H": {"tipo": "medida", "nombre": "Alto", "def": 45},
+        "color": COLOR,
+        "combinada": {**COMBINADA["combinada"], "nombre": "Base de otro color"},
+        "color_bases": {**COMBINADA["color_bases"], "nombre": "Color de la base"},
+        **ESPESOR_V8,
+    }
     return {
-        "orden": ["L", "P", "H", "color"],
-        "entradas": {
-            "L": {"tipo": "medida", "nombre": "Largo", "def": 100},
-            "P": {"tipo": "medida", "nombre": "Profundidad", "def": 70},
-            "H": {"tipo": "medida", "nombre": "Alto", "def": 45},
-            "color": {"tipo": "opcion", "nombre": "Color", "atributo": "color", "def": "incoloro"},
-        },
+        "orden": list(entradas),
+        "entradas": entradas,
         "lineas": [
             {"id": "estructura", "nombre": "Estructura STG", "regla": "tabla", "insumo": "estructura-stg",
              "variante": {"modelo": f"'{modelo}'"}, "referencia": "L + P",
              "nota": "Precio por medida (largo + profundidad); otras medidas se estiman"},
-            {"id": "tapa", "nombre": "Tapa", "regla": "m2", **vidrio, "ancho": "L", "largo": "P",
+            {"id": "tapa", "nombre": "Tapa", "regla": "m2", **vidrio("v8", "color"), "ancho": "L", "largo": "P",
              "nota": "Incoloro y colores: laminado 4+4. Bronce: float 8. Gris: float 10"},
-            {"id": "base", "nombre": "Base", "regla": "m2", **vidrio, "ancho": "L", "largo": "P"},
-            *([{"id": "estante", "nombre": "Estante del medio", "regla": "m2", **vidrio, "ancho": "redondear(L * 0.6)", "largo": "P",
+            {"id": "base", "nombre": "Base", "regla": "m2", **vidrio("v8", COLOR_BASES), "ancho": "L", "largo": "P"},
+            *([{"id": "estante", "nombre": "Estante del medio", "regla": "m2", **vidrio("v8", "color"), "ancho": "redondear(L * 0.6)", "largo": "P",
                 "nota": "60% del largo por la profundidad (en la 100 × 70 es de 60 × 70)"}] if estante else []),
             {"id": "regatones", "nombre": "Regatones", "regla": "unidad", "insumo": "regaton", "cantidad": "4"},
         ],
@@ -82,16 +83,16 @@ TERMINACION = {"tipo": "opcion", "nombre": "Tapa",
 
 def aire(alta, redonda=True):
     if alta:
-        vidrio = {"insumo": "vidrio-laminado", "variante": {"composicion": "'6+6'", "color": "color"}}
-        entradas_vidrio = {}
+        vid = {"insumo": "vidrio-laminado", "variante": {"composicion": "espesor", "color": "color"}}
+        entradas_vidrio = {"espesor": {"tipo": "opcion", "nombre": "Espesor", "permitidos": ["6+6", "8+8", "10+10"], "def": "6+6"}}
         alto = {"tipo": "medida", "nombre": "Alto", "def": 76}
         nota_ajuste = "Mesa alta: 20% solo sobre las bases"
     else:
         # Mesas bajas: 5+5 o 10 mm. El float solo existe en incoloro, gris y bronce.
         flot = "espesor == '10' && en(color, 'incoloro', 'gris', 'bronce')"
-        vidrio = {"insumoFormula": f"si({flot}, 'vidrio-float', 'vidrio-laminado')",
+        vid = {"insumoFormula": f"si({flot}, 'vidrio-float', 'vidrio-laminado')",
                   "variante": {"espesor": "'10'", "composicion": "'5+5'", "color": "color"}}
-        entradas_vidrio = {"espesor": {"tipo": "opcion", "nombre": "Espesor del vidrio", "permitidos": ["5+5", "10"], "def": "5+5"}}
+        entradas_vidrio = {"espesor": {"tipo": "opcion", "nombre": "Espesor", "permitidos": ["5+5", "10"], "def": "5+5"}}
         alto = {"tipo": "medida", "nombre": "Alto", "def": 40}
         nota_ajuste = "Mesa baja: 20% sobre todos los vidrios (son solo las bases)"
     if redonda:
@@ -99,9 +100,9 @@ def aire(alta, redonda=True):
                    else {"tipo": "medida", "nombre": "Diámetro", "min": 60, "max": 140, "def": 80}}
         tapa = {"id": "tapa", "nombre": "Tapa de melamina", "regla": "tabla", "insumo": "tapa-melamina-redonda", "referencia": "D"}
         bases = [
-            {"id": "base_larga", "nombre": "Base larga", "regla": "m2", **vidrio, "ancho": LARGA, "largo": ALTO_BASE,
+            {"id": "base_larga", "nombre": "Base larga", "regla": "m2", **vid, "ancho": LARGA, "largo": ALTO_BASE,
              "nota": "Planos: 80 cm de Ø 120 a 140, 90 en Ø 160, 110,4 en Ø 180. Menos de Ø 120: proporcional"},
-            {"id": "base_corta", "nombre": "Base corta", "regla": "m2", **vidrio, "ancho": CORTA, "largo": ALTO_BASE,
+            {"id": "base_corta", "nombre": "Base corta", "regla": "m2", **vid, "ancho": CORTA, "largo": ALTO_BASE,
              "nota": "Planos: 55 cm de Ø 120 a 140, 80 desde Ø 160. Menos de Ø 120: proporcional"},
         ]
         perfiles = [("perfil_larga", "Perfiles L (base larga)", "2", LARGA), ("perfil_corta", "Perfiles L (base corta)", "2", CORTA)]
@@ -119,8 +120,8 @@ def aire(alta, redonda=True):
             nota_t = nota_l = "Sin plano: proporcional a la base de la Aire Alta 120 × 90"
         tapa = {"id": "tapa", "nombre": "Tapa de melamina", "regla": "tabla", "insumo": "tapa-melamina-rectangular", "referencia": "L + P"}
         bases = [
-            {"id": "base_larga", "nombre": "Base longitudinal", "regla": "m2", **vidrio, "ancho": lon, "largo": ALTO_BASE, "nota": nota_l},
-            {"id": "base_corta", "nombre": "Base transversal", "regla": "m2", **vidrio, "cantidad": nt, "ancho": trans, "largo": ALTO_BASE, "nota": nota_t},
+            {"id": "base_larga", "nombre": "Base longitudinal", "regla": "m2", **vid, "ancho": lon, "largo": ALTO_BASE, "nota": nota_l},
+            {"id": "base_corta", "nombre": "Base transversal", "regla": "m2", **vid, "cantidad": nt, "ancho": trans, "largo": ALTO_BASE, "nota": nota_t},
         ]
         perfiles = [("perfil_larga", "Perfiles L (base longitudinal)", "2", lon),
                     ("perfil_corta", "Perfiles L (bases transversales)", f"2 * {nt}" if nt != "1" else "2", trans)]
