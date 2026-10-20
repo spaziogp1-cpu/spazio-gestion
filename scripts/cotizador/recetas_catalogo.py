@@ -1,0 +1,360 @@
+"""Recetas de los modelos de la web (fuente única).
+
+Genera supabase/importaciones/2026-10_recetas_catalogo.sql: crea los productos que falten y
+publica cada receta como versión nueva solo si cambió. Se puede correr las veces que haga falta.
+
+Medidas en cm. Rectangulares: L largo, P profundidad, H alto. Redondas: D diámetro, H alto.
+Las piezas con plano (20/10/2026) llevan la proporción del plano; el resto, la del cotizador
+de la web. Cada receta dice de dónde sale en su nota.
+"""
+import json
+
+# ---------------------------------------------------------------- vidrio
+COLOR = {"tipo": "opcion", "nombre": "Color", "atributo": "color", "def": "incoloro"}
+FLOAT = "en(color, 'incoloro', 'gris', 'bronce')"
+FAMILIAS = {
+    # Ratonas, auxiliares y estanterías: float 10 en incoloro, gris y bronce; los colores, laminado 5+5.
+    "v10": {"vidrio": {"insumoFormula": f"si({FLOAT}, 'vidrio-float', 'vidrio-laminado')",
+                       "variante": {"espesor": "'10'", "composicion": "'5+5'", "color": "color"}},
+            "uv": f"si({FLOAT}, 'float', 'laminado')", "nota": "Float 10 mm; los colores, laminado 5+5"},
+    # Mesas altas: laminado 5+5 de estándar; más grueso si el cliente lo pide.
+    "alta": {"vidrio": {"insumo": "vidrio-laminado", "variante": {"composicion": "espesor", "color": "color"}},
+             "uv": "'laminado'", "nota": "Laminado 5+5 de estándar",
+             "entradas": {"espesor": {"tipo": "opcion", "nombre": "Vidrio", "permitidos": ["5+5", "6+6", "8+8", "10+10"], "def": "5+5"}}},
+    # Estructura cromada: laminado 4+4; bronce float 8, gris float 10.
+    "v8": {"vidrio": {"insumoFormula": "si(en(color, 'gris', 'bronce'), 'vidrio-float', 'vidrio-laminado')",
+                      "variante": {"espesor": "si(color == 'gris', '10', '8')", "composicion": "'4+4'", "color": "color"}},
+           "uv": None, "nota": "Incoloro y colores: laminado 4+4. Bronce: float 8. Gris: float 10"},
+}
+
+RECT = lambda l, p, h: {"L": {"tipo": "medida", "nombre": "Largo", "def": l},
+                        "P": {"tipo": "medida", "nombre": "Profundidad", "def": p},
+                        "H": {"tipo": "medida", "nombre": "Alto", "def": h}}
+REDONDA = lambda d, h: {"D": {"tipo": "medida", "nombre": "Diámetro", "def": d},
+                        "H": {"tipo": "medida", "nombre": "Alto", "def": h}}
+
+
+def pieza(id, nombre, cant, ancho, largo, forma=False, base=False, nota=None):
+    return {"id": id, "nombre": nombre, "cant": cant, "ancho": ancho, "largo": largo, "forma": forma, "base": base, "nota": nota}
+
+
+def receta(medidas, fam, piezas, ajuste, uv=None, extras=(), entradas_extra=None, puntas=False):
+    """ajuste: 'total' (mesa baja), 'bases' (mesa alta) o None."""
+    f = FAMILIAS[fam]
+    entradas = {**medidas, "color": COLOR, **f.get("entradas", {}), **(entradas_extra or {})}
+    lineas = []
+    for p in piezas:
+        l = {"id": p["id"], "nombre": p["nombre"], "regla": "m2", **f["vidrio"], "ancho": p["ancho"], "largo": p["largo"]}
+        if p["cant"] not in (1, "1"):
+            l["cantidad"] = str(p["cant"])
+        if p["nota"]:
+            l["nota"] = p["nota"]
+        lineas.append(l)
+    con_forma = [p["id"] for p in piezas if p["forma"]]
+    if con_forma:
+        l = {"id": "forma", "nombre": "Recargo por forma", "regla": "porcentaje", "porcentaje": "aj.recargo_forma",
+             "sobre": con_forma, "nota": "Piezas con forma o puntas redondeadas: 20%"}
+        if puntas:
+            l["condicion"] = "puntas == 'redondeadas'"
+            entradas["puntas"] = {"tipo": "opcion", "nombre": "Puntas", "permitidos": ["redondeadas", "rectas"], "def": "redondeadas"}
+        lineas.append(l)
+    if ajuste == "total":
+        lineas.append({"id": "ajuste", "nombre": "Ajuste", "regla": "porcentaje", "porcentaje": "aj.ajuste_vidpro",
+                       "sobre": [p["id"] for p in piezas] + (["forma"] if con_forma else []),
+                       "nota": "Mesa baja: 20% sobre todos los vidrios"})
+    elif ajuste == "bases":
+        lineas.append({"id": "ajuste", "nombre": "Ajuste", "regla": "porcentaje", "porcentaje": "aj.ajuste_vidpro",
+                       "sobre": [p["id"] for p in piezas if p["base"]], "nota": "Mesa alta: 20% solo sobre las bases"})
+    if uv:
+        lineas.append({"id": "uv", "nombre": "Pegado UV", "regla": "ml", "insumo": "pegado-uv",
+                       "variante": {"tipo_vidrio": f["uv"]}, "metros": f"({uv}) / 100"})
+    lineas.extend(extras)
+    orden = [k for k in entradas]
+    return {"orden": orden, "entradas": entradas, "lineas": lineas}
+
+
+# ---------------------------------------------------------------- extras
+def estructura(modelo, ref):
+    return {"id": "estructura", "nombre": "Estructura STG", "regla": "tabla", "insumo": "estructura-stg",
+            "variante": {"modelo": f"'{modelo}'"}, "referencia": ref,
+            "nota": "Precio de lista de STG; otras medidas se estiman"}
+
+
+REGATONES = {"id": "regatones", "nombre": "Regatones", "regla": "unidad", "insumo": "regaton", "cantidad": "4"}
+RUEDAS = [{"id": "ruedas", "nombre": "Ruedas cromadas", "regla": "unidad", "insumo": "rueda-cromada", "cantidad": "4"},
+          {"id": "insertos_rueda", "nombre": "Insertos para ruedas", "regla": "unidad", "insumo": "inserto-rueda", "cantidad": "4"}]
+INSERTOS_ALTA = [
+    {"id": "insertos_alta", "nombre": "Insertos de aluminio", "regla": "fijo", "condicion": "insertos == 'si'",
+     "insumoFormula": "si(espesor == '5+5', 'insertos-mesa-alta-10', 'insertos-mesa-alta-12')"},
+    {"id": "doble_faz", "nombre": "Cinta doble faz", "regla": "fijo", "condicion": "insertos == 'no'", "insumo": "cinta-doble-faz"},
+]
+ENT_INSERTOS = {"insertos": {"tipo": "opcion", "nombre": "Insertos", "permitidos": ["no", "si"], "def": "no"}}
+
+
+def alta(medidas, piezas, uv="2 * (H - 1)"):
+    return receta(medidas, "alta", piezas, "bases", uv, INSERTOS_ALTA, ENT_INSERTOS)
+
+
+def cromada(medidas, modelo, ref, piezas):
+    return receta(medidas, "v8", piezas, None, None, [estructura(modelo, ref), REGATONES])
+
+
+TAPA = pieza("tapa", "Tapa", 1, "L", "P")
+TAPA_F = pieza("tapa", "Tapa", 1, "L", "P", forma=True)
+TAPA_R = pieza("tapa", "Tapa redonda", 1, "D", "D", forma=True)
+
+
+def bases(id, nombre, cant, ancho, largo="H - 1", forma=False, nota=None):
+    return pieza(id, nombre, cant, ancho, largo, forma=forma, base=True, nota=nota)
+
+
+PLANO = "Según el plano"
+WEB = "Proporciones del cotizador de la web (sin plano)"
+
+# ---------------------------------------------------------------- espejos
+TONO = {"tono": {"tipo": "opcion", "nombre": "Espejo", "permitidos": ["plata", "bronce", "gris"], "def": "plata"}}
+
+
+def espejo(l, a, forma, molde, redondo=False):
+    term = "'pulido-forma'" if forma else "'pulido-recto'"
+    medidas = ({"D": {"tipo": "medida", "nombre": "Diámetro", "def": l}} if redondo else
+               {"L": {"tipo": "medida", "nombre": "Ancho", "def": l}, "H": {"tipo": "medida", "nombre": "Alto", "def": a}})
+    ancho, largo = ("D", "D") if redondo else ("L", "H")
+    lineas = [{"id": "espejo", "nombre": "Espejo", "regla": "m2",
+               "insumoFormula": "si(tono == 'plata', 'espejo', 'espejo-color')",
+               "variante": {"espesor": "'4'", "terminacion_espejo": term}, "ancho": ancho, "largo": largo,
+               "nota": "Espejo 4 mm pulido" + (" con forma" if forma else "") + "; bronce y gris, espejo color"}]
+    if molde:
+        lineas.append({"id": "molde", "nombre": "Mano de obra del molde", "regla": "porcentaje",
+                       "porcentaje": "aj.recargo_molde", "sobre": ["espejo"]})
+    lineas += [{"id": "perfil_j", "nombre": "Perfil J de aluminio", "regla": "ml", "insumo": "perfil-j-aluminio",
+                "cantidad": "3", "metros": "0.4", "nota": "3 tiras de 40 cm atrás"},
+               {"id": "silicona", "nombre": "Pegado con silicona", "regla": "fijo", "insumo": "silicona-espejo"}]
+    entradas = {**medidas, **TONO}
+    return {"orden": list(entradas), "entradas": entradas, "lineas": lineas}
+
+
+# ---------------------------------------------------------------- catálogo
+R, AUX, COM, ESC, EST, REC, ESP = ("Mesas ratonas", "Mesas auxiliares", "Mesas de comedor", "Escritorios",
+                                   "Estantes", "Recibidores y consolas", "Espejos")
+C = []  # (nombre, categoría, receta, nota)
+
+# --- Ratonas UV
+C.append(("Mesa Tierra", R, receta(RECT(100, 50, 40), "v10",
+          [TAPA, bases("laterales", "Laterales", 2, "P")], None, "2 * P"), "Sin ajuste (20/10/2026)"))
+C.append(("Mesa Tierra con Estante", R, receta(RECT(100, 50, 40), "v10",
+          [TAPA, bases("laterales", "Laterales", 2, "P"), pieza("estante", "Estante", 1, "L - 2", "P")], None, "4 * P"),
+          "Sin ajuste, como la Tierra"))
+C.append(("Mesa Venus", R, receta(RECT(100, 50, 40), "v10",
+          [TAPA, bases("bases_largas", "Bases largas", 2, "redondear(L * 0.7)", nota="70 cm en la 100 × 50"),
+           bases("bases_cortas", "Bases cortas", 2, "redondear(P * 0.3)", nota="15 cm en la 100 × 50")], "total",
+          "2 * redondear(L * 0.7) + 2 * redondear(P * 0.3) + 2 * (H - 1)"), PLANO))
+C.append(("Mesa Gravedad", R, receta(RECT(100, 60, 40), "v10",
+          [TAPA_F, bases("base_larga", "Base larga", 1, "redondear(L * 0.6)", forma=True, nota="60 cm en la 100 × 60, radio 3"),
+           bases("bases_cortas", "Bases cortas", 2, "redondear(P / 3)", forma=True, nota="20 cm en la 100 × 60, radio 3")], "total",
+          "redondear(L * 0.6) + 2 * redondear(P / 3) + 2 * (H - 1)"), PLANO + ": tapa radio 5 y bases radio 3 (con forma)"))
+C.append(("Mesa Gravedad II", R, receta(RECT(75, 55, 40), "v10",
+          [TAPA_F, bases("base_larga", "Base larga", 1, "redondear(L * 0.6)", nota="45 cm en la 75 × 55"),
+           bases("bases_cortas", "Bases cortas", 2, "redondear(P * 0.27)", nota="15 cm en la 75 × 55")], "total",
+          "redondear(L * 0.6) + 2 * redondear(P * 0.27) + 2 * (H - 1)"), PLANO + ": tapa ovalada"))
+C.append(("Mesa Eclipse", R, receta(RECT(80, 80, 40), "v10",
+          [TAPA, bases("base_central", "Base central", 1, "redondear(P * 0.625)", nota="50 cm en la 80 × 80"),
+           bases("bases_cortas", "Bases cortas", 2, "redondear(L * 0.25)", nota="20 cm en la 80 × 80")], "total",
+          "redondear(P * 0.625) + 2 * redondear(L * 0.25) + 2 * (H - 1)"), PLANO))
+C.append(("Mesa Palta", AUX, receta(RECT(55, 75, 36), "v10",
+          [TAPA_F, bases("base_ancha", "Base transversal", 1, "L - 5", nota="50 cm en la 55 × 75"),
+           bases("base_larga", "Base longitudinal", 1, "redondear(P * 0.6)", nota="45 cm en la 55 × 75")], "total",
+          "(L - 5) + redondear(P * 0.6) + (H - 1)"), PLANO + ": tapa en forma de palta"))
+C.append(("Mesa Boreal", R, receta(RECT(100, 60, 40), "v10",
+          [TAPA_F, bases("laterales", "Laterales con arco", 2, "P", forma=True),
+           bases("central", "Panel central con arco", 1, "redondear(L * 0.6)", forma=True)], "total",
+          "2 * P + redondear(L * 0.6) + 2 * (H - 1)"), WEB))
+C.append(("Mesa Atlas", R, receta(RECT(85, 45, 40), "v10",
+          [pieza("tapas", "Tapa y base", 2, "L", "P - 5", forma=True, nota="85 × 40 radio 5 en la 85 × 45"),
+           bases("paneles_largos", "Paneles largos", 2, "L - 35", "H - 3", nota="50 × 37 en la 85 × 45 × 40"),
+           bases("paneles_cortos", "Paneles cortos", 2, "P - 20", "H - 3", nota="25 × 37 en la 85 × 45 × 40")], "total",
+          "2 * (2 * (L - 35) + 2 * (P - 20))"), PLANO))
+C.append(("Mesa Cósmico", AUX, receta(RECT(50, 50, 60), "v10",
+          [TAPA_F, bases("trasero", "Panel trasero", 1, "P + 10", "H", nota="60 cm en la 50 × 50"),
+           bases("cruzado", "Panel cruzado", 1, "L - 2.5", nota="47,5 cm en la 50 × 50")], "total", "L + P + H"),
+          PLANO + ": tapa con puntas redondeadas"))
+C.append(("Mesa Astra Dúo", R, receta(REDONDA(120, 40), "v10",
+          [pieza("tapas", "Tapas semicirculares", 2, "D", "D / 2", forma=True),
+           bases("bases_largas", "Bases largas", 2, "D"), bases("bases_cortas", "Bases cortas", 2, "D / 2 - 1")], "total",
+          "2 * (D + D / 2) + 2 * (H - 1)"), PLANO + ": juego de 2 mesas semicirculares"))
+C.append(("Mesa Astra Dúo Recta", R, receta(RECT(80, 40, 35), "v10",
+          [pieza("tapa_chica", "Tapa chica", 1, "L", "P"), pieza("tapa_grande", "Tapa grande", 1, "L", "2 * P"),
+           bases("laterales_chica", "Laterales mesa chica", 2, "P"), bases("laterales_grande", "Laterales mesa grande", 2, "2 * P", "H - 6")],
+          "total", "6 * P"), WEB + ": juego de una mesa L × P × H y otra L × 2P × (H − 5)"))
+C.append(("Mesa Canoa", R, receta(RECT(100, 55, 30), "v10",
+          [TAPA_F, bases("base_larga", "Base longitudinal", 1, "redondear(L * 0.8)", forma=True),
+           bases("bases_cortas", "Bases transversales", 2, "P", forma=True)], "total",
+          "redondear(L * 0.8) + 2 * P + 2 * (H - 1)"), WEB))
+for nombre, cat, d, h in [("Mesa Canoa Redonda", R, 80, 35), ("Mesa Auxiliar Canoa", AUX, 50, 30)]:
+    C.append((nombre, cat, receta(REDONDA(d, h), "v10", [TAPA_R, bases("bases", "Bases en cruz", 2, "D", forma=True)], "total",
+              "2 * D + 2 * (H - 1)"), WEB))
+C.append(("Mesa Júpiter", R, receta(REDONDA(80, 35), "v10",
+          [TAPA_R, bases("bases", "Bases circulares en cruz", 2, "redondear(D * 0.8)", forma=True)], "total",
+          "redondear(D * 1.2) + 2 * (H - 1)"), WEB))
+C.append(("Mesa Zenit", R, receta(REDONDA(100, 40), "v10",
+          [TAPA_R, bases("bases", "Bases con arco", 2, "redondear(D * 0.6)", forma=True)], "total",
+          "redondear(D * 1.2) + 2 * (H - 1)"), WEB))
+C.append(("Mesa Ceres", R, receta(REDONDA(100, 40), "v10",
+          [TAPA_R, pieza("estante", "Estante redondo", 1, "D", "D", forma=True),
+           bases("paneles", "Paneles", 4, "redondear(D * 0.7)", "(H - 2) / 2", forma=True, nota="70 × 19 en la Ø 100 × 40")],
+          "total", "3 * 2 * redondear(D * 0.7)"), PLANO))
+C.append(("Mesa Nova", AUX, receta(REDONDA(50, 50), "v10",
+          [TAPA_R, bases("bases", "Bases en cruz", 2, "redondear(D * 0.9)", forma=True)], "total",
+          "redondear(D * 1.8) + 2 * (H - 1)"), WEB))
+C.append(("Mesa Lux", AUX, receta(REDONDA(50, 60), "v10",
+          [TAPA_R, bases("paneles", "Paneles", 2, "redondear(D * 0.7)", nota="35 cm en la Ø 50"),
+           pieza("inclinado", "Estante inclinado", 1, "redondear(D * 0.64)", "redondear(H * 0.67)", nota="32 × 40 en la Ø 50 × 60"),
+           pieza("corto", "Estante corto", 1, "redondear(D * 0.64)", "redondear(H * 0.27)", nota="32 × 16 en la Ø 50 × 60")],
+          "total", "redondear(D * 1.4) + 2 * (redondear(H * 0.67) + redondear(H * 0.27)) + redondear(D * 0.64)"), PLANO))
+C.append(("Mesa Estelar", AUX, receta(REDONDA(50, 60), "v10",
+          [TAPA_R, pieza("estantes_redondos", "Estantes redondos", "estantes", "D", "D", forma=True),
+           bases("laterales", "Laterales", 2, "redondear(D * 0.6)", "H")], "total",
+          "2 * redondear(D * 0.6) * (1 + estantes)",
+          entradas_extra={"estantes": {"tipo": "medida", "nombre": "Estantes", "def": 1, "min": 1, "max": 2}}), WEB))
+C.append(("Mesa Cubo", AUX, receta(RECT(50, 50, 60), "v10",
+          [TAPA, pieza("base", "Base", 1, "L", "P", base=True), bases("laterales", "Laterales", 2, "P", "H - 2")], "total",
+          "4 * P", RUEDAS), WEB + ": con 4 ruedas y 4 insertos"))
+C.append(("Mesa Órbita", AUX, receta(RECT(50, 50, 80), "v10",
+          [TAPA, pieza("base", "Base", 1, "L", "P", base=True), bases("laterales", "Laterales", 2, "P", "H - 2"),
+           pieza("estante", "Estante", 1, "L - 2", "P")], "total", "6 * P", RUEDAS), WEB + ": con 4 ruedas y 4 insertos"))
+C.append(("Mesa Nube", AUX, receta(RECT(37, 40, 60), "v10",
+          [bases("laterales", "Laterales", 2, "P", "H", forma=True, nota="40 × 60 radio 3"),
+           pieza("estantes", "Estantes", 2, "L - 3", "P - 5", forma=True, nota="34 × 35 radio 3"),
+           pieza("soporte", "Soporte trasero", 1, "L - 2", "redondear(H * 35 / 60)", nota="35 × 35 en la 37 × 40 × 60")], "total",
+          "4 * (P - 5) + 2 * (L - 2) + 2 * redondear(H * 35 / 60)"), PLANO))
+
+# --- Mesas altas (laminado 5+5, ajuste solo sobre las bases, insertos opcionales)
+C.append(("Mesa Sol", COM, alta(REDONDA(100, 75), [TAPA_R, bases("bases", "Base en cruz", 2, "redondear(D * 0.5)")]), WEB))
+C.append(("Mesa Luz", COM, alta(REDONDA(100, 75), [TAPA_R, bases("bases", "Bases en V", 4, "redondear(D * 0.35)", nota="35 cm en la Ø 100")]),
+          PLANO + ": dos pares de bases en V"))
+LUCERO = lambda tapa: [tapa, bases("base_larga", "Base larga", 1, "L - 60", nota="100 cm en la 160 × 90"),
+                       bases("bases_cortas", "Bases cortas", 2, "redondear(P * 0.28)", nota="25 cm en la 160 × 90")]
+C.append(("Mesa Lucero Rectangular", COM, alta(RECT(160, 90, 75), LUCERO(TAPA)), "Bases según el plano de la Lucero"))
+C.append(("Mesa Lucero Medio Punto", COM, alta(RECT(160, 90, 75), LUCERO(TAPA_F)), PLANO))
+C.append(("Mesa Galaxia", COM, alta(RECT(140, 90, 75), [TAPA, bases("patas", "Patas en V", 4, "redondear(P * 0.3)")]), WEB))
+C.append(("Mesa Galaxia II", COM, alta(RECT(160, 80, 75), [TAPA_F, bases("patas", "Patas en V", 4, "redondear(P * 0.31)", nota="25 cm en la 160 × 80")]),
+          PLANO))
+C.append(("Mesa Universo", COM, alta(RECT(160, 80, 75), [TAPA, bases("patas", "Patas", 2, "redondear(P * 0.6)"),
+                                                          bases("refuerzos", "Refuerzos de patas", 2, "redondear(P * 0.25)")]), WEB))
+C.append(("Mesa Tiempo", COM, alta(RECT(160, 80, 75), [TAPA_F, bases("patas", "Patas (2 paneles cada una)", 4, "redondear(P * 0.6)", forma=True)]), WEB))
+C.append(("Mesa DJ", COM, alta(RECT(170, 50, 92), [TAPA, bases("patas", "Patas", 2, "P"), bases("refuerzos", "Refuerzos de patas", 2, "redondear(P * 0.4)")]), WEB))
+C.append(("Escritorio Tierra", ESC, alta(RECT(120, 50, 75), [TAPA, bases("laterales", "Laterales", 2, "P")], "2 * P"), PLANO))
+
+# --- Estanterías, racks y recibidores (sin ajuste)
+C.append(("Estantería Prisma", EST, receta(RECT(32, 30, 104), "v10",
+          [TAPA, pieza("laterales", "Laterales", 2, "P", "H - 1"), pieza("estantes", "Estantes", 3, "L - 2", "P")], None, "8 * P"), WEB))
+C.append(("Estantería Halo", EST, receta(RECT(100, 35, 100), "v10",
+          [pieza("laterales", "Laterales con arco", 2, "P", "H", forma=True),
+           pieza("estantes", "Estantes con arco", 3, "L - 20", "P", forma=True, nota="80 × 35 en la 100 × 35 × 100"),
+           pieza("base_estante", "Base del estante", 1, "P", "redondear(H * 0.15)", forma=True, nota="35 × 15 radio 5"),
+           pieza("soporte_medio", "Soporte estante medio", 1, "redondear(H * 0.335)", "P"),
+           pieza("soporte_arriba", "Soporte estante de arriba (con arco)", 1, "redondear(H * 0.4)", "P", forma=True)], None, "8 * P"), PLANO))
+C.append(("Estantería Lyra", EST, receta(RECT(60, 50, 77), "v10",
+          [TAPA_F, pieza("laterales", "Laterales", 2, "P", "H - 1", forma=True), pieza("estante", "Estante", 1, "L - 2", "P"),
+           pieza("vinilero", "Vinilero (frente y fondo)", 2, "L - 2", "redondear(H * 0.3)", forma=True)], None,
+          "4 * P + 4 * redondear(H * 0.3)"), WEB))
+C.append(("Vinilero Lyra", EST, receta(RECT(40, 40, 40), "v10",
+          [pieza("base", "Base", 1, "L", "P"), pieza("laterales", "Laterales", 2, "P", "H", forma=True),
+           pieza("fondo", "Fondo", 1, "L", "H", forma=True)], None, "2 * P + L + 2 * H"), WEB))
+C.append(("Rack Núcleo", EST, receta(RECT(120, 40, 60), "v10",
+          [TAPA, pieza("laterales", "Laterales", 2, "P", "H - 1"), pieza("estante", "Estante", 1, "redondear(L * 0.75)", "P"),
+           pieza("patas_estante", "Patas del estante", 2, "P", "redondear(H * 0.45)")], None, "6 * P"), WEB))
+C.append(("Recibidor Tori", REC, receta(RECT(110, 30, 100), "v10",
+          [pieza("estantes", "Estantes", 3, "L", "P"), pieza("paneles", "Paneles verticales", 2, "P", "H"),
+           pieza("separadores", "Separadores", 4, "P", "redondear(H * 0.3)")], None, "14 * P"), WEB))
+C.append(("Estantería Aurora", EST, receta(RECT(110, 45, 101), "v10",
+          [TAPA, pieza("base", "Base", 1, "L", "P"), pieza("laterales", "Laterales", 2, "P", "H - 2"),
+           pieza("estantes", "Estantes", 2, "L - 2", "P"),
+           pieza("puertas", "Puertas", 2, "L / 2 - 1", "redondear(H / 2)", nota="54 × 50 en la 110 × 45 × 101")], None, "8 * P"), PLANO))
+
+# --- Estructura cromada (STG + vidrios + 4 regatones, sin ajuste)
+for nombre, cat, modelo, (l, p, h) in [("Módulo", REC, "modulo", (110, 45, 65)), ("Módulo II", REC, "modulo-ii", (60, 45, 65)),
+                                       ("Bar Spazio", REC, "bar", (55, 45, 65)), ("Mesa Arcos", AUX, "arcos", (45, 39, 60))]:
+    C.append((nombre, cat, cromada(RECT(l, p, h), modelo, "L", [pieza("vidrios", "Vidrios", 2, "L", "P")]), WEB))
+C.append(("Mesa Binario", R, cromada(
+    {**RECT(130, 45, 35), "La": {"tipo": "medida", "nombre": "Largo de la auxiliar", "def": 55},
+     "Pa": {"tipo": "medida", "nombre": "Profundidad de la auxiliar", "def": 50}}, "binario", "L",
+    [pieza("vidrio_larga", "Vidrio mesa larga", 1, "L", "P"), pieza("vidrio_aux", "Vidrio mesa auxiliar", 1, "La", "Pa")]),
+    "Juego de 2 mesas; cada vidrio a la medida de su mesa"))
+C.append(("Mesa Saturno", R, cromada(REDONDA(80, 40), "saturno", "D", [pieza("vidrio", "Vidrio redondo", 1, "D", "D", forma=True)]),
+          PLANO + ": un vidrio redondo del diámetro de la estructura"))
+C.append(("Recibidor Nexo", REC, cromada(RECT(150, 47, 90), "recibidor-nexo", "L",
+          [pieza("vidrios", "Vidrios", 2, "L", "P"), pieza("estante", "Estante central", 1, "redondear(L * 0.4)", "P")]), WEB))
+
+# --- Patas cilíndricas
+PATAS = {"patas": {"tipo": "opcion", "nombre": "Patas", "permitidos": ["aluminio", "acero inoxidable"], "def": "aluminio"}}
+C.append(("Mesa Constelación", COM, receta(RECT(180, 90, 75), "alta", [TAPA], None, None,
+          [{"id": "patas_juego", "nombre": "Patas cilíndricas (juego de 4)", "regla": "unidad",
+            "insumoFormula": "si(patas == 'aluminio', 'patas-cilindricas-aluminio', 'patas-cilindricas-acero')"}], PATAS),
+          "Tapa laminada 5+5 y juego de 4 patas"))
+C.append(("Mesa Constelación Ratona", R, receta(RECT(100, 50, 40), "v10", [TAPA], None, None,
+          [{"id": "patas_juego", "nombre": "Patas cilíndricas de aluminio (juego de 4)", "regla": "unidad",
+            "insumo": "patas-cilindricas-aluminio-ratona"}]), "Patas estimadas a la mitad de las de comedor"))
+
+# --- Espejos
+for nombre, l, a, forma, molde, redondo in [
+        ("Espejo Rectangular", 60, 80, False, False, False), ("Espejo Tótem", 40, 100, False, False, False),
+        ("Espejo Capilla", 70, 100, True, False, False), ("Espejo Medio Punto", 50, 100, True, False, False),
+        ("Espejo Bote", 55, 140, True, False, False), ("Espejo Círculo", 60, 60, True, False, True),
+        ("Espejo Púa", 70, 100, False, True, False), ("Espejo Gota", 55, 80, False, True, False),
+        ("Espejo Nébula", 150, 60, False, True, False), ("Espejo Mercurio", 57, 64, False, True, False),
+        ("Espejo Cosmos", 73, 90, False, True, False), ("Espejo Eco", 70, 77, False, True, False),
+        ("Espejo Neptuno", 91, 100, False, True, False)]:
+    C.append((nombre, ESP, espejo(l, a, forma, molde, redondo),
+              "Con molde: +30% de mano de obra" if molde else ("Pulido con forma" if forma else "Pulido recto")))
+
+# ---------------------------------------------------------------- SQL
+q = lambda s: "'" + s.replace("'", "''") + "'"
+out = ["""-- =====================================================================
+-- Spazio Design · Cotizador · Recetas de los modelos de la web
+-- Generado por scripts/cotizador/recetas_catalogo.py. Crea los productos que falten y
+-- publica cada receta como versión nueva solo si cambió. Se puede correr de nuevo.
+-- Se ejecuta después de 2026-10_componentes.sql y 2026-10_recetas_piloto.sql.
+-- =====================================================================
+
+create or replace function pg_temp.publicar_receta(p_nombre text, p_categoria text, p_def jsonb, p_nota text) returns text
+language plpgsql as $$
+declare
+  v_prod uuid;
+  v_pub public.cot_recetas%rowtype;
+  v_bor uuid;
+  v_id uuid;
+  v_ver integer;
+begin
+  select id into v_prod from public.cot_productos where lower(nombre) = lower(p_nombre) and activo;
+  if v_prod is null then
+    insert into public.cot_productos (nombre, categoria_id)
+    values (p_nombre, (select id from public.cot_categorias where nombre = p_categoria))
+    returning id into v_prod;
+  end if;
+  select * into v_pub from public.cot_recetas where producto_id = v_prod and estado = 'publicada';
+  if found and v_pub.definicion = p_def then return p_nombre || ': sin cambios'; end if;
+  if found then update public.cot_recetas set estado = 'archivada' where id = v_pub.id; end if;
+  select id into v_bor from public.cot_recetas where producto_id = v_prod and estado = 'borrador';
+  if v_bor is not null then
+    update public.cot_recetas set definicion = p_def, nota = p_nota where id = v_bor;
+    update public.cot_recetas set estado = 'publicada', publicado_en = now() where id = v_bor;
+    v_id := v_bor;
+  else
+    select coalesce(max(version), 0) + 1 into v_ver from public.cot_recetas where producto_id = v_prod;
+    insert into public.cot_recetas (producto_id, version, estado, definicion, nota, publicado_en)
+    values (v_prod, v_ver, 'publicada', p_def, p_nota, now()) returning id into v_id;
+  end if;
+  update public.cot_productos set receta_publicada_id = v_id where id = v_prod;
+  insert into public.cot_receta_insumos (receta_id, insumo_id)
+  select v_id, i.id from public.cot_insumos i
+  where p_def::text like '%''' || i.codigo || '''%' or p_def::text like '%"' || i.codigo || '"%'
+  on conflict do nothing;
+  select version into v_ver from public.cot_recetas where id = v_id;
+  return p_nombre || ': publicada la versión ' || v_ver;
+end $$;
+"""]
+for nombre, cat, rec, nota in C:
+    out.append(f"select pg_temp.publicar_receta({q(nombre)}, {q(cat)}, {q(json.dumps(rec, ensure_ascii=False))}::jsonb, {q(nota)});")
+open("supabase/importaciones/2026-10_recetas_catalogo.sql", "w").write("\n".join(out) + "\n")
+print(len(C), "recetas")
