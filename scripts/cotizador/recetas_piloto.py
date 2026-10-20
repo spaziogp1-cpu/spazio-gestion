@@ -57,10 +57,44 @@ def helios(modelo):
         ],
     }
 
+# Mesa Aire Alta Redonda: tapa de melamina por diámetro y dos bases de vidrio en T
+# (planos del 20/10/2026). Mesa alta: vidrio 6+6 y ajuste del 20% solo sobre las bases.
+LARGA = "si(D <= 140, 80, si(D <= 160, 90, 110.4))"
+CORTA = "si(D <= 140, 55, 80)"
+ALTO_BASE = "H - 1.8"  # alto total menos la tapa de 18 mm
+AIRE = {
+    "orden": ["D", "H", "terminacion", "color"],
+    "entradas": {
+        "D": {"tipo": "medida", "nombre": "Diámetro", "min": 120, "max": 180, "def": 120},
+        "H": {"tipo": "medida", "nombre": "Alto", "def": 76},
+        "terminacion": {"tipo": "opcion", "nombre": "Tapa",
+                 "permitidos": ["Madera clara", "Madera negra mate", "Madera oscura", "Madera roble", "Melamina lisa de color"],
+                 "def": "Madera clara"},
+        "color": {"tipo": "opcion", "nombre": "Vidrio", "atributo": "color", "def": "incoloro"},
+    },
+    "lineas": [
+        {"id": "tapa", "nombre": "Tapa de melamina", "regla": "tabla", "insumo": "tapa-melamina-redonda", "referencia": "D"},
+        {"id": "base_larga", "nombre": "Base larga", "regla": "m2", "insumo": "vidrio-laminado",
+         "variante": {"composicion": "'6+6'", "color": "color"}, "ancho": LARGA, "largo": ALTO_BASE,
+         "nota": "80 cm hasta Ø 140, 90 en Ø 160, 110,4 en Ø 180"},
+        {"id": "base_corta", "nombre": "Base corta", "regla": "m2", "insumo": "vidrio-laminado",
+         "variante": {"composicion": "'6+6'", "color": "color"}, "ancho": CORTA, "largo": ALTO_BASE,
+         "nota": "55 cm hasta Ø 140, 80 desde Ø 160"},
+        {"id": "ajuste", "nombre": "Ajuste", "regla": "porcentaje", "porcentaje": "aj.ajuste_vidpro",
+         "sobre": ["base_larga", "base_corta"], "nota": "Mesa alta: 20% solo sobre las bases"},
+        {"id": "silicona", "nombre": "Pegado con silicona", "regla": "fijo", "insumo": "silicona"},
+        {"id": "perfil_larga", "nombre": "Perfiles L (base larga)", "regla": "ml", "insumo": "perfil-l-aluminio",
+         "cantidad": "2", "metros": f"({LARGA}) / 100"},
+        {"id": "perfil_corta", "nombre": "Perfiles L (base corta)", "regla": "ml", "insumo": "perfil-l-aluminio",
+         "cantidad": "2", "metros": f"({CORTA}) / 100"},
+    ],
+}
+
 RECETAS = [
     ("Mesa Luna", LUNA, "Puntas redondeadas con recargo de forma (20%)"),
     ("Mesa Helios", helios("helios"), "Sin ajuste: los vidrios no van pegados"),
     ("Mesa Helios con estante", helios("helios-estante"), "Sin ajuste: los vidrios no van pegados"),
+    ("Mesa Aire Alta Redonda", AIRE, "Carga inicial con los planos de las bases"),
 ]
 
 q = lambda s: "'" + s.replace("'", "''") + "'"
@@ -68,7 +102,7 @@ out = ["""-- ===================================================================
 -- Spazio Design · Cotizador · Recetas de los productos piloto
 -- Generado por scripts/cotizador/recetas_piloto.py. Publica cada receta como versión
 -- nueva solo si cambió; la anterior queda archivada. Se puede correr de nuevo.
--- Se ejecuta después de 2026-10_grises_y_mesa_luna.sql y 2026-10_helios.sql.
+-- Se ejecuta después de 2026-10_grises_y_mesa_luna.sql, 2026-10_helios.sql y 2026-10_aire.sql.
 -- =====================================================================
 
 insert into public.cot_ajustes (clave, valor, nombre, nota) values

@@ -134,7 +134,7 @@ export function describirItem(receta: Receta, valores: Record<string, number | s
     if (!visibles.has(k)) continue;
     const v = valores[k] ?? e.def;
     if (v == null || v === '') continue;
-    if (e.tipo === 'medida') medidas.push(String(v).replace('.', ','));
+    if (e.tipo === 'medida') medidas.push(`${/^di[aá]metro$/i.test(e.nombre) ? 'Ø ' : ''}${String(v).replace('.', ',')}`);
     else {
       const etq = (e.atributo && catalogo.valores[e.atributo]?.[String(v)]?.etiqueta) || String(v);
       opciones.push(e.nombre.toLowerCase() === 'color' ? etq : `${e.nombre.toLowerCase()} ${etq}`);
