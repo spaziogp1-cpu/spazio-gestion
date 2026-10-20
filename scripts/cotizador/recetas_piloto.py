@@ -28,15 +28,13 @@ LUNA = {
          "insumoFormula": f"si({FLOAT_LUNA}, 'vidrio-float', 'vidrio-laminado')",
          "variante": {"espesor": "'10'", "composicion": "'5+5'", "color": "color"},
          "cantidad": "4", "ancho": "25", "largo": "H"},
-        {"id": "ajuste", "nombre": "Ajuste", "regla": "porcentaje", "porcentaje": "aj.ajuste_vidpro",
-         "sobre": ["tapa", "forma", "bases"], "nota": "Mesa baja: 20% sobre todos los vidrios"},
         {"id": "uv", "nombre": "Pegado UV", "regla": "ml", "insumo": "pegado-uv",
          "variante": {"tipo_vidrio": f"si({FLOAT_LUNA}, 'float', 'laminado')"},
          "cantidad": "4", "metros": "25 / 100", "nota": "4 bases pegadas por su lado de 25 cm"},
     ],
 }
 
-def helios(modelo):
+def helios(modelo, estante=False):
     vidrio = {"insumoFormula": f"si({FLOAT_HELIOS}, 'vidrio-float', 'vidrio-laminado')",
               "variante": {"espesor": "si(color == 'gris', '10', '8')", "composicion": "'4+4'", "color": "color"}}
     return {
@@ -54,6 +52,9 @@ def helios(modelo):
             {"id": "tapa", "nombre": "Tapa", "regla": "m2", **vidrio, "ancho": "L", "largo": "P",
              "nota": "Incoloro y colores: laminado 4+4. Bronce: float 8. Gris: float 10"},
             {"id": "base", "nombre": "Base", "regla": "m2", **vidrio, "ancho": "L", "largo": "P"},
+            *([{"id": "estante", "nombre": "Estante del medio", "regla": "m2", **vidrio, "ancho": "redondear(L * 0.6)", "largo": "P",
+                "nota": "60% del largo por la profundidad (en la 100 × 70 es de 60 × 70)"}] if estante else []),
+            {"id": "regatones", "nombre": "Regatones", "regla": "unidad", "insumo": "regaton", "cantidad": "4"},
         ],
     }
 
@@ -63,39 +64,58 @@ def helios(modelo):
 LARGA = "si(D < 120, redondear(D * 80 / 120), si(D <= 140, 80, si(D <= 160, 90, 110.4)))"
 CORTA = "si(D < 120, redondear(D * 55 / 120), si(D <= 140, 55, 80))"
 ALTO_BASE = "H - 1.8"  # alto total menos la tapa de 1,8 cm; las bases van pegadas a los perfiles (sin UV)
-AIRE = {
-    "orden": ["D", "H", "terminacion", "color"],
-    "entradas": {
-        "D": {"tipo": "medida", "nombre": "Diámetro", "min": 100, "max": 180, "def": 120},
-        "H": {"tipo": "medida", "nombre": "Alto", "def": 76},
-        "terminacion": {"tipo": "opcion", "nombre": "Tapa",
-                 "permitidos": ["Madera clara", "Madera negra mate", "Madera oscura", "Madera roble", "Melamina lisa de color"],
-                 "def": "Madera clara"},
-        "color": {"tipo": "opcion", "nombre": "Vidrio", "atributo": "color", "def": "incoloro"},
-    },
-    "lineas": [
-        {"id": "tapa", "nombre": "Tapa de melamina", "regla": "tabla", "insumo": "tapa-melamina-redonda", "referencia": "D"},
-        {"id": "base_larga", "nombre": "Base larga", "regla": "m2", "insumo": "vidrio-laminado",
-         "variante": {"composicion": "'6+6'", "color": "color"}, "ancho": LARGA, "largo": ALTO_BASE,
-         "nota": "Planos: 80 cm de Ø 120 a 140, 90 en Ø 160, 110,4 en Ø 180. Menos de Ø 120: proporcional"},
-        {"id": "base_corta", "nombre": "Base corta", "regla": "m2", "insumo": "vidrio-laminado",
-         "variante": {"composicion": "'6+6'", "color": "color"}, "ancho": CORTA, "largo": ALTO_BASE,
-         "nota": "Planos: 55 cm de Ø 120 a 140, 80 desde Ø 160. Menos de Ø 120: proporcional"},
-        {"id": "ajuste", "nombre": "Ajuste", "regla": "porcentaje", "porcentaje": "aj.ajuste_vidpro",
-         "sobre": ["base_larga", "base_corta"], "nota": "Mesa alta: 20% solo sobre las bases"},
-        {"id": "silicona", "nombre": "Pegado con silicona", "regla": "fijo", "insumo": "silicona"},
-        {"id": "perfil_larga", "nombre": "Perfiles L (base larga)", "regla": "ml", "insumo": "perfil-l-aluminio",
-         "cantidad": "2", "metros": f"({LARGA}) / 100"},
-        {"id": "perfil_corta", "nombre": "Perfiles L (base corta)", "regla": "ml", "insumo": "perfil-l-aluminio",
-         "cantidad": "2", "metros": f"({CORTA}) / 100"},
-    ],
-}
+def aire(alta):
+    if alta:
+        vidrio = {"insumo": "vidrio-laminado", "variante": {"composicion": "'6+6'", "color": "color"}}
+        entradas_vidrio = {}
+        orden = ["D", "H", "terminacion", "color"]
+        diam = {"tipo": "medida", "nombre": "Diámetro", "min": 100, "max": 180, "def": 120}
+        alto = {"tipo": "medida", "nombre": "Alto", "def": 76}
+        nota_ajuste = "Mesa alta: 20% solo sobre las bases"
+    else:
+        # Mesas bajas: 5+5 o 10 mm. El float solo existe en incoloro, gris y bronce.
+        flot = "espesor == '10' && en(color, 'incoloro', 'gris', 'bronce')"
+        vidrio = {"insumoFormula": f"si({flot}, 'vidrio-float', 'vidrio-laminado')",
+                  "variante": {"espesor": "'10'", "composicion": "'5+5'", "color": "color"}}
+        entradas_vidrio = {"espesor": {"tipo": "opcion", "nombre": "Espesor del vidrio", "permitidos": ["5+5", "10"], "def": "5+5"}}
+        orden = ["D", "H", "terminacion", "color", "espesor"]
+        diam = {"tipo": "medida", "nombre": "Diámetro", "min": 60, "max": 140, "def": 80}
+        alto = {"tipo": "medida", "nombre": "Alto", "def": 40}
+        nota_ajuste = "Mesa baja: 20% sobre todos los vidrios (son solo las bases)"
+    return {
+        "orden": orden,
+        "entradas": {
+            "D": diam,
+            "H": alto,
+            "terminacion": {"tipo": "opcion", "nombre": "Tapa",
+                     "permitidos": ["Madera clara", "Madera negra mate", "Madera oscura", "Madera roble", "Melamina lisa de color"],
+                     "def": "Madera clara"},
+            "color": {"tipo": "opcion", "nombre": "Vidrio", "atributo": "color", "def": "incoloro"},
+            **entradas_vidrio,
+        },
+        "lineas": [
+            {"id": "tapa", "nombre": "Tapa de melamina", "regla": "tabla", "insumo": "tapa-melamina-redonda", "referencia": "D"},
+            {"id": "base_larga", "nombre": "Base larga", "regla": "m2", **vidrio, "ancho": LARGA, "largo": ALTO_BASE,
+             "nota": "Planos: 80 cm de Ø 120 a 140, 90 en Ø 160, 110,4 en Ø 180. Menos de Ø 120: proporcional"},
+            {"id": "base_corta", "nombre": "Base corta", "regla": "m2", **vidrio, "ancho": CORTA, "largo": ALTO_BASE,
+             "nota": "Planos: 55 cm de Ø 120 a 140, 80 desde Ø 160. Menos de Ø 120: proporcional"},
+            {"id": "ajuste", "nombre": "Ajuste", "regla": "porcentaje", "porcentaje": "aj.ajuste_vidpro",
+             "sobre": ["base_larga", "base_corta"], "nota": nota_ajuste},
+            {"id": "silicona", "nombre": "Pegado con silicona", "regla": "fijo", "insumo": "silicona"},
+            {"id": "perfil_larga", "nombre": "Perfiles L (base larga)", "regla": "ml", "insumo": "perfil-l-aluminio",
+             "cantidad": "2", "metros": f"({LARGA}) / 100"},
+            {"id": "perfil_corta", "nombre": "Perfiles L (base corta)", "regla": "ml", "insumo": "perfil-l-aluminio",
+             "cantidad": "2", "metros": f"({CORTA}) / 100"},
+        ],
+    }
+AIRE = aire(True)
 
 RECETAS = [
-    ("Mesa Luna", LUNA, "Puntas redondeadas con recargo de forma (20%)"),
-    ("Mesa Helios", helios("helios"), "Sin ajuste: los vidrios no van pegados"),
-    ("Mesa Helios con estante", helios("helios-estante"), "Sin ajuste: los vidrios no van pegados"),
+    ("Mesa Luna", LUNA, "Sin ajuste (20/10/2026); puntas redondeadas con recargo de forma"),
+    ("Mesa Helios", helios("helios"), "Con 4 regatones; sin ajuste"),
+    ("Mesa Helios con estante", helios("helios-estante", estante=True), "Estante del medio (60 × 70 en la 100 × 70) y 4 regatones"),
     ("Mesa Aire Alta Redonda", AIRE, "Carga inicial con los planos de las bases"),
+    ("Mesa Aire Ratona Redonda", aire(False), "Como la alta, en 5+5 o 10 mm; bases proporcionales a las de la Ø 120"),
 ]
 
 q = lambda s: "'" + s.replace("'", "''") + "'"
@@ -103,7 +123,7 @@ out = ["""-- ===================================================================
 -- Spazio Design · Cotizador · Recetas de los productos piloto
 -- Generado por scripts/cotizador/recetas_piloto.py. Publica cada receta como versión
 -- nueva solo si cambió; la anterior queda archivada. Se puede correr de nuevo.
--- Se ejecuta después de 2026-10_grises_y_mesa_luna.sql, 2026-10_helios.sql y 2026-10_aire.sql.
+-- Se ejecuta después de 2026-10_grises_y_mesa_luna.sql, 2026-10_helios.sql, 2026-10_aire.sql y 2026-10_componentes.sql.
 -- =====================================================================
 
 insert into public.cot_ajustes (clave, valor, nombre, nota) values

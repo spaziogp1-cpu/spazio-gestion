@@ -48,7 +48,7 @@ export async function cambiarPrecio(
   }
 }
 
-const PORCENTAJES = new Set(['recargo_cuotas', 'tope_descuento', 'ajuste_vidpro', 'recargo_forma']);
+const PORCENTAJES = new Set(['recargo_cuotas', 'tope_descuento', 'ajuste_vidpro', 'recargo_forma', 'recargo_molde']);
 
 export async function guardarAjustes(_prev: EstadoPanel, fd: FormData): Promise<EstadoPanel> {
   try {

@@ -94,7 +94,7 @@ export function CeldaPrecio({
 }
 
 type Ajuste = { clave: string; nombre: string; valor: number; nota: string | null };
-const ES_PORCENTAJE = new Set(['recargo_cuotas', 'tope_descuento', 'ajuste_vidpro', 'recargo_forma']);
+const ES_PORCENTAJE = new Set(['recargo_cuotas', 'tope_descuento', 'ajuste_vidpro', 'recargo_forma', 'recargo_molde']);
 
 export function FormAjustes({ ajustes }: { ajustes: Ajuste[] }) {
   const [estado, accion, guardando] = useActionState<EstadoPanel, FormData>(guardarAjustes, {});

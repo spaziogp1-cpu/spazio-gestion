@@ -46,3 +46,9 @@ select 'Mesa Aire Alta Redonda', c.id,
        'Mesa alta con tapa de melamina Egger 18 mm y bases de vidrio incoloro.'
 from public.cot_categorias c where c.nombre = 'Mesas de comedor'
   and not exists (select 1 from public.cot_productos x where lower(x.nombre) = 'mesa aire alta redonda' and x.activo);
+
+insert into public.cot_productos (nombre, categoria_id, descripcion)
+select 'Mesa Aire Ratona Redonda', c.id,
+       'Mesa ratona con tapa de melamina Egger 18 mm y bases de vidrio.'
+from public.cot_categorias c where c.nombre = 'Mesas ratonas'
+  and not exists (select 1 from public.cot_productos x where lower(x.nombre) = 'mesa aire ratona redonda' and x.activo);
