@@ -31,6 +31,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 11. `supabase/migrations/0011_planilla_original.sql` — trae cada 15 minutos las ventas cargadas en la planilla original
 12. `supabase/migrations/0012_sin_cliente_avisado.sql` — sin la etapa "Cliente avisado"
 16. `supabase/migrations/0016_etapa_embalada.sql` — etapa "Embalada"; "Lista" pasa a llamarse "Fabricada" (13 a 15 son las del cotizador)
+17. `supabase/migrations/0017_avisos_reportes_recordatorios.sql` — reportes de la mañana y de la tarde y recordatorios antes de entregas y visitas, dentro de la app (pg_cron cada minuto)
 
 ## Variables en Vercel (Settings → Environment Variables)
 

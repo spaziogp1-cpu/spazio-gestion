@@ -232,3 +232,53 @@ export async function traerDePlanillaOriginal(simular: boolean): Promise<EstadoA
     return { error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+// ---------------------------------------------------------------------
+// Reportes y recordatorios dentro de la app (los genera la base cada minuto).
+const DIAS = ['1', '2', '3', '4', '5', '6', '7'];
+
+export async function guardarAvisos(_prev: EstadoAjustes, fd: FormData): Promise<EstadoAjustes> {
+  try {
+    const { supabase } = await soloAdmin();
+    const hora = (k: string) => {
+      const v = String(fd.get(k) ?? '').trim();
+      return /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : null;
+    };
+    const manana = hora('reporte_manana_hora');
+    const tarde = hora('reporte_tarde_hora');
+    if (!manana || !tarde) return { error: 'Escribí las horas como 08:30.' };
+    if (manana >= tarde) return { error: 'El reporte de la mañana tiene que ser antes que el de la tarde.' };
+    const dias = DIAS.filter((d) => fd.get(`dia_${d}`) === 'on');
+    if (!dias.length) return { error: 'Elegí al menos un día.' };
+    const minutos = Math.round(Number(fd.get('recordatorio_minutos')));
+    if (!(minutos >= 5 && minutos <= 240)) return { error: 'El recordatorio tiene que ser entre 5 y 240 minutos antes.' };
+    const zona = String(fd.get('zona_horaria') ?? '').trim() || 'America/Argentina/Buenos_Aires';
+    try {
+      new Intl.DateTimeFormat('es-AR', { timeZone: zona });
+    } catch {
+      return { error: `"${zona}" no es una zona horaria válida (por ejemplo America/Argentina/Buenos_Aires).` };
+    }
+    const filas = [
+      { clave: 'reporte_manana_hora', valor: manana, nota: 'Hora del reporte de la mañana (HH:MM)' },
+      { clave: 'reporte_tarde_hora', valor: tarde, nota: 'Hora del reporte de la tarde (HH:MM)' },
+      { clave: 'reporte_dias', valor: dias.join(','), nota: 'Días con reporte: 1 = lunes … 7 = domingo' },
+      { clave: 'recordatorio_minutos', valor: String(minutos), nota: 'Minutos antes de una entrega o visita para el recordatorio' },
+      { clave: 'zona_horaria', valor: zona, nota: 'Zona horaria de los avisos' },
+    ];
+    const { error } = await supabase.from('parametros').upsert(filas, { onConflict: 'clave' });
+    if (error) return { error: `No se pudo guardar: ${error.message}` };
+    revalidatePath('/ajustes');
+    return { ok: 'Guardado. Los cambios se usan desde el próximo minuto.' };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// Genera ahora el reporte de quien lo pide, para ver cómo queda (no reemplaza al del día).
+export async function probarReporte(tipo: 'manana' | 'tarde'): Promise<EstadoAjustes & { id?: string }> {
+  const { supabase } = await miembroActual();
+  const { data, error } = await supabase.rpc('notif_reporte_prueba', { p_tipo: tipo });
+  if (error) return { error: error.message.includes('notif_reporte_prueba') ? 'Falta correr la migración 0017 en Supabase.' : error.message };
+  revalidatePath('/', 'layout');
+  return { ok: 'Listo: está en Avisos.', id: data as string };
+}

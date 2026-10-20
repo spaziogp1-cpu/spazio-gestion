@@ -1,3 +1,4 @@
+import { AvisosEnVivo } from '@/components/avisos-en-vivo';
 import { Sidebar, TabBar } from '@/components/navegacion';
 import { miembroActual } from '@/lib/sesion';
 
@@ -16,6 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="contenido">{children}</div>
       </main>
       <TabBar avisos={avisos} />
+      <AvisosEnVivo usuarioId={miembro.id} />
     </div>
   );
 }

@@ -132,7 +132,7 @@ export function FilaVisita({ v, equipo, mostrarFecha = false }: { v: Visita; equ
   const ventaHref = `/pedidos/nuevo?nombre=${encodeURIComponent(v.nombre)}${v.telefono ? `&telefono=${encodeURIComponent(v.telefono)}` : ''}&canal=showroom`;
 
   return (
-    <div className="item">
+    <div className="item" id={`visita-${v.id}`} style={{ scrollMarginTop: 80 }}>
       <div className="acciones" style={{ justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'nowrap' }}>
         <div style={{ display: 'flex', gap: 12, minWidth: 0 }}>
           <div className="visita-hora num">
