@@ -22,7 +22,11 @@ test('lee una receta de la base y descarta lo que no corresponde', () => {
   assert.deepEqual(r.lineas[0], { id: 'tapa', nombre: 'Tapa', regla: 'm2', insumo: 'vidrio-float', ancho: 'L', largo: 'P', variante: { color: 'color' } });
   assert.equal(r.lineas[1].regla, 'unidad');
   assert.equal(r.precioMinimo, undefined);
-  assert.deepEqual(leerReceta(null), { entradas: {}, lineas: [] });
+  assert.deepEqual(leerReceta(null), { entradas: {}, orden: [], lineas: [] });
+  // El orden guardado manda (la base devuelve las claves ordenadas a su manera).
+  const ordenada = leerReceta({ entradas: { H: { tipo: 'medida', nombre: 'Alto' }, L: { tipo: 'medida', nombre: 'Largo' }, color: { tipo: 'opcion', nombre: 'Color' } }, orden: ['L', 'H', 'color', 'no-existe'], lineas: [] });
+  assert.deepEqual(Object.keys(ordenada.entradas), ['L', 'H', 'color']);
+  assert.deepEqual(ordenada.orden, ['L', 'H', 'color']);
 });
 
 test('insumos que usa una receta', () => {

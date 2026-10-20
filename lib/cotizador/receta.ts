@@ -12,7 +12,11 @@ export function leerReceta(crudo: unknown): Receta {
   const o = (crudo && typeof crudo === 'object' ? crudo : {}) as Record<string, unknown>;
   const entradas: Record<string, Entrada> = {};
   const ents = o.entradas && typeof o.entradas === 'object' ? (o.entradas as Record<string, Record<string, unknown>>) : {};
-  for (const [k, e] of Object.entries(ents)) {
+  // La base (jsonb) reordena las claves: se respeta el orden guardado aparte.
+  const guardado = Array.isArray(o.orden) ? (o.orden as unknown[]).map(String).filter((k) => k in ents) : [];
+  const claves = [...new Set([...guardado, ...Object.keys(ents)])];
+  for (const k of claves) {
+    const e = ents[k];
     if (!e || typeof e !== 'object') continue;
     const nombre = txt(e.nombre) ?? k;
     const mostrarSi = txt(e.mostrarSi) || undefined;
@@ -49,7 +53,7 @@ export function leerReceta(crudo: unknown): Receta {
     lineas.push(linea);
   }
   const precioMinimo = num(o.precioMinimo);
-  return { entradas, lineas, ...(precioMinimo ? { precioMinimo } : {}) };
+  return { entradas, orden: Object.keys(entradas), lineas, ...(precioMinimo ? { precioMinimo } : {}) };
 }
 
 /** Códigos de insumos que usa la receta (incluye los que aparecen entre comillas en una fórmula de insumo). */

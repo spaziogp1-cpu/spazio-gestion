@@ -49,7 +49,7 @@ const aFilas = (r: Receta): EntradaFila[] => Object.entries(r.entradas).map(([cl
 const aReceta = (filas: EntradaFila[], lineas: Linea[], precioMinimo: number | null): Receta => {
   const entradas: Record<string, Entrada> = {};
   for (const { clave, ...e } of filas) if (clave.trim()) entradas[clave.trim()] = e as Entrada;
-  return { entradas, lineas, ...(precioMinimo ? { precioMinimo } : {}) };
+  return { entradas, orden: Object.keys(entradas), lineas, ...(precioMinimo ? { precioMinimo } : {}) };
 };
 function slugLinea(nombre: string, usados: string[]): string {
   const base =

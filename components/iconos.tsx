@@ -110,3 +110,9 @@ export const IconoContenido = (p: P) => (
     <path d="M8.5 6l1.2-2h4.6l1.2 2" />
   </svg>
 );
+export const IconoCotizador = (p: P) => (
+  <svg {...base} {...p}>
+    <rect x="5" y="3" width="14" height="18" rx="2" />
+    <path d="M8 7h8M8.5 11h1M11.5 11h1M14.5 11h1M8.5 14h1M11.5 14h1M14.5 14h1M8.5 17h1M11.5 17h4" />
+  </svg>
+);

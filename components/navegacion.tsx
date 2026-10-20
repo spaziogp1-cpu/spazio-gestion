@@ -9,6 +9,7 @@ import {
   IconoAvisos,
   IconoCalendario,
   IconoContenido,
+  IconoCotizador,
   IconoInicio,
   IconoClientes,
   IconoMas,
@@ -25,6 +26,7 @@ import {
 export const SECCIONES = [
   { href: '/', nombre: 'Mi día', Icono: IconoInicio, color: 'amarillo' },
   { href: '/pedidos', nombre: 'Pedidos', Icono: IconoPedidos, color: 'naranja' },
+  { href: '/cotizador', nombre: 'Cotizador', Icono: IconoCotizador, color: 'violeta' },
   { href: '/produccion', nombre: 'Producción', Icono: IconoProduccion, color: 'rosa' },
   { href: '/tareas', nombre: 'Tareas', Icono: IconoTareas, color: 'violeta' },
   { href: '/calendario', nombre: 'Calendario', Icono: IconoCalendario, color: 'azul' },

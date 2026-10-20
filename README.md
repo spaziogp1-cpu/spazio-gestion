@@ -33,6 +33,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 13. `supabase/migrations/0013_cotizador_costos.sql` — cotizador: insumos, precios con historial, rol "vendedor"
 14. `supabase/importaciones/2026-10_listas_cotizador.sql` — carga las listas de Vidpro (15/10) y STG (19/10)
 15. `supabase/migrations/0014_cotizador_productos.sql` — cotizador: productos, recetas con versiones y márgenes
+16. `supabase/migrations/0015_cotizador_presupuestos.sql` — cotizador: presupuestos con la foto del cálculo
 
 ## Variables en Vercel (Settings → Environment Variables)
 
@@ -138,6 +139,13 @@ las evalúa `formula.ts`, un intérprete propio que nunca ejecuta código.
 - **Productos y recetas** (`/cotizador/admin/productos`): cada producto tiene un borrador que se
   edita con un probador en vivo, y versiones publicadas que no cambian. Solo se cotiza la publicada.
   El margen de cada producto se cambia en cualquier momento, sin publicar.
+- **Presupuestos** (`/cotizador`): cliente → producto → medidas → opciones → precio en vivo →
+  descuento → guardar. Texto para WhatsApp, estados, duplicar y editar (recalcula con los precios de
+  hoy). El precio siempre lo calcula el servidor (`lib/cotizador/servicio.ts`, con la clave de
+  servicio) y al vendedor solo le llega el precio de venta. Cada ítem guarda la foto del cálculo
+  (`cot_presupuesto_calculos`), que solo ven quienes tienen permiso de costos. Un descuento por
+  encima del tope necesita aprobación de un admin antes de enviarse. El proceso diario pasa a
+  "Vencido" lo enviado cuya validez ya pasó.
 - Para cargar una lista nueva de Vidpro desde su Excel: `python3 scripts/cotizador/generar_listas.py
   lista.xlsx salida.sql` genera el SQL (solo agrega lo que falta; los cambios de precio se hacen en el panel).
 

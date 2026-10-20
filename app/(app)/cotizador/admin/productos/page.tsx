@@ -24,7 +24,7 @@ export default async function ProductosCotizadorPage({ searchParams }: { searchP
     supabase.from('cot_categorias').select('id, nombre, orden').order('orden'),
     supabase
       .from('cot_productos')
-      .select('id, nombre, activo, foto_url, categoria_id, receta_publicada_id, cot_margenes(margen), cot_recetas(version, estado)')
+      .select('id, nombre, activo, foto_url, categoria_id, receta_publicada_id, cot_margenes(margen), cot_recetas!cot_recetas_producto_id_fkey(version, estado)')
       .order('orden')
       .order('nombre'),
   ]);

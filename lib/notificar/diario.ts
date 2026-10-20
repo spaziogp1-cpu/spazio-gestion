@@ -50,6 +50,8 @@ export async function procesoDiario(db: Cliente, soloMiembro?: string): Promise<
     await importarDesde(db, hace3).catch((e) => console.error('tiendanube diario', e));
     // Pedidos que no se pudieron escribir en la planilla: se reintentan una vez por día.
     await sincronizarPendientes(db).catch((e) => console.error('planilla pendientes', e));
+    // Presupuestos enviados cuya validez ya pasó (si el cotizador ya está instalado en la base).
+    await db.rpc('cot_vencer_presupuestos').then(({ error: e }) => e && !/does not exist|Could not find/i.test(e.message) && console.error('presupuestos vencidos', e.message));
   }
 
   const informes: Informe[] = [];

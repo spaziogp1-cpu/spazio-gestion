@@ -84,6 +84,8 @@ export type Linea = {
 
 export type Receta = {
   entradas: Record<string, Entrada>;
+  /** Orden de las entradas (la base no conserva el orden de las claves de un objeto). */
+  orden?: string[];
   lineas: Linea[];
   precioMinimo?: number | null;
 };

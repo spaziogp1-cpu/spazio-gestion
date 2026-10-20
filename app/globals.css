@@ -731,3 +731,42 @@ input.formula { font-size: 16px; }
 .ayuda-formulas { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; color: var(--ink-2); }
 .ayuda-formulas code, .editor-receta code { font-family: var(--mono); font-size: 12.5px; background: var(--surface-2); padding: 1px 4px; border-radius: 4px; color: var(--ink); }
 [aria-invalid='true'] { border-color: var(--danger) !important; }
+
+/* ---------- Cotizador: presupuestos ---------- */
+.presu { display: grid; gap: 12px; }
+@media (min-width: 1000px) {
+  .presu { grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); align-items: start; }
+  .presu-resumen { position: sticky; top: 16px; }
+}
+.presu-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.presu-col > .card + .card, .presu-col > .card + .btn { margin-top: 0; }
+.presu-cliente { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.presu-sugerido { display: block; width: 100%; text-align: left; padding: 10px 4px; background: none; border: 0; border-bottom: 1px solid var(--line); font: inherit; color: inherit; cursor: pointer; }
+.presu-sugerido:hover { background: var(--surface-2); }
+.presu-productos { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.presu-producto {
+  display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--surface); font: inherit; font-weight: 600; font-size: 14px; color: var(--ink); cursor: pointer; text-align: left;
+}
+.presu-producto:hover { border-color: var(--accent); }
+.presu-producto img, .presu-producto-foto { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; background: var(--surface-2); display: block; }
+.presu-item-cabecera {
+  display: flex; gap: 10px; align-items: center; width: 100%; padding: 14px 16px; background: none; border: 0;
+  font: inherit; color: inherit; cursor: pointer;
+}
+.presu-item-cabecera .editor-numero { margin-bottom: 0; }
+.presu-item .seccion { border-top: 1px solid var(--line); }
+.presu-medida { font-size: 22px !important; font-variant-numeric: tabular-nums; min-height: 52px !important; }
+.chips-opcion { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-opcion {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 12px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface); font: inherit; font-size: 14px; color: var(--ink); cursor: pointer;
+}
+.chip-opcion[aria-checked='true'] { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; outline: 1px solid var(--accent); }
+.chip-muestra { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgb(0 0 0 / 0.15); }
+.presu-precio-item { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--ink-2); }
+.presu-total { font-family: var(--serif); font-size: 42px; line-height: 1.1; margin: 4px 0; }
+.presu-whatsapp {
+  white-space: pre-wrap; font-family: var(--font); font-size: 14px; margin: 0; padding: 12px; border-radius: 10px;
+  background: var(--surface-2); border: 1px solid var(--line); max-height: 320px; overflow-y: auto;
+}
