@@ -23,6 +23,8 @@ export function AvisosEnVivo({ usuarioId }: { usuarioId: string }) {
         router.refresh();
       })
       .subscribe();
+    // Mantiene actualizado el service worker de las notificaciones en el celular.
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => undefined);
     // Al volver a la pestaña (por ejemplo, después de tener el celular bloqueado) se trae lo nuevo.
     const alVolver = () => document.visibilityState === 'visible' && router.refresh();
     document.addEventListener('visibilitychange', alVolver);

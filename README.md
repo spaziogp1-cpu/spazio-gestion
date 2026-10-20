@@ -36,6 +36,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 16. `supabase/migrations/0015_cotizador_presupuestos.sql` — cotizador: presupuestos con la foto del cálculo
 17. `supabase/migrations/0016_etapa_embalada.sql` — etapa "Embalada"; "Lista" pasa a llamarse "Fabricada"
 18. `supabase/migrations/0017_avisos_reportes_recordatorios.sql` — reportes de la mañana y de la tarde y recordatorios antes de entregas y visitas (pg_cron cada minuto)
+19. `supabase/migrations/0018_notificaciones_celular.sql` — notificaciones en el celular (Web Push)
 
 ## Variables en Vercel (Settings → Environment Variables)
 
