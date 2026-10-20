@@ -1,7 +1,7 @@
 'use client';
 
 import { startTransition, useActionState, useState, useTransition } from 'react';
-import { cambiarMiContrasena, crearClaveIA, traerDePlanillaOriginal, definirContrasena, enviarmeResumen, guardarMiembro, guardarParametros, importarTiendaNube, probarPlanilla, revocarClaveIA, type EstadoAjustes } from './actions';
+import { cambiarMiContrasena, crearClaveIA, traerDePlanillaOriginal, definirContrasena, enviarmeResumen, guardarMiembro, guardarAvisos, guardarParametros, importarTiendaNube, probarPlanilla, probarReporte, revocarClaveIA, type EstadoAjustes } from './actions';
 
 type Miembro = { id: string; nombre: string; alias_planilla: string | null; email: string; telefono: string | null; rol: string; activo: boolean };
 
@@ -311,6 +311,78 @@ export function TraerDeOriginal() {
         </button>
       </div>
       {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}
+      {estado.error && <p className="error-form">{estado.error}</p>}
+    </div>
+  );
+}
+
+const NOMBRES_DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+export function FormAvisos({ valores, editable }: { valores: Record<string, string>; editable: boolean }) {
+  const [estado, accion, guardando] = useActionState<EstadoAjustes, FormData>(guardarAvisos, {});
+  const dias = (valores.reporte_dias ?? '1,2,3,4,5,6').split(',').map((d) => d.trim());
+  return (
+    <form onSubmit={enviar(accion)} className="form-bloque">
+      <div className="fila fila-3">
+        <div className="campo">
+          <label htmlFor="av-manana">Reporte de la mañana</label>
+          <input id="av-manana" name="reporte_manana_hora" type="time" step={300} defaultValue={valores.reporte_manana_hora ?? '08:30'} disabled={!editable} />
+        </div>
+        <div className="campo">
+          <label htmlFor="av-tarde">Reporte de la tarde</label>
+          <input id="av-tarde" name="reporte_tarde_hora" type="time" step={300} defaultValue={valores.reporte_tarde_hora ?? '18:00'} disabled={!editable} />
+        </div>
+        <div className="campo">
+          <label htmlFor="av-min">Recordatorio (minutos antes)</label>
+          <input id="av-min" name="recordatorio_minutos" type="number" min={5} max={240} defaultValue={valores.recordatorio_minutos ?? '40'} disabled={!editable} />
+        </div>
+      </div>
+      <div className="campo">
+        <span className="etiqueta">Días con reporte</span>
+        <div className="acciones" style={{ gap: 12 }}>
+          {NOMBRES_DIAS.map((n, i) => (
+            <label key={n} className="small" style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <input type="checkbox" name={`dia_${i + 1}`} defaultChecked={dias.includes(String(i + 1))} disabled={!editable} /> {n}
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="campo">
+        <label htmlFor="av-zona">Zona horaria</label>
+        <input id="av-zona" name="zona_horaria" type="text" defaultValue={valores.zona_horaria ?? 'America/Argentina/Buenos_Aires'} disabled={!editable} />
+      </div>
+      {estado.error && <p className="error-form">{estado.error}</p>}
+      {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}
+      {editable && (
+        <div>
+          <button className="btn btn-primario btn-chico" disabled={guardando}>
+            Guardar
+          </button>
+        </div>
+      )}
+    </form>
+  );
+}
+
+export function ProbarReportes() {
+  const [pendiente, iniciar] = useTransition();
+  const [estado, setEstado] = useState<EstadoAjustes & { id?: string }>({});
+  const probar = (tipo: 'manana' | 'tarde') => iniciar(async () => setEstado(await probarReporte(tipo)));
+  return (
+    <div className="form-bloque">
+      <div className="acciones">
+        <button type="button" className="btn btn-chico" disabled={pendiente} onClick={() => probar('manana')}>
+          Ver mi reporte de la mañana
+        </button>
+        <button type="button" className="btn btn-chico" disabled={pendiente} onClick={() => probar('tarde')}>
+          Ver mi reporte de la tarde
+        </button>
+      </div>
+      {estado.ok && (
+        <p className="aviso aviso-ok">
+          {estado.ok} {estado.id && <a href={`/avisos/${estado.id}`}>Abrirlo</a>}
+        </p>
+      )}
       {estado.error && <p className="error-form">{estado.error}</p>}
     </div>
   );

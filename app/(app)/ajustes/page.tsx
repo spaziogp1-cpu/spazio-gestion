@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { miembroActual } from '@/lib/sesion';
 import { fechaCorta } from '@/lib/fechas';
-import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormParametros, ImportarTiendaNube, ProbarPlanilla, ProbarResumen } from './partes';
+import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormAvisos, FormParametros, ImportarTiendaNube, ProbarPlanilla, ProbarReportes, ProbarResumen } from './partes';
 
 async function conexionTiendaNube() {
   try {
@@ -100,6 +100,19 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
             </div>
             <div className="seccion">
               <FormParametros valores={valores} editable={admin} />
+            </div>
+          </section>
+          <section className="card">
+            <div className="card-titulo">
+              <h2>Reportes y recordatorios</h2>
+            </div>
+            <div className="seccion form-bloque">
+              <p className="small">
+                Dentro de la app, cada persona recibe un reporte a la mañana (tareas, entregas y visitas del día) y otro a la tarde (qué se completó y
+                qué sigue pendiente), y un recordatorio antes de cada entrega o visita con horario.
+              </p>
+              <FormAvisos valores={valores} editable={admin} />
+              <ProbarReportes />
             </div>
           </section>
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useTransition } from 'react';
+import { useTransition } from 'react';
 import { marcarLeidos } from './actions';
 
 export function MarcarTodo() {
@@ -12,12 +12,18 @@ export function MarcarTodo() {
   );
 }
 
-// Al abrir la página, los avisos quedan como leídos (siguen resaltados mientras la mirás).
-export function MarcarAlVer() {
-  const [, iniciar] = useTransition();
-  useEffect(() => {
-    const t = setTimeout(() => iniciar(() => marcarLeidos()), 1500);
-    return () => clearTimeout(t);
-  }, []);
-  return null;
+export function MarcarUno({ id }: { id: string }) {
+  const [pendiente, iniciar] = useTransition();
+  return (
+    <button
+      type="button"
+      className="aviso-marcar"
+      disabled={pendiente}
+      onClick={() => iniciar(() => marcarLeidos([id]))}
+      aria-label="Marcar como leído"
+      title="Marcar como leído"
+    >
+      ✓
+    </button>
+  );
 }
