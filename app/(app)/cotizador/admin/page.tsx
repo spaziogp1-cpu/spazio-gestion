@@ -99,9 +99,14 @@ export default async function PreciosCotizadorPage({ searchParams }: { searchPar
             )}
           </p>
         </div>
-        <Link href="/ajustes" className="btn">
-          Volver a Ajustes
-        </Link>
+        <div className="acciones">
+          <Link href="/cotizador/admin/productos" className="btn btn-primario">
+            Productos y recetas
+          </Link>
+          <Link href="/ajustes" className="btn">
+            Ajustes
+          </Link>
+        </div>
       </div>
 
       <div className="filtros" role="tablist" aria-label="Tipo de costo">

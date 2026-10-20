@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cotizar, validarReceta } from './motor';
+import { cotizar, entradasVisibles, validarReceta } from './motor';
 import type { Catalogo, Receta } from './tipos';
 
 // Precios reales de la lista de Vidpro (15/10/2026) y de STG.
@@ -292,4 +292,37 @@ test('validación de recetas', () => {
   assert.match(msgs, /no existe el insumo "no-existe"/);
   assert.match(msgs, /falta de dónde sale "espesor"/);
   assert.match(msgs, /necesita metros/);
+});
+
+test('entradas que se muestran solo cuando corresponden', () => {
+  const receta: Receta = {
+    entradas: {
+      L: { tipo: 'medida', nombre: 'Largo' },
+      color: { tipo: 'opcion', nombre: 'Color', atributo: 'color' },
+      espesor: { tipo: 'opcion', nombre: 'Espesor', def: '10', mostrarSi: "en(color, 'incoloro', 'gris', 'bronce')" },
+      composicion: { tipo: 'opcion', nombre: 'Composición', def: '5+5', mostrarSi: "!en(color, 'incoloro', 'gris', 'bronce')" },
+    },
+    lineas: [
+      {
+        id: 'tapa',
+        nombre: 'Tapa',
+        regla: 'm2',
+        insumoFormula: "si(en(color, 'incoloro', 'gris', 'bronce'), 'vidrio-float', 'vidrio-laminado')",
+        ancho: 'L',
+        largo: 'L',
+      },
+    ],
+  };
+  assert.deepEqual(validarReceta(receta, catalogo), []);
+  assert.deepEqual(entradasVisibles(receta, { color: 'bronce' }), ['L', 'color', 'espesor']);
+  assert.deepEqual(entradasVisibles(receta, { color: 'rosa' }), ['L', 'color', 'composicion']);
+  const rosa = cotizar({ receta, catalogo, valores: { L: 100, color: 'rosa' }, margen: 0.5 });
+  assert.equal(rosa.ok, true, JSON.stringify(rosa.avisos));
+  assert.equal(rosa.lineas[0].costo, 189000);
+  assert.deepEqual(rosa.lineas[0].variante, { composicion: '5+5', color: 'rosa' });
+  const bronce = cotizar({ receta, catalogo, valores: { L: 100, color: 'bronce' }, margen: 0.5 });
+  assert.equal(bronce.lineas[0].costo, 115500);
+
+  const mala: Receta = { ...receta, entradas: { a: { tipo: 'opcion', nombre: 'A', mostrarSi: "b == 'x'" }, b: { tipo: 'opcion', nombre: 'B' } } };
+  assert.match(validarReceta(mala).map((x) => x.mensaje).join(), /solo puede usar entradas anteriores/);
 });

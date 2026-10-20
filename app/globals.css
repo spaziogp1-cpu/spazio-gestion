@@ -683,3 +683,51 @@ details.mas[open] > summary::before { content: '– '; }
 .precio-error { font-size: 12px; color: var(--danger); max-width: 200px; white-space: normal; text-align: right; }
 .muestra-color { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--line); flex-shrink: 0; }
 input[type='color'] { width: 100%; min-height: 44px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+
+/* ---------- Cotizador: productos y editor de recetas ---------- */
+.producto-fila { display: flex; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); color: inherit; }
+.lista li:last-child .producto-fila { border-bottom: 0; }
+.producto-fila:hover { background: var(--surface-2); }
+.producto-foto { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; background: var(--surface-2); border: 1px solid var(--line); flex-shrink: 0; }
+
+.editor-receta { display: grid; gap: 12px; }
+@media (min-width: 1100px) {
+  .editor-receta { grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); align-items: start; }
+  .editor-probador { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+}
+.editor-columna, .editor-probador { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.editor-columna > .card + .card, .editor-probador > .card + .card { margin-top: 0; }
+.editor-barra { display: flex; flex-direction: column; gap: 10px; }
+@media (min-width: 700px) { .editor-barra { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; } }
+.editor-fila { padding: 14px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+.editor-fila:first-child { padding-top: 0; }
+.editor-fila:last-of-type { border-bottom: 0; }
+.editor-fila-cabecera { display: flex; gap: 10px; align-items: flex-end; }
+.editor-numero {
+  flex-shrink: 0; width: 26px; height: 26px; margin-bottom: 9px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--surface-2); color: var(--ink-2);
+}
+.editor-mover { display: flex; gap: 2px; flex-shrink: 0; margin-bottom: 4px; }
+.editor-mover .btn { min-width: 32px; padding: 4px 6px; }
+.editor-avanzado summary { cursor: pointer; padding: 2px 0; }
+.editor-avanzado[open] summary { margin-bottom: 8px; }
+.formula { font-family: var(--mono); font-size: 14px; }
+input.formula { font-size: 16px; }
+.chips-eleccion { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-eleccion {
+  font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-3); text-decoration: line-through;
+}
+.chip-eleccion[aria-pressed='true'] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); text-decoration: none; }
+.editor-avisos { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.editor-avisos li { padding: 8px 10px; border-radius: 8px; background: var(--danger-soft); color: var(--ink); }
+.editor-avisos li[data-nivel='advertencia'] { background: var(--warn-soft); }
+.probador-tabla td, .probador-tabla th { padding: 6px 0; }
+.probador-tabla td + td, .probador-tabla th + th { padding-left: 10px; white-space: nowrap; }
+.probador-totales { display: flex; flex-direction: column; gap: 6px; }
+.probador-totales > div { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; font-size: 14px; }
+.probador-totales span { color: var(--ink-2); }
+.probador-precio { font-family: var(--serif); font-size: 30px; font-weight: 400; }
+.ayuda-formulas { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; color: var(--ink-2); }
+.ayuda-formulas code, .editor-receta code { font-family: var(--mono); font-size: 12.5px; background: var(--surface-2); padding: 1px 4px; border-radius: 4px; color: var(--ink); }
+[aria-invalid='true'] { border-color: var(--danger) !important; }

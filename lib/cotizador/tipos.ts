@@ -49,13 +49,15 @@ export type Catalogo = {
 // ---------------------------------------------------------------------
 // Recetas
 // ---------------------------------------------------------------------
-export type EntradaMedida = { tipo: 'medida'; nombre: string; min?: number; max?: number; def?: number };
+// "mostrarSi": fórmula con las entradas anteriores; si da falso, la entrada no se pide ni se usa.
+export type EntradaMedida = { tipo: 'medida'; nombre: string; min?: number; max?: number; def?: number; mostrarSi?: string };
 export type EntradaOpcion = {
   tipo: 'opcion';
   nombre: string;
   atributo?: string; // de qué atributo salen los valores (color, espesor...)
   permitidos?: string[]; // si falta, todos los activos del atributo
   def?: string;
+  mostrarSi?: string;
 };
 export type Entrada = EntradaMedida | EntradaOpcion;
 

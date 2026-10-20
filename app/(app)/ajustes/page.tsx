@@ -74,6 +74,9 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
                 <div>
                   <Link href="/cotizador/admin" className="btn btn-chico">
                     Precios del cotizador
+                  </Link>{' '}
+                  <Link href="/cotizador/admin/productos" className="btn btn-chico">
+                    Productos y recetas
                   </Link>
                 </div>
               </div>

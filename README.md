@@ -32,6 +32,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 12. `supabase/migrations/0012_sin_cliente_avisado.sql` — sin la etapa "Cliente avisado"
 13. `supabase/migrations/0013_cotizador_costos.sql` — cotizador: insumos, precios con historial, rol "vendedor"
 14. `supabase/importaciones/2026-10_listas_cotizador.sql` — carga las listas de Vidpro (15/10) y STG (19/10)
+15. `supabase/migrations/0014_cotizador_productos.sql` — cotizador: productos, recetas con versiones y márgenes
 
 ## Variables en Vercel (Settings → Environment Variables)
 
@@ -134,6 +135,9 @@ las evalúa `formula.ts`, un intérprete propio que nunca ejecuta código.
 - Cambiar un precio nunca lo pisa: cierra la tarifa vigente y abre una nueva (`cot_tarifas`).
 - **Quién ve costos:** los admin y los roles con el permiso `cotizador.costos` (tabla `permisos`;
   hoy, "equipo"). Para que alguien cotice sin ver costos, ponele el rol **Vendedor** en Ajustes → Equipo.
+- **Productos y recetas** (`/cotizador/admin/productos`): cada producto tiene un borrador que se
+  edita con un probador en vivo, y versiones publicadas que no cambian. Solo se cotiza la publicada.
+  El margen de cada producto se cambia en cualquier momento, sin publicar.
 - Para cargar una lista nueva de Vidpro desde su Excel: `python3 scripts/cotizador/generar_listas.py
   lista.xlsx salida.sql` genera el SQL (solo agrega lo que falta; los cambios de precio se hacen en el panel).
 

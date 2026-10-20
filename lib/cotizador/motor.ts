@@ -306,6 +306,18 @@ function aplicarMinimosPorItem(cat: Catalogo, e: Estado): boolean {
 function valoresDeEntrada(receta: Receta, cat: Catalogo, elegidos: Record<string, number | string>, avisos: Aviso[]): Variables {
   const vars: Variables = {};
   for (const [clave, ent] of Object.entries(receta.entradas)) {
+    if (ent.mostrarSi) {
+      let visible = false;
+      try {
+        visible = evaluarCondicion(ent.mostrarSi, vars);
+      } catch (x) {
+        avisos.push({ nivel: 'error', mensaje: `${ent.nombre}: ${(x as Error).message}` });
+      }
+      if (!visible) {
+        vars[clave] = ent.tipo === 'medida' ? 0 : '';
+        continue;
+      }
+    }
     const crudo = elegidos[clave] ?? ent.def;
     if (crudo === undefined || crudo === null || crudo === '') {
       avisos.push({ nivel: 'error', mensaje: `Falta ${ent.nombre.toLowerCase()}` });
@@ -337,6 +349,26 @@ function valoresDeEntrada(receta: Receta, cat: Catalogo, elegidos: Record<string
     }
   }
   return vars;
+}
+
+/** Qué entradas se piden con los valores elegidos hasta ahora (para el formulario y el probador). */
+export function entradasVisibles(receta: Receta, elegidos: Record<string, number | string>): string[] {
+  const vars: Variables = {};
+  const out: string[] = [];
+  for (const [clave, ent] of Object.entries(receta.entradas)) {
+    let visible = true;
+    if (ent.mostrarSi) {
+      try {
+        visible = evaluarCondicion(ent.mostrarSi, vars);
+      } catch {
+        visible = true;
+      }
+    }
+    const v = visible ? (elegidos[clave] ?? ent.def ?? (ent.tipo === 'medida' ? 0 : '')) : ent.tipo === 'medida' ? 0 : '';
+    vars[clave] = ent.tipo === 'medida' ? Number(v) || 0 : String(v);
+    if (visible) out.push(clave);
+  }
+  return out;
 }
 
 export function cotizar(p: PedidoCalculo): ResultadoCalculo {
@@ -417,9 +449,23 @@ export function validarReceta(receta: Receta, catalogo?: Catalogo): Aviso[] {
   const avisos: Aviso[] = [];
   const err = (mensaje: string, linea?: string) => avisos.push({ nivel: 'error', linea, mensaje });
   const entradas = Object.keys(receta.entradas ?? {});
+  const previas: string[] = [];
   for (const k of entradas) {
     if (!ID_VALIDO.test(k) && !/^[A-Z][A-Za-z0-9_]*$/.test(k)) err(`Entrada "${k}": usá letras, números y _`);
     if (RESERVADOS.has(k)) err(`"${k}" es un nombre reservado`);
+    const ent = receta.entradas[k];
+    if (!ent?.nombre?.trim()) err(`Entrada "${k}": falta el nombre`);
+    if (ent?.tipo === 'medida' && ent.min != null && ent.max != null && ent.min > ent.max) err(`${ent.nombre}: el mínimo es mayor que el máximo`);
+    if (ent?.mostrarSi) {
+      try {
+        for (const v of variablesDe(ent.mostrarSi)) {
+          if (!previas.includes(v.split('.')[0])) err(`${ent.nombre}, mostrar si: solo puede usar entradas anteriores ("${v}")`);
+        }
+      } catch (x) {
+        err(`${ent.nombre}, mostrar si: ${(x as Error).message}`);
+      }
+    }
+    previas.push(k);
   }
   if (!receta.lineas?.length) err('La receta no tiene líneas');
 
