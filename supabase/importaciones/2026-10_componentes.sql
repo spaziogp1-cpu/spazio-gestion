@@ -20,7 +20,10 @@ values
    'Línea Constelación, patas de 80 cm'),
   ('patas-cilindricas-aluminio-ratona', 'estructura', 'Patas cilíndricas de aluminio (juego de 4, ratona)', 'unidad', '{}', 752,
    'Estimado a la mitad de las de comedor: confirmar'),
-  ('cinta-doble-faz', 'herraje', 'Cinta doble faz (fijación de la tapa)', 'fijo', '{}', 760, 'Por mesa')
+  ('cinta-doble-faz', 'herraje', 'Cinta doble faz (fijación de la tapa)', 'fijo', '{}', 760, 'Por mesa'),
+  ('perfil-j-aluminio', 'herraje', 'Perfil J de aluminio (espejos)', 'ml', '{}', 770,
+   'Barra de 6 m a $18.000: se cobra por metro. Cada espejo lleva 3 tiras de 40 cm'),
+  ('silicona-espejo', 'proceso', 'Pegado con silicona (espejo)', 'fijo', '{}', 780, 'Precio fijo por espejo')
 on conflict (codigo) do nothing;
 
 insert into public.cot_tarifas (insumo_id, variante, precio, nota, vigente_desde)
@@ -36,7 +39,9 @@ join (values
   ('patas-cilindricas-aluminio', 170000, null),
   ('patas-cilindricas-acero', 200000, null),
   ('patas-cilindricas-aluminio-ratona', 85000, 'Estimado'),
-  ('cinta-doble-faz', 0, 'Precio a definir')
+  ('cinta-doble-faz', 0, 'Precio a definir'),
+  ('perfil-j-aluminio', 3000, '$18.000 la barra de 6 m'),
+  ('silicona-espejo', 5000, null)
 ) as v(codigo, precio, nota) on v.codigo = i.codigo
 where not exists (
   select 1 from public.cot_tarifas t where t.insumo_id = i.id and t.vigente_hasta is null
