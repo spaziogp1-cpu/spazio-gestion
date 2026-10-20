@@ -13,6 +13,7 @@ export function AccionesPresupuesto({
   necesitaAprobacion,
   esAdmin,
   bloqueado,
+  pedidoId,
 }: {
   id: string;
   estado: string;
@@ -21,6 +22,7 @@ export function AccionesPresupuesto({
   necesitaAprobacion: boolean;
   esAdmin: boolean;
   bloqueado: boolean;
+  pedidoId: string | null;
 }) {
   const [copiado, setCopiado] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +91,17 @@ export function AccionesPresupuesto({
       </div>
 
       <div className="acciones">
+        {pedidoId ? (
+          <Link href={`/pedidos/${pedidoId}`} className="btn btn-chico btn-primario">
+            Ver el pedido
+          </Link>
+        ) : (
+          !necesitaAprobacion && (
+            <Link href={`/pedidos/nuevo?presupuesto=${id}`} className="btn btn-chico btn-primario">
+              Convertir en pedido
+            </Link>
+          )
+        )}
         {!bloqueado && (
           <Link href={`/cotizador/${id}/editar`} className="btn btn-chico">
             Editar

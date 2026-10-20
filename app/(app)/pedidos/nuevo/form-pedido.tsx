@@ -14,16 +14,38 @@ type Props = {
   hoy: string;
   regla: ReglaPlazo;
   feriados: string[];
-  inicial?: { nombre: string; telefono: string; canal: string };
+  inicial?: {
+    nombre: string;
+    telefono: string;
+    canal: string;
+    // Cuando viene de un presupuesto del cotizador:
+    cliente?: Cliente | null;
+    items?: ItemInicial[];
+    total?: number;
+    observaciones?: string;
+    presupuestoId?: string;
+    presupuestoNumero?: number;
+  };
 };
 
-type ItemForm = { key: number; precio: string; cantidad: string };
+export type ItemInicial = {
+  producto: string;
+  modelo: string;
+  medidas: string;
+  color: string;
+  material: string;
+  puntas: string;
+  tapa: string;
+  precio: number;
+  cantidad: number;
+};
+type ItemForm = { key: number; precio: string; cantidad: string; datos?: ItemInicial };
 
 export default function FormPedido({ equipo, yo, hoy, regla, feriados, inicial }: Props) {
   const [estado, accion, guardando] = useActionState<Estado, FormData>(crearPedido, {});
 
   // ----- Cliente -----
-  const [cliente, setCliente] = useState<Cliente | null>(null);
+  const [cliente, setCliente] = useState<Cliente | null>(inicial?.cliente ?? null);
   const [busqueda, setBusqueda] = useState(inicial?.nombre ?? '');
   const [sugeridos, setSugeridos] = useState<Cliente[]>([]);
   const supabase = useMemo(() => createClient(), []);
@@ -49,15 +71,19 @@ export default function FormPedido({ equipo, yo, hoy, regla, feriados, inicial }
   }, [busqueda, cliente, supabase]);
 
   // ----- Productos -----
-  const [items, setItems] = useState<ItemForm[]>([{ key: 1, precio: '', cantidad: '1' }]);
-  const siguienteKey = useRef(2);
+  const [items, setItems] = useState<ItemForm[]>(() =>
+    inicial?.items?.length
+      ? inicial.items.map((d, i) => ({ key: i + 1, precio: String(d.precio), cantidad: String(d.cantidad), datos: d }))
+      : [{ key: 1, precio: '', cantidad: '1' }],
+  );
+  const siguienteKey = useRef((inicial?.items?.length ?? 0) + 2);
   const agregarItem = () => setItems((xs) => [...xs, { key: siguienteKey.current++, precio: '', cantidad: '1' }]);
   const quitarItem = (key: number) => setItems((xs) => (xs.length > 1 ? xs.filter((x) => x.key !== key) : xs));
   const cambiarItem = (key: number, campo: 'precio' | 'cantidad', valor: string) =>
     setItems((xs) => xs.map((x) => (x.key === key ? { ...x, [campo]: valor } : x)));
 
   // ----- Montos y fechas -----
-  const [total, setTotal] = useState('');
+  const [total, setTotal] = useState(inicial?.total ? String(inicial.total) : '');
   const [sena, setSena] = useState('');
   const [envioCliente, setEnvioCliente] = useState('');
   const [fechaVenta, setFechaVenta] = useState(hoy);
@@ -83,6 +109,14 @@ export default function FormPedido({ equipo, yo, hoy, regla, feriados, inicial }
       className="form-bloque"
       style={{ maxWidth: 720 }}
     >
+      {inicial?.presupuestoId && (
+        <>
+          <input type="hidden" name="presupuesto_id" value={inicial.presupuestoId} />
+          <p className="small quiet">
+            Desde el presupuesto N° {inicial.presupuestoNumero}: revisá los datos, completá canal, seña y entrega, y guardá.
+          </p>
+        </>
+      )}
       {/* ================= Cliente ================= */}
       <section className="card card-pad form-bloque">
         <h2>Cliente</h2>
@@ -213,21 +247,21 @@ export default function FormPedido({ equipo, yo, hoy, regla, feriados, inicial }
             <div className="fila fila-2m">
               <div className="campo">
                 <label>Producto</label>
-                <input name="item_producto" type="text" list="productos-sugeridos" placeholder="mesa ratona" required />
+                <input name="item_producto" type="text" list="productos-sugeridos" placeholder="mesa ratona" defaultValue={it.datos?.producto} required />
               </div>
               <div className="campo">
                 <label>Modelo</label>
-                <input name="item_modelo" type="text" placeholder="lucero, eclipse…" />
+                <input name="item_modelo" type="text" placeholder="lucero, eclipse…" defaultValue={it.datos?.modelo} />
               </div>
             </div>
             <div className="fila fila-2m">
               <div className="campo">
                 <label>Medidas</label>
-                <input name="item_medidas" type="text" placeholder="160x90x75" className="mono" />
+                <input name="item_medidas" type="text" placeholder="160x90x75" className="mono" defaultValue={it.datos?.medidas} />
               </div>
               <div className="campo">
                 <label>Color</label>
-                <input name="item_color" type="text" placeholder="bronce, rosa…" />
+                <input name="item_color" type="text" placeholder="bronce, rosa…" defaultValue={it.datos?.color} />
               </div>
             </div>
             <div className="fila fila-2m">
@@ -255,20 +289,20 @@ export default function FormPedido({ equipo, yo, hoy, regla, feriados, inicial }
                 />
               </div>
             </div>
-            <details className="mas">
+            <details className="mas" open={Boolean(it.datos && (it.datos.material || it.datos.puntas || it.datos.tapa))}>
               <summary>Material, puntas y tapa</summary>
               <div className="fila fila-3" style={{ marginTop: 8 }}>
                 <div className="campo">
                   <label>Material</label>
-                  <input name="item_material" type="text" list="materiales-sugeridos" placeholder="10mm, 5+5" />
+                  <input name="item_material" type="text" list="materiales-sugeridos" placeholder="10mm, 5+5" defaultValue={it.datos?.material} />
                 </div>
                 <div className="campo">
                   <label>Puntas</label>
-                  <input name="item_puntas" type="text" placeholder="rectas" />
+                  <input name="item_puntas" type="text" placeholder="rectas" defaultValue={it.datos?.puntas} />
                 </div>
                 <div className="campo">
                   <label>Tapa</label>
-                  <input name="item_tapa" type="text" placeholder="c/ insertos" />
+                  <input name="item_tapa" type="text" placeholder="c/ insertos" defaultValue={it.datos?.tapa} />
                 </div>
               </div>
             </details>
@@ -395,7 +429,7 @@ export default function FormPedido({ equipo, yo, hoy, regla, feriados, inicial }
       <section className="card card-pad form-bloque">
         <div className="campo">
           <label htmlFor="observaciones">Observaciones</label>
-          <textarea id="observaciones" name="observaciones" placeholder="Lo que haya que tener en cuenta para este pedido" />
+          <textarea id="observaciones" name="observaciones" placeholder="Lo que haya que tener en cuenta para este pedido" defaultValue={inicial?.observaciones} />
         </div>
         <details className="mas">
           <summary>Marketing (pauta, campaña)</summary>

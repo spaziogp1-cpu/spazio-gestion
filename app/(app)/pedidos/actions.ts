@@ -8,6 +8,7 @@ import { calcularFechaLimite, hoyAR } from '@/lib/fechas';
 import { leerMonto, texto } from '@/lib/formato';
 import { leerReglaPlazo } from '@/lib/parametros';
 import { miembroActual } from '@/lib/sesion';
+import { vincularPresupuesto } from '@/lib/cotizador/a-pedido';
 import { actualizarPedido as actualizarEnPlanilla, agregarPedido as agregarAPlanilla, anotarPendiente } from '@/lib/planilla/sync';
 
 export type Estado = { error?: string; ok?: string };
@@ -94,6 +95,10 @@ export async function crearPedido(_prev: Estado, fd: FormData): Promise<Estado> 
     },
   });
   if (error || !id) return { error: `No se pudo guardar el pedido: ${error?.message ?? 'error desconocido'}` };
+
+  // Si viene de un presupuesto del cotizador, queda vinculado y aprobado.
+  const presupuestoId = texto(fd.get('presupuesto_id'));
+  if (presupuestoId) await vincularPresupuesto(presupuestoId, id as string).catch((e) => console.error('vincular presupuesto', e));
 
   // La fila en la planilla se escribe después de responder, para no demorar la carga.
   await anotarPendiente(supabase, id).catch(() => {});

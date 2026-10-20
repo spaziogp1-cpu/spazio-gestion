@@ -190,6 +190,7 @@ export default async function PresupuestoPage({ params }: { params: Promise<{ id
                 necesitaAprobacion={p.necesita_aprobacion && !p.aprobado_por}
                 esAdmin={miembro.rol === 'admin'}
                 bloqueado={Boolean(p.pedido_id) || p.estado === 'aprobado'}
+                pedidoId={p.pedido_id ?? null}
               />
               {p.necesita_aprobacion && p.aprobado_por && <p className="small quiet">Descuento aprobado por {p.aprobador?.nombre ?? 'un administrador'}.</p>}
             </div>
