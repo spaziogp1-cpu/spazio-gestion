@@ -6,7 +6,7 @@ import { sumarDiasCorridos, hoyAR } from '@/lib/fechas';
 import { texto } from '@/lib/formato';
 import { cargarCatalogo } from '@/lib/cotizador/catalogo';
 import { calcularItem, paraVenta, reglasPresupuesto, subirA, type ResultadoVenta } from '@/lib/cotizador/servicio';
-import type { Catalogo } from '@/lib/cotizador/tipos';
+import type { AjustesPiezas, Catalogo } from '@/lib/cotizador/tipos';
 import { miembroActual } from '@/lib/sesion';
 import { crearAdmin } from '@/lib/supabase/admin';
 
@@ -44,18 +44,26 @@ export async function precioItem(
   valores: unknown,
   cantidad: number,
   margen?: number | null,
+  piezas?: unknown,
 ): Promise<{ error?: string; resultado?: ResultadoVenta }> {
   try {
     const { verCostos } = await quien();
-    // El margen a mano solo cuenta para quien ve costos.
-    const c = await calcularItem(productoId, valoresSeguros(valores), Math.max(1, Math.round(Number(cantidad) || 1)), undefined, verCostos ? margenSeguro(margen) : null);
+    // El margen y las piezas a mano solo cuentan para quien ve costos.
+    const c = await calcularItem(
+      productoId,
+      valoresSeguros(valores),
+      Math.max(1, Math.round(Number(cantidad) || 1)),
+      undefined,
+      verCostos ? margenSeguro(margen) : null,
+      verCostos ? (piezas as AjustesPiezas) : null,
+    );
     return { resultado: paraVenta(c, verCostos) };
   } catch (e) {
     return fallo(e);
   }
 }
 
-export type ItemPedido = { productoId: string; valores: Record<string, number | string>; cantidad: number; margen?: number | null };
+export type ItemPedido = { productoId: string; valores: Record<string, number | string>; cantidad: number; margen?: number | null; piezas?: AjustesPiezas | null };
 export type DatosPresupuesto = {
   cliente: { id?: string | null; nombre: string; telefono?: string | null };
   items: ItemPedido[];
@@ -92,7 +100,7 @@ export async function guardarPresupuesto(id: string | null, datos: DatosPresupue
     const calculos = [];
     for (const it of datos.items) {
       const cantidad = Math.max(1, Math.min(999, Math.round(Number(it.cantidad) || 1)));
-      const c = await calcularItem(String(it.productoId), valoresSeguros(it.valores), cantidad, cache, verCostos ? margenSeguro(it.margen) : null);
+      const c = await calcularItem(String(it.productoId), valoresSeguros(it.valores), cantidad, cache, verCostos ? margenSeguro(it.margen) : null, verCostos ? it.piezas : null);
       if (!c.resultado.ok) {
         const motivo = c.resultado.avisos.find((a) => a.nivel === 'error')?.mensaje ?? 'no se pudo calcular';
         return { error: `${c.productoNombre}: ${motivo}` };
@@ -173,7 +181,7 @@ export async function guardarPresupuesto(id: string | null, datos: DatosPresupue
         item_id: item.id,
         presupuesto_id: nuevoId,
         receta: c.receta,
-        resultado: { valores: c.valores, lineas: r.lineas, avisos: r.avisos, tarifasUsadas: r.tarifasUsadas, precioUnitario: r.precioUnitario },
+        resultado: { valores: c.valores, piezas: c.piezas, lineas: r.lineas, avisos: r.avisos, tarifasUsadas: r.tarifasUsadas, precioUnitario: r.precioUnitario },
         costo_unitario: r.costoUnitario,
         margen: c.margen,
         motor: r.motor,
@@ -233,19 +241,21 @@ export async function duplicarPresupuesto(id: string): Promise<{ error?: string;
     const db = crearAdmin();
     const [{ data: p }, { data: items }] = await Promise.all([
       db.from('cot_presupuestos').select('cliente_id, cliente_nombre, cliente_telefono, descuento_pct, observaciones').eq('id', id).maybeSingle(),
-      db.from('cot_presupuesto_items').select('producto_id, valores, cantidad, cot_presupuesto_calculos(margen)').eq('presupuesto_id', id).order('orden'),
+      db.from('cot_presupuesto_items').select('producto_id, valores, cantidad, cot_presupuesto_calculos(margen, resultado)').eq('presupuesto_id', id).order('orden'),
     ]);
     if (!p) return { error: 'No existe ese presupuesto.' };
-    type Fila = { producto_id: string | null; valores: Record<string, number | string>; cantidad: number; cot_presupuesto_calculos: { margen: number } | { margen: number }[] | null };
+    type Calc = { margen: number; resultado: { piezas?: AjustesPiezas } | null };
+    type Fila = { producto_id: string | null; valores: Record<string, number | string>; cantidad: number; cot_presupuesto_calculos: Calc | Calc[] | null };
+    const calcDe = (f: Fila) => (Array.isArray(f.cot_presupuesto_calculos) ? f.cot_presupuesto_calculos[0] : f.cot_presupuesto_calculos);
     const margenDe = (f: Fila) => {
-      const c = Array.isArray(f.cot_presupuesto_calculos) ? f.cot_presupuesto_calculos[0] : f.cot_presupuesto_calculos;
+      const c = calcDe(f);
       return c ? Number(c.margen) : null;
     };
     const lista = ((items ?? []) as unknown as Fila[]).filter((i) => i.producto_id);
     if (!lista.length) return { error: 'Los productos de este presupuesto ya no existen.' };
     const r = await guardarPresupuesto(null, {
       cliente: { id: p.cliente_id, nombre: p.cliente_nombre, telefono: p.cliente_telefono },
-      items: lista.map((i) => ({ productoId: i.producto_id!, valores: i.valores, cantidad: i.cantidad, margen: margenDe(i) })),
+      items: lista.map((i) => ({ productoId: i.producto_id!, valores: i.valores, cantidad: i.cantidad, margen: margenDe(i), piezas: calcDe(i)?.resultado?.piezas ?? null })),
       descuentoPct: Number(p.descuento_pct),
       observaciones: p.observaciones,
     });

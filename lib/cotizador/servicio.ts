@@ -13,7 +13,7 @@ import { crearAdmin } from '@/lib/supabase/admin';
 import { cargarCatalogo } from './catalogo';
 import { cotizar, entradasVisibles } from './motor';
 import { leerReceta } from './receta';
-import type { Aviso, Catalogo, Receta, ResultadoCalculo } from './tipos';
+import type { AjustePieza, AjustesPiezas, Aviso, Catalogo, Receta, ResultadoCalculo } from './tipos';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = SupabaseClient<any, any, any>;
@@ -83,10 +83,31 @@ export type CalculoItem = {
   margenManual: number | null;
   /** Sin margen (ni del producto ni escrito): hay costo pero no precio. */
   sinMargen: boolean;
+  piezas: AjustesPiezas;
   valores: Record<string, number | string>;
   resultado: ResultadoCalculo;
   detalle: string;
 };
+
+/** Deja solo cambios válidos sobre piezas por m² de la receta: cantidad entera 0 a 50, medidas de 1 a 600 cm. */
+export function limpiarPiezas(receta: Receta, piezas: unknown): AjustesPiezas {
+  const out: AjustesPiezas = {};
+  if (!piezas || typeof piezas !== 'object') return out;
+  const m2 = new Set(receta.lineas.filter((l) => l.regla === 'm2').map((l) => l.id));
+  for (const [id, v] of Object.entries(piezas as Record<string, unknown>)) {
+    if (!m2.has(id) || !v || typeof v !== 'object') continue;
+    const a = v as Record<string, unknown>;
+    const ok: AjustePieza = {};
+    const cant = Number(a.cantidad);
+    if (a.cantidad != null && a.cantidad !== '' && Number.isInteger(cant) && cant >= 0 && cant <= 50) ok.cantidad = cant;
+    for (const k of ['ancho', 'largo'] as const) {
+      const n = Number(a[k]);
+      if (a[k] != null && a[k] !== '' && Number.isFinite(n) && n >= 1 && n <= 600) ok[k] = Math.round(n * 10) / 10;
+    }
+    if (Object.keys(ok).length) out[id] = ok;
+  }
+  return out;
+}
 
 /** Calcula un producto con su receta publicada y el margen vigente. */
 export async function calcularItem(
@@ -96,6 +117,8 @@ export async function calcularItem(
   cache?: { catalogo?: Catalogo; db?: Db },
   /** Margen puesto a mano en el presupuesto (solo quien ve costos). Si falta, se usa el del producto. */
   margenManual?: number | null,
+  /** Piezas cambiadas a mano (solo quien ve costos). */
+  piezas?: AjustesPiezas | null,
 ): Promise<CalculoItem> {
   const db = cache?.db ?? crearAdmin();
   const [{ data: prod }, { data: margen }] = await Promise.all([
@@ -121,7 +144,8 @@ export async function calcularItem(
   const limpios: Record<string, number | string> = {};
   for (const k of Object.keys(receta.entradas)) if (visibles.has(k) && valores[k] != null && valores[k] !== '') limpios[k] = valores[k];
   // Sin margen se calcula igual el costo (para quien lo ve), pero no hay precio.
-  const resultado = cotizar({ receta, catalogo, valores: limpios, cantidad, margen: margenUsado ?? 0 });
+  const ajustes = limpiarPiezas(receta, piezas);
+  const resultado = cotizar({ receta, catalogo, valores: limpios, cantidad, margen: margenUsado ?? 0, piezas: ajustes });
   if (margenUsado == null) {
     resultado.ok = false;
     resultado.precioUnitario = resultado.precioUnitarioCuotas = resultado.precioTotal = resultado.precioTotalCuotas = 0;
@@ -136,6 +160,8 @@ export async function calcularItem(
     sinMargen: margenUsado == null,
     margenProducto,
     margenManual: manual,
+    // Solo las piezas que de verdad quedaron distintas a la receta.
+    piezas: Object.fromEntries(Object.entries(ajustes).filter(([id]) => resultado.lineas.some((l) => l.id === id && l.original))),
     valores: limpios,
     resultado,
     detalle: describirItem(receta, limpios, catalogo),
@@ -188,7 +214,15 @@ export type ResultadoVenta = {
     margen: number;
     margenProducto: number | null;
     margenReal: number;
-    lineas: { nombre: string; costo: number; estimado?: string; minimoAplicado?: string }[];
+    lineas: {
+      id: string;
+      nombre: string;
+      costo: number;
+      estimado?: string;
+      minimoAplicado?: string;
+      /** Piezas por m²: se pueden cambiar a mano. */
+      pieza?: { cantidad: number; ancho: number; largo: number; original?: { cantidad: number; ancho?: number; largo?: number } };
+    }[];
   };
 };
 
@@ -215,7 +249,14 @@ export function paraVenta(c: CalculoItem, verCostos: boolean): ResultadoVenta {
       margen: c.margen,
       margenProducto: c.margenProducto,
       margenReal: r.margenReal,
-      lineas: r.lineas.map((l) => ({ nombre: l.nombre, costo: l.costo, estimado: l.estimado, minimoAplicado: l.minimoAplicado })),
+      lineas: r.lineas.map((l) => ({
+        id: l.id,
+        nombre: l.nombre,
+        costo: l.costo,
+        estimado: l.estimado,
+        minimoAplicado: l.minimoAplicado,
+        pieza: l.regla === 'm2' && l.ancho != null && l.largo != null ? { cantidad: l.cantidad, ancho: l.ancho, largo: l.largo, original: l.original } : undefined,
+      })),
     },
   };
 }

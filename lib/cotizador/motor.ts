@@ -10,6 +10,7 @@
 
 import { ErrorFormula, compilar, evaluarCondicion, evaluarNumero, evaluarTexto, variablesDe, type Variables } from './formula';
 import type {
+  AjustesPiezas,
   Aviso,
   Catalogo,
   Insumo,
@@ -22,7 +23,7 @@ import type {
   ValoresAtributos,
 } from './tipos';
 
-export const VERSION_MOTOR = 'motor-1';
+export const VERSION_MOTOR = 'motor-2'; // motor-2: piezas cambiadas a mano
 
 /** Distancia (en la unidad de la referencia, ej. cm) a partir de la cual una estimación es poco confiable. */
 const ESTIMACION_LEJANA = 30;
@@ -130,6 +131,7 @@ type Estado = {
   porId: Map<string, LineaResultado>;
   avisos: Aviso[];
   tarifasUsadas: { insumo: string; tarifa: Tarifa }[];
+  piezas: AjustesPiezas;
 };
 
 function guardarVars(e: Estado, r: LineaResultado) {
@@ -165,8 +167,11 @@ function minimoDe(ins: Insumo, t: Tarifa | undefined, por: 'pieza' | 'item'): nu
 
 function calcularLinea(l: Linea, cat: Catalogo, e: Estado): LineaResultado | null {
   if (l.condicion && !evaluarCondicion(l.condicion, e.vars)) return null;
-  const cantidad = l.cantidad == null || l.cantidad === '' ? 1 : evaluarNumero(l.cantidad, e.vars);
-  if (cantidad < 0) throw new ErrorFormula('La cantidad no puede ser negativa');
+  const cantidadReceta = l.cantidad == null || l.cantidad === '' ? 1 : evaluarNumero(l.cantidad, e.vars);
+  if (cantidadReceta < 0) throw new ErrorFormula('La cantidad no puede ser negativa');
+  // Pieza cambiada a mano en el presupuesto (solo piezas por m²).
+  const ajuste = l.regla === 'm2' ? e.piezas[l.id] : undefined;
+  const cantidad = ajuste?.cantidad ?? cantidadReceta;
 
   const base: LineaResultado = {
     id: l.id,
@@ -229,8 +234,12 @@ function calcularLinea(l: Linea, cat: Catalogo, e: Estado): LineaResultado | nul
   switch (l.regla) {
     case 'm2': {
       if (!l.ancho || !l.largo) throw new ErrorFormula('Faltan el ancho y el largo de la pieza');
-      const ancho = evaluarNumero(l.ancho, e.vars);
-      const largo = evaluarNumero(l.largo, e.vars);
+      const anchoReceta = evaluarNumero(l.ancho, e.vars);
+      const largoReceta = evaluarNumero(l.largo, e.vars);
+      const ancho = ajuste?.ancho ?? anchoReceta;
+      const largo = ajuste?.largo ?? largoReceta;
+      if (ajuste && (ancho !== anchoReceta || largo !== largoReceta || cantidad !== cantidadReceta))
+        r.original = { cantidad: cantidadReceta, ancho: anchoReceta, largo: largoReceta };
       if (ancho <= 0 || largo <= 0) throw new ErrorFormula(`Medidas de pieza inválidas (${ancho} × ${largo})`);
       const m2 = (ancho * largo) / 10000;
       const min = minimoDe(ins, tarifa, 'pieza');
@@ -383,6 +392,7 @@ export function cotizar(p: PedidoCalculo): ResultadoCalculo {
     porId: new Map(),
     avisos,
     tarifasUsadas: [],
+    piezas: p.piezas ?? {},
   };
 
   if (!avisos.some((a) => a.nivel === 'error')) {

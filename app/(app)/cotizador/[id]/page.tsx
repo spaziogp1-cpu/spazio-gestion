@@ -26,7 +26,22 @@ type Calculo = {
   item_id: string;
   costo_unitario: number;
   margen: number;
-  resultado: { lineas?: { nombre: string; costo: number; estimado?: string; minimoAplicado?: string; medida: number; unidad: string; precioUnitario: number }[] };
+  resultado: {
+    lineas?: {
+      nombre: string;
+      costo: number;
+      estimado?: string;
+      minimoAplicado?: string;
+      medida: number;
+      unidad: string;
+      precioUnitario: number;
+      regla?: string;
+      cantidad?: number;
+      ancho?: number;
+      largo?: number;
+      original?: { cantidad: number; ancho?: number; largo?: number };
+    }[];
+  };
   creado_en: string;
 };
 
@@ -127,6 +142,17 @@ export default async function PresupuestoPage({ params }: { params: Promise<{ id
                               <tr key={k}>
                                 <td>
                                   {l.nombre}
+                                  {l.regla === 'm2' && l.ancho != null && (
+                                    <span className="quiet">
+                                      {' '}
+                                      · {l.cantidad} × {Math.round(l.ancho * 10) / 10} × {Math.round((l.largo ?? 0) * 10) / 10} cm
+                                    </span>
+                                  )}
+                                  {l.original && (
+                                    <div className="xs" style={{ color: 'var(--accent)' }}>
+                                      Cambiada a mano (receta: {l.original.cantidad} × {Math.round((l.original.ancho ?? 0) * 10) / 10} × {Math.round((l.original.largo ?? 0) * 10) / 10})
+                                    </div>
+                                  )}
                                   {(l.minimoAplicado || l.estimado) && <div className="xs quiet">{[l.minimoAplicado, l.estimado].filter(Boolean).join(' · ')}</div>}
                                 </td>
                                 <td className="der num">{plata(l.costo)}</td>

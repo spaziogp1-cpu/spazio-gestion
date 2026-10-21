@@ -326,3 +326,20 @@ test('entradas que se muestran solo cuando corresponden', () => {
   const mala: Receta = { ...receta, entradas: { a: { tipo: 'opcion', nombre: 'A', mostrarSi: "b == 'x'" }, b: { tipo: 'opcion', nombre: 'B' } } };
   assert.match(validarReceta(mala).map((x) => x.mensaje).join(), /solo puede usar entradas anteriores/);
 });
+
+test('piezas cambiadas a mano: pisan medida y cantidad, y el ajuste las sigue', () => {
+  const base = cotizar({ receta: luna, catalogo, valores: { L: 140, P: 60, H: 35, color: 'bronce' }, margen: 0.45 });
+  const r = cotizar({ receta: luna, catalogo, valores: { L: 140, P: 60, H: 35, color: 'bronce' }, margen: 0.45, piezas: { lat: { cantidad: 4, ancho: 70 } } });
+  const lat = r.lineas.find((l) => l.id === 'lat')!;
+  assert.equal(lat.cantidad, 4);
+  assert.equal(lat.ancho, 70);
+  assert.equal(lat.largo, 34); // el largo sigue siendo el de la receta
+  assert.deepEqual(lat.original, { cantidad: 2, ancho: 60, largo: 34 });
+  assert.equal(lat.costo, 109956); // 4 × 0,238 m² × 115.500
+  assert.equal(costo(r, 'ajuste'), Math.round((97020 + 109956) * 0.2 * 100) / 100);
+  assert.ok(r.costoUnitario > base.costoUnitario);
+  // Sin cambios reales no se marca como cambiada; las líneas que no son piezas no se tocan.
+  const igual = cotizar({ receta: luna, catalogo, valores: { L: 140, P: 60, H: 35, color: 'bronce' }, margen: 0.45, piezas: { lat: { ancho: 60 }, uv: { cantidad: 9 } } });
+  assert.equal(igual.lineas.find((l) => l.id === 'lat')!.original, undefined);
+  assert.equal(igual.costoUnitario, base.costoUnitario);
+});

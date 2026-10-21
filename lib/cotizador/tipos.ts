@@ -93,12 +93,18 @@ export type Receta = {
 // ---------------------------------------------------------------------
 // Pedido de cálculo y resultado
 // ---------------------------------------------------------------------
+/** Cambios a mano en las piezas de un producto (por id de línea m²): cantidad y medidas en cm. */
+export type AjustePieza = { cantidad?: number; ancho?: number; largo?: number };
+export type AjustesPiezas = Record<string, AjustePieza>;
+
 export type PedidoCalculo = {
   receta: Receta;
   catalogo: Catalogo;
   valores: Record<string, number | string>; // medidas y opciones elegidas
   cantidad?: number;
   margen: number; // 0.45 = 45% sobre el precio de venta
+  /** Piezas cambiadas a mano en este presupuesto (pisan lo que calcula la receta). */
+  piezas?: AjustesPiezas;
 };
 
 export type LineaResultado = {
@@ -119,6 +125,8 @@ export type LineaResultado = {
   minimoAplicado?: string;
   estimado?: string; // texto interno: "estimada, confirmar con STG"
   tarifaId?: number | string;
+  /** Si la pieza se cambió a mano: lo que daba la receta. */
+  original?: { cantidad: number; ancho?: number; largo?: number };
 };
 
 export type Aviso = { nivel: 'error' | 'advertencia'; linea?: string; mensaje: string };

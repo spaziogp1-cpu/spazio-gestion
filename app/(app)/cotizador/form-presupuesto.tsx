@@ -7,12 +7,15 @@ import type { ProductoVenta, ResultadoVenta } from '@/lib/cotizador/servicio';
 import { guardarPresupuesto, precioItem } from './actions';
 
 type Catalogo = { productos: ProductoVenta[]; etiquetas: Record<string, Record<string, string>>; muestras: Record<string, string> };
+type CampoPieza = { cantidad?: string; ancho?: string; largo?: string };
 type ClienteSel = { id: string | null; nombre: string; telefono: string | null };
 type Item = {
   key: number;
   productoId: string;
   valores: Record<string, string>;
   cantidad: number;
+  // Piezas cambiadas a mano (texto de los campos; vacío = lo de la receta).
+  piezas: Record<string, CampoPieza>;
   resultado?: ResultadoVenta;
   error?: string;
   cargando?: boolean;
@@ -20,7 +23,13 @@ type Item = {
 export type InicialPresupuesto = {
   id: string;
   cliente: ClienteSel;
-  items: { productoId: string; valores: Record<string, number | string>; cantidad: number; margen?: number | null }[];
+  items: {
+    productoId: string;
+    valores: Record<string, number | string>;
+    cantidad: number;
+    margen?: number | null;
+    piezas?: Record<string, { cantidad?: number; ancho?: number; largo?: number }> | null;
+  }[];
   descuentoPct: number;
   observaciones: string | null;
 };
@@ -36,6 +45,26 @@ function margenFraccion(s: string): number | null {
   return Number.isFinite(n) && n >= 0 && n < 95 ? n / 100 : null;
 }
 const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
+/** Campos de piezas → números para el servidor (vacío = lo de la receta). */
+function piezasNumeros(p: Record<string, CampoPieza>) {
+  const out: Record<string, { cantidad?: number; ancho?: number; largo?: number }> = {};
+  for (const [id, c] of Object.entries(p)) {
+    const x: { cantidad?: number; ancho?: number; largo?: number } = {};
+    for (const k of ['cantidad', 'ancho', 'largo'] as const) {
+      const t = (c[k] ?? '').trim().replace(',', '.');
+      if (t !== '' && Number.isFinite(Number(t))) x[k] = Number(t);
+    }
+    if (Object.keys(x).length) out[id] = x;
+  }
+  return out;
+}
+const aCampos = (p?: Record<string, { cantidad?: number; ancho?: number; largo?: number }> | null) =>
+  Object.fromEntries(
+    Object.entries(p ?? {}).map(([id, v]) => [
+      id,
+      Object.fromEntries(Object.entries(v).map(([k, n]) => [k, String(n).replace('.', ',')])) as CampoPieza,
+    ]),
+  );
 let siguiente = 1;
 
 export default function FormPresupuesto({
@@ -55,6 +84,7 @@ export default function FormPresupuesto({
       key: siguiente++,
       productoId: i.productoId,
       cantidad: i.cantidad,
+      piezas: aCampos(i.piezas),
       valores: Object.fromEntries(Object.entries(i.valores).map(([k, v]) => [k, String(v)])),
     })),
   );
@@ -85,7 +115,13 @@ export default function FormPresupuesto({
     setItems((xs) => xs.map((x) => (x.key === it.key ? { ...x, cargando: true } : x)));
     setTimeout(async () => {
       if (turnos.current.get(it.key) !== n) return;
-      const r = await precioItem(it.productoId, valores, it.cantidad, verCostos ? margenFraccion(margenRef.current) : null);
+      const r = await precioItem(
+        it.productoId,
+        valores,
+        it.cantidad,
+        verCostos ? margenFraccion(margenRef.current) : null,
+        verCostos ? piezasNumeros(it.piezas) : null,
+      );
       if (turnos.current.get(it.key) !== n) return;
       setItems((xs) => xs.map((x) => (x.key === it.key ? { ...x, resultado: r.resultado, error: r.error, cargando: false } : x)));
     }, 350);
@@ -107,7 +143,7 @@ export default function FormPresupuesto({
     if (!p) return;
     const valores: Record<string, string> = {};
     for (const [k, e] of Object.entries(p.entradas)) if (e.def != null) valores[k] = String(e.def);
-    const it: Item = { key: siguiente++, productoId, valores, cantidad: 1 };
+    const it: Item = { key: siguiente++, productoId, valores, cantidad: 1, piezas: {} };
     setItems((xs) => [...xs, it]);
     setAbierto(it.key);
     pedirPrecio(it);
@@ -140,7 +176,13 @@ export default function FormPresupuesto({
           const p = productos.get(i.productoId)!;
           const valores: Record<string, number | string> = {};
           for (const [k, v] of Object.entries(i.valores)) if (v !== '') valores[k] = p.entradas[k]?.tipo === 'medida' ? Number(v.replace(',', '.')) : v;
-          return { productoId: i.productoId, valores, cantidad: i.cantidad, margen: verCostos ? margenFraccion(margen) : null };
+          return {
+            productoId: i.productoId,
+            valores,
+            cantidad: i.cantidad,
+            margen: verCostos ? margenFraccion(margen) : null,
+            piezas: verCostos ? piezasNumeros(i.piezas) : null,
+          };
         }),
         descuentoPct: pct,
         observaciones,
@@ -553,29 +595,82 @@ function ItemPresupuesto({
                 {plata(r.precioUnitario)} c/u · {plata(r.precioUnitarioCuotas)} en cuotas
               </span>
               {verCostos && r.costos && (
-                <details>
-                  <summary className="small quiet">
-                    Ganancia {plata(r.precioUnitario - r.costos.costoUnitario)} c/u · margen real {pct(r.costos.margenReal)} (con redondeo) · ver el detalle
-                  </summary>
-                  <table className="tabla probador-tabla">
-                    <tbody>
-                      {r.costos.lineas.map((l, i) => (
-                        <tr key={i}>
-                          <td>
-                            {l.nombre}
-                            {(l.minimoAplicado || l.estimado) && <div className="xs quiet">{[l.minimoAplicado, l.estimado].filter(Boolean).join(' · ')}</div>}
-                          </td>
-                          <td className="der num">{plata(l.costo)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </details>
+                <span className="small quiet">
+                  Ganancia {plata(r.precioUnitario - r.costos.costoUnitario)} c/u · margen real {pct(r.costos.margenReal)} (con redondeo)
+                </span>
               )}
             </div>
           )}
+          {verCostos && r?.costos && <Desglose item={item} lineas={r.costos.lineas} onCambiar={onCambiar} />}
         </div>
       )}
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Desglose del costo: las piezas de vidrio se pueden cambiar a mano (cantidad y medidas).
+type LineaCosto = NonNullable<ResultadoVenta['costos']>['lineas'][number];
+
+function Desglose({ item, lineas, onCambiar }: { item: Item; lineas: LineaCosto[]; onCambiar: (c: Partial<Item>) => void }) {
+  const cambiadas = lineas.filter((l) => l.pieza?.original).length;
+  const campo = (l: LineaCosto, k: keyof CampoPieza) => {
+    const escrito = item.piezas[l.id]?.[k];
+    if (escrito != null) return escrito;
+    const v = l.pieza ? l.pieza[k] : '';
+    return String(Math.round(Number(v) * 10) / 10).replace('.', ',');
+  };
+  const cambiar = (id: string, k: keyof CampoPieza, v: string) =>
+    onCambiar({ piezas: { ...item.piezas, [id]: { ...item.piezas[id], [k]: v } } });
+  const restablecer = (id: string) => {
+    const resto = { ...item.piezas };
+    delete resto[id];
+    onCambiar({ piezas: resto });
+  };
+  return (
+    <details className="presu-desglose" open={cambiadas > 0}>
+      <summary className="small">
+        <strong>Desglose</strong> <span className="quiet">· {cambiadas ? `${cambiadas} ${cambiadas === 1 ? 'pieza cambiada' : 'piezas cambiadas'} · ` : ''}cambiá medidas o cantidades de los vidrios</span>
+      </summary>
+      <table className="tabla probador-tabla presu-desglose-tabla">
+        <tbody>
+          {lineas.map((l) => (
+            <tr key={l.id} className={l.pieza?.original ? 'presu-pieza-cambiada' : undefined}>
+              <td>
+                {l.nombre}
+                {l.pieza && (
+                  <div className="presu-pieza">
+                    <input aria-label={`${l.nombre}: cantidad`} inputMode="numeric" value={campo(l, 'cantidad')} onChange={(e) => cambiar(l.id, 'cantidad', e.target.value)} />
+                    <span>×</span>
+                    <input aria-label={`${l.nombre}: ancho (cm)`} inputMode="decimal" value={campo(l, 'ancho')} onChange={(e) => cambiar(l.id, 'ancho', e.target.value)} />
+                    <span>×</span>
+                    <input aria-label={`${l.nombre}: largo (cm)`} inputMode="decimal" value={campo(l, 'largo')} onChange={(e) => cambiar(l.id, 'largo', e.target.value)} />
+                    <span className="quiet">cm</span>
+                  </div>
+                )}
+                {l.pieza?.original && (
+                  <div className="xs quiet">
+                    Receta: {l.pieza.original.cantidad} × {Math.round((l.pieza.original.ancho ?? 0) * 10) / 10} × {Math.round((l.pieza.original.largo ?? 0) * 10) / 10} ·{' '}
+                    <button type="button" className="link-boton" onClick={() => restablecer(l.id)}>
+                      volver a la receta
+                    </button>
+                  </div>
+                )}
+                {!l.pieza?.original && item.piezas[l.id] && (
+                  <div className="xs">
+                    <button type="button" className="link-boton" onClick={() => restablecer(l.id)}>
+                      volver a la receta
+                    </button>
+                  </div>
+                )}
+                {(l.minimoAplicado || l.estimado) && <div className="xs quiet">{[l.minimoAplicado, l.estimado].filter(Boolean).join(' · ')}</div>}
+              </td>
+              <td className="der num">{plata(l.costo)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="xs quiet" style={{ margin: '6px 0 0' }}>Solo para este presupuesto: la receta del producto no cambia. El cliente no ve el desglose.</p>
+    </details>
   );
 }
