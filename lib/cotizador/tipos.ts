@@ -96,6 +96,8 @@ export type Receta = {
 /** Cambios a mano en las piezas de un producto (por id de línea m²): cantidad y medidas en cm. */
 export type AjustePieza = { cantidad?: number; ancho?: number; largo?: number };
 export type AjustesPiezas = Record<string, AjustePieza>;
+/** Vidrio agregado a mano en un presupuesto: del mismo vidrio que la pieza "como" de la receta. */
+export type PiezaAgregada = { id: string; nombre: string; como: string; cantidad: number; ancho: number; largo: number; forma?: boolean };
 
 export type PedidoCalculo = {
   receta: Receta;

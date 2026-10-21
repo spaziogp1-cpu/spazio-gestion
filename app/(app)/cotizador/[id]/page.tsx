@@ -28,6 +28,7 @@ type Calculo = {
   margen: number;
   resultado: {
     lineas?: {
+      id?: string;
       nombre: string;
       costo: number;
       estimado?: string;
@@ -147,6 +148,11 @@ export default async function PresupuestoPage({ params }: { params: Promise<{ id
                                       {' '}
                                       · {l.cantidad} × {Math.round(l.ancho * 10) / 10} × {Math.round((l.largo ?? 0) * 10) / 10} cm
                                     </span>
+                                  )}
+                                  {l.id?.startsWith('extra_') && !l.id.endsWith('_forma') && (
+                                    <div className="xs" style={{ color: 'var(--accent)' }}>
+                                      Agregado a mano
+                                    </div>
                                   )}
                                   {l.original && (
                                     <div className="xs" style={{ color: 'var(--accent)' }}>

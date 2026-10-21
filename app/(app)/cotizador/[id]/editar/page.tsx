@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { puedeVerCostos } from '@/lib/cotizador/permisos';
-import type { AjustesPiezas } from '@/lib/cotizador/tipos';
+import type { AjustesPiezas, PiezaAgregada } from '@/lib/cotizador/tipos';
 import { catalogoVenta, reglasPresupuesto } from '@/lib/cotizador/servicio';
 import { miembroActual } from '@/lib/sesion';
 import FormPresupuesto from '../../form-presupuesto';
@@ -22,7 +22,7 @@ export default async function EditarPresupuestoPage({ params }: { params: Promis
   ]);
   if (!p) notFound();
   if (p.pedido_id || p.estado === 'aprobado') redirect(`/cotizador/${id}`);
-  type Calc = { margen: number; resultado: { piezas?: AjustesPiezas } | null };
+  type Calc = { margen: number; resultado: { piezas?: AjustesPiezas; extras?: PiezaAgregada[] } | null };
   type Fila = { producto_id: string | null; valores: Record<string, number | string>; cantidad: number; cot_presupuesto_calculos: Calc | Calc[] | null };
   const calcDe = (f: Fila) => (Array.isArray(f.cot_presupuesto_calculos) ? f.cot_presupuesto_calculos[0] : f.cot_presupuesto_calculos);
   const margenDe = (f: Fila) => {
@@ -55,6 +55,7 @@ export default async function EditarPresupuestoPage({ params }: { params: Promis
             cantidad: i.cantidad,
             margen: verCostos ? margenDe(i) : null,
             piezas: verCostos ? (calcDe(i)?.resultado?.piezas ?? null) : null,
+            extras: verCostos ? (calcDe(i)?.resultado?.extras ?? null) : null,
           })),
           descuentoPct: Number(p.descuento_pct),
           observaciones: p.observaciones,

@@ -11,9 +11,9 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { crearAdmin } from '@/lib/supabase/admin';
 import { cargarCatalogo } from './catalogo';
-import { cotizar, entradasVisibles } from './motor';
+import { conPiezasAgregadas, cotizar, entradasVisibles } from './motor';
 import { leerReceta } from './receta';
-import type { AjustePieza, AjustesPiezas, Aviso, Catalogo, Receta, ResultadoCalculo } from './tipos';
+import type { AjustePieza, AjustesPiezas, Aviso, Catalogo, PiezaAgregada, Receta, ResultadoCalculo } from './tipos';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = SupabaseClient<any, any, any>;
@@ -84,6 +84,7 @@ export type CalculoItem = {
   /** Sin margen (ni del producto ni escrito): hay costo pero no precio. */
   sinMargen: boolean;
   piezas: AjustesPiezas;
+  extras: PiezaAgregada[];
   valores: Record<string, number | string>;
   resultado: ResultadoCalculo;
   detalle: string;
@@ -109,6 +110,27 @@ export function limpiarPiezas(receta: Receta, piezas: unknown): AjustesPiezas {
   return out;
 }
 
+/** Deja solo vidrios agregados válidos: hasta 10, del vidrio de una pieza por m² de la receta. */
+export function limpiarAgregadas(receta: Receta, extras: unknown): PiezaAgregada[] {
+  if (!Array.isArray(extras)) return [];
+  const m2 = new Set(receta.lineas.filter((l) => l.regla === 'm2').map((l) => l.id));
+  const out: PiezaAgregada[] = [];
+  for (const x of extras.slice(0, 10)) {
+    if (!x || typeof x !== 'object') continue;
+    const a = x as Record<string, unknown>;
+    const id = String(a.id ?? '');
+    const cantidad = Number(a.cantidad);
+    const ancho = Number(String(a.ancho ?? '').replace(',', '.'));
+    const largo = Number(String(a.largo ?? '').replace(',', '.'));
+    if (!/^extra_\d{1,3}$/.test(id) || out.some((o) => o.id === id) || !m2.has(String(a.como))) continue;
+    if (!(Number.isInteger(cantidad) && cantidad >= 1 && cantidad <= 50)) continue;
+    if (!(ancho >= 1 && ancho <= 600 && largo >= 1 && largo <= 600)) continue;
+    const nombre = String(a.nombre ?? '').trim().slice(0, 40) || 'Vidrio agregado';
+    out.push({ id, nombre, como: String(a.como), cantidad, ancho: Math.round(ancho * 10) / 10, largo: Math.round(largo * 10) / 10, forma: a.forma === true });
+  }
+  return out;
+}
+
 /** Calcula un producto con su receta publicada y el margen vigente. */
 export async function calcularItem(
   productoId: string,
@@ -119,6 +141,8 @@ export async function calcularItem(
   margenManual?: number | null,
   /** Piezas cambiadas a mano (solo quien ve costos). */
   piezas?: AjustesPiezas | null,
+  /** Vidrios agregados a mano (solo quien ve costos). */
+  extras?: unknown,
 ): Promise<CalculoItem> {
   const db = cache?.db ?? crearAdmin();
   const [{ data: prod }, { data: margen }] = await Promise.all([
@@ -136,7 +160,9 @@ export async function calcularItem(
   const manual = margenManual != null && Number.isFinite(margenManual) ? margenManual : null;
   const margenUsado = manual ?? margenProducto;
 
-  const receta = leerReceta(p.cot_recetas.definicion);
+  const recetaProducto = leerReceta(p.cot_recetas.definicion);
+  const agregadas = limpiarAgregadas(recetaProducto, extras);
+  const receta = conPiezasAgregadas(recetaProducto, agregadas);
   const catalogo = cache?.catalogo ?? (await cargarCatalogo(db));
   if (cache) cache.catalogo = catalogo;
   // Solo se usan los valores de entradas que existen y se piden.
@@ -158,6 +184,7 @@ export async function calcularItem(
     receta,
     margen: margenUsado ?? 0,
     sinMargen: margenUsado == null,
+    extras: agregadas,
     margenProducto,
     margenManual: manual,
     // Solo las piezas que de verdad quedaron distintas a la receta.

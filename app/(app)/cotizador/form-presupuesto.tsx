@@ -8,6 +8,7 @@ import { guardarPresupuesto, precioItem } from './actions';
 
 type Catalogo = { productos: ProductoVenta[]; etiquetas: Record<string, Record<string, string>>; muestras: Record<string, string> };
 type CampoPieza = { cantidad?: string; ancho?: string; largo?: string };
+type CampoExtra = { id: string; nombre: string; como: string; cantidad: string; ancho: string; largo: string; forma: boolean };
 type ClienteSel = { id: string | null; nombre: string; telefono: string | null };
 type Item = {
   key: number;
@@ -16,6 +17,8 @@ type Item = {
   cantidad: number;
   // Piezas cambiadas a mano (texto de los campos; vacío = lo de la receta).
   piezas: Record<string, CampoPieza>;
+  // Vidrios agregados a mano.
+  extras: CampoExtra[];
   resultado?: ResultadoVenta;
   error?: string;
   cargando?: boolean;
@@ -29,6 +32,7 @@ export type InicialPresupuesto = {
     cantidad: number;
     margen?: number | null;
     piezas?: Record<string, { cantidad?: number; ancho?: number; largo?: number }> | null;
+    extras?: { id: string; nombre: string; como: string; cantidad: number; ancho: number; largo: number; forma?: boolean }[] | null;
   }[];
   descuentoPct: number;
   observaciones: string | null;
@@ -58,6 +62,14 @@ function piezasNumeros(p: Record<string, CampoPieza>) {
   }
   return out;
 }
+const extrasEnviar = (xs: CampoExtra[]) =>
+  xs.map((x) => ({
+    ...x,
+    cantidad: Number(x.cantidad.replace(',', '.')),
+    ancho: Number(x.ancho.replace(',', '.') || NaN),
+    largo: Number(x.largo.replace(',', '.') || NaN),
+  }));
+const num = (n: number) => String(n).replace('.', ',');
 const aCampos = (p?: Record<string, { cantidad?: number; ancho?: number; largo?: number }> | null) =>
   Object.fromEntries(
     Object.entries(p ?? {}).map(([id, v]) => [
@@ -85,6 +97,7 @@ export default function FormPresupuesto({
       productoId: i.productoId,
       cantidad: i.cantidad,
       piezas: aCampos(i.piezas),
+      extras: (i.extras ?? []).map((x) => ({ ...x, cantidad: String(x.cantidad), ancho: num(x.ancho), largo: num(x.largo), forma: Boolean(x.forma) })),
       valores: Object.fromEntries(Object.entries(i.valores).map(([k, v]) => [k, String(v)])),
     })),
   );
@@ -121,6 +134,7 @@ export default function FormPresupuesto({
         it.cantidad,
         verCostos ? margenFraccion(margenRef.current) : null,
         verCostos ? piezasNumeros(it.piezas) : null,
+        verCostos ? extrasEnviar(it.extras) : null,
       );
       if (turnos.current.get(it.key) !== n) return;
       setItems((xs) => xs.map((x) => (x.key === it.key ? { ...x, resultado: r.resultado, error: r.error, cargando: false } : x)));
@@ -143,7 +157,7 @@ export default function FormPresupuesto({
     if (!p) return;
     const valores: Record<string, string> = {};
     for (const [k, e] of Object.entries(p.entradas)) if (e.def != null) valores[k] = String(e.def);
-    const it: Item = { key: siguiente++, productoId, valores, cantidad: 1, piezas: {} };
+    const it: Item = { key: siguiente++, productoId, valores, cantidad: 1, piezas: {}, extras: [] };
     setItems((xs) => [...xs, it]);
     setAbierto(it.key);
     pedirPrecio(it);
@@ -182,6 +196,7 @@ export default function FormPresupuesto({
             cantidad: i.cantidad,
             margen: verCostos ? margenFraccion(margen) : null,
             piezas: verCostos ? piezasNumeros(i.piezas) : null,
+            extras: verCostos ? extrasEnviar(i.extras) : null,
           };
         }),
         descuentoPct: pct,
@@ -613,7 +628,19 @@ function ItemPresupuesto({
 type LineaCosto = NonNullable<ResultadoVenta['costos']>['lineas'][number];
 
 function Desglose({ item, lineas, onCambiar }: { item: Item; lineas: LineaCosto[]; onCambiar: (c: Partial<Item>) => void }) {
-  const cambiadas = lineas.filter((l) => l.pieza?.original).length;
+  const cambiadas = lineas.filter((l) => l.pieza?.original).length + item.extras.length;
+  const propias = lineas.filter((l) => !l.id.startsWith('extra_'));
+  const vidrios = propias.filter((l) => l.pieza).map((l) => ({ id: l.id, nombre: l.nombre }));
+  const costoExtra = (id: string) => {
+    const ls = lineas.filter((l) => l.id === id || l.id === `${id}_forma`);
+    return ls.length ? ls.reduce((s, l) => s + l.costo, 0) : null;
+  };
+  const cambiarExtra = (id: string, c: Partial<CampoExtra>) => onCambiar({ extras: item.extras.map((x) => (x.id === id ? { ...x, ...c } : x)) });
+  const agregar = () => {
+    const n = Math.max(0, ...item.extras.map((x) => Number(x.id.split('_')[1]) || 0)) + 1;
+    const como = vidrios.find((v) => /base|pata|lateral/i.test(v.nombre))?.id ?? vidrios[0]?.id ?? '';
+    onCambiar({ extras: [...item.extras, { id: `extra_${n}`, nombre: 'Vidrio agregado', como, cantidad: '1', ancho: '', largo: '', forma: false }] });
+  };
   const campo = (l: LineaCosto, k: keyof CampoPieza) => {
     const escrito = item.piezas[l.id]?.[k];
     if (escrito != null) return escrito;
@@ -630,11 +657,14 @@ function Desglose({ item, lineas, onCambiar }: { item: Item; lineas: LineaCosto[
   return (
     <details className="presu-desglose" open={cambiadas > 0}>
       <summary className="small">
-        <strong>Desglose</strong> <span className="quiet">· {cambiadas ? `${cambiadas} ${cambiadas === 1 ? 'pieza cambiada' : 'piezas cambiadas'} · ` : ''}cambiá medidas o cantidades de los vidrios</span>
+        <strong>Desglose</strong>{' '}
+        <span className="quiet">
+          · {cambiadas ? `${cambiadas} ${cambiadas === 1 ? 'cambio' : 'cambios'} · ` : ''}cambiá medidas, cantidades o agregá vidrios
+        </span>
       </summary>
       <table className="tabla probador-tabla presu-desglose-tabla">
         <tbody>
-          {lineas.map((l) => (
+          {propias.map((l) => (
             <tr key={l.id} className={l.pieza?.original ? 'presu-pieza-cambiada' : undefined}>
               <td>
                 {l.nombre}
@@ -668,8 +698,50 @@ function Desglose({ item, lineas, onCambiar }: { item: Item; lineas: LineaCosto[
               <td className="der num">{plata(l.costo)}</td>
             </tr>
           ))}
+          {item.extras.map((x) => {
+            const c = costoExtra(x.id);
+            return (
+              <tr key={x.id} className="presu-pieza-cambiada">
+                <td>
+                  <div className="presu-pieza">
+                    <input aria-label="Nombre del vidrio" className="presu-extra-nombre" value={x.nombre} onChange={(e) => cambiarExtra(x.id, { nombre: e.target.value })} />
+                    <select aria-label="Del mismo vidrio que" value={x.como} onChange={(e) => cambiarExtra(x.id, { como: e.target.value })}>
+                      {vidrios.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          vidrio como {v.nombre.toLowerCase()}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="presu-pieza">
+                    <input aria-label="Cantidad" inputMode="numeric" value={x.cantidad} onChange={(e) => cambiarExtra(x.id, { cantidad: e.target.value })} />
+                    <span>×</span>
+                    <input aria-label="Ancho (cm)" inputMode="decimal" placeholder="ancho" value={x.ancho} onChange={(e) => cambiarExtra(x.id, { ancho: e.target.value })} />
+                    <span>×</span>
+                    <input aria-label="Largo (cm)" inputMode="decimal" placeholder="largo" value={x.largo} onChange={(e) => cambiarExtra(x.id, { largo: e.target.value })} />
+                    <span className="quiet">cm</span>
+                    <label className="xs" style={{ display: 'inline-flex', gap: 4, alignItems: 'center', marginLeft: 6 }}>
+                      <input type="checkbox" checked={x.forma} onChange={(e) => cambiarExtra(x.id, { forma: e.target.checked })} /> con forma
+                    </label>
+                  </div>
+                  <div className="xs">
+                    {c == null && <span className="quiet">Completá cantidad y medidas · </span>}
+                    <button type="button" className="link-boton" onClick={() => onCambiar({ extras: item.extras.filter((y) => y.id !== x.id) })}>
+                      quitar
+                    </button>
+                  </div>
+                </td>
+                <td className="der num">{c == null ? '—' : plata(c)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
+      {vidrios.length > 0 && item.extras.length < 10 && (
+        <button type="button" className="btn btn-chico" style={{ marginTop: 8 }} onClick={agregar}>
+          + Agregar vidrio
+        </button>
+      )}
       <p className="xs quiet" style={{ margin: '6px 0 0' }}>Solo para este presupuesto: la receta del producto no cambia. El cliente no ve el desglose.</p>
     </details>
   );

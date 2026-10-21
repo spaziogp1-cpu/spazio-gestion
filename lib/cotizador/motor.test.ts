@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cotizar, entradasVisibles, validarReceta } from './motor';
+import { conPiezasAgregadas, cotizar, entradasVisibles, validarReceta } from './motor';
 import type { Catalogo, Receta } from './tipos';
 
 // Precios reales de la lista de Vidpro (15/10/2026) y de STG.
@@ -342,4 +342,23 @@ test('piezas cambiadas a mano: pisan medida y cantidad, y el ajuste las sigue', 
   const igual = cotizar({ receta: luna, catalogo, valores: { L: 140, P: 60, H: 35, color: 'bronce' }, margen: 0.45, piezas: { lat: { ancho: 60 }, uv: { cantidad: 9 } } });
   assert.equal(igual.lineas.find((l) => l.id === 'lat')!.original, undefined);
   assert.equal(igual.costoUnitario, base.costoUnitario);
+});
+
+test('vidrios agregados a mano: mismo vidrio que la pieza elegida y entran en el ajuste', () => {
+  const receta = conPiezasAgregadas(luna, [
+    { id: 'extra_1', nombre: 'Estante', como: 'tapa', cantidad: 1, ancho: 100, largo: 50 },
+    { id: 'extra_2', nombre: 'Refuerzo', como: 'lat', cantidad: 2, ancho: 20, largo: 30, forma: true },
+    { id: 'extra_3', nombre: 'No existe', como: 'uv', cantidad: 1, ancho: 10, largo: 10 },
+  ]);
+  assert.deepEqual(receta.lineas.map((l) => l.id), ['tapa', 'extra_1', 'lat', 'extra_2', 'extra_2_forma', 'ajuste', 'uv']);
+  assert.deepEqual(receta.lineas.find((l) => l.id === 'ajuste')!.sobre, ['tapa', 'lat', 'extra_1', 'extra_2', 'extra_2_forma']);
+  const conForma = { ...catalogo, ajustes: { ...catalogo.ajustes, recargo_forma: 0.2 } };
+  assert.deepEqual(validarReceta(receta, conForma).filter((a) => a.nivel === 'error'), []);
+  const r = cotizar({ receta, catalogo: conForma, valores: { L: 140, P: 60, H: 35, color: 'bronce' }, margen: 0.45 });
+  assert.equal(r.ok, true, JSON.stringify(r.avisos));
+  assert.equal(costo(r, 'extra_1'), 57750); // 0,5 m² × 115.500, bronce como la tapa
+  assert.equal(costo(r, 'extra_2'), 46200); // 2 piezas de 0,06 m² → mínimo 0,20 m² cada una
+  assert.equal(costo(r, 'extra_2_forma'), 9240); // 20%
+  assert.equal(costo(r, 'ajuste'), Math.round((97020 + 47124 + 57750 + 46200 + 9240) * 0.2 * 100) / 100);
+  assert.equal(conPiezasAgregadas(luna, []), luna);
 });

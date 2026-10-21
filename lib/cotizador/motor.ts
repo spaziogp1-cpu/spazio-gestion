@@ -11,6 +11,7 @@
 import { ErrorFormula, compilar, evaluarCondicion, evaluarNumero, evaluarTexto, variablesDe, type Variables } from './formula';
 import type {
   AjustesPiezas,
+  PiezaAgregada,
   Aviso,
   Catalogo,
   Insumo,
@@ -22,6 +23,51 @@ import type {
   Tarifa,
   ValoresAtributos,
 } from './tipos';
+
+/**
+ * Receta con los vidrios agregados a mano en un presupuesto. Cada uno copia el vidrio de la pieza
+ * "como" (insumo y variante: mismo color y espesor), va justo después de ella y entra en los mismos
+ * porcentajes (ajuste) que esa pieza. Con forma suma su propio recargo de forma.
+ */
+export function conPiezasAgregadas(receta: Receta, extras: PiezaAgregada[]): Receta {
+  if (!extras.length) return receta;
+  let lineas = [...receta.lineas];
+  const nuevosEnPorcentajes = new Map<string, string[]>(); // id de la pieza "como" → ids agregados
+  for (const x of extras) {
+    const i = lineas.findIndex((l) => l.id === x.como && l.regla === 'm2');
+    if (i < 0 || lineas.some((l) => l.id === x.id)) continue;
+    const base = lineas[i];
+    const pieza: Linea = {
+      id: x.id,
+      nombre: x.nombre,
+      regla: 'm2',
+      insumo: base.insumo,
+      insumoFormula: base.insumoFormula,
+      variante: base.variante,
+      cantidad: String(x.cantidad),
+      ancho: String(x.ancho),
+      largo: String(x.largo),
+      nota: `Agregada a mano (vidrio como ${base.nombre})`,
+    };
+    const nuevas: Linea[] = [pieza];
+    const ids = [x.id];
+    if (x.forma) {
+      nuevas.push({ id: `${x.id}_forma`, nombre: `${x.nombre}: con forma`, regla: 'porcentaje', porcentaje: 'aj.recargo_forma', sobre: [x.id] });
+      ids.push(`${x.id}_forma`);
+    }
+    // Después de la pieza "como" y de los agregados anteriores a ella.
+    let j = i + 1;
+    while (j < lineas.length && lineas[j].id.startsWith('extra_')) j++;
+    lineas = [...lineas.slice(0, j), ...nuevas, ...lineas.slice(j)];
+    nuevosEnPorcentajes.set(x.como, [...(nuevosEnPorcentajes.get(x.como) ?? []), ...ids]);
+  }
+  lineas = lineas.map((l) => {
+    if (l.regla !== 'porcentaje' || !l.sobre || l.id.startsWith('extra_')) return l;
+    const suma = l.sobre.flatMap((id) => nuevosEnPorcentajes.get(id) ?? []);
+    return suma.length ? { ...l, sobre: [...l.sobre, ...suma] } : l;
+  });
+  return { ...receta, lineas };
+}
 
 export const VERSION_MOTOR = 'motor-2'; // motor-2: piezas cambiadas a mano
 
