@@ -381,7 +381,8 @@ function valoresDeEntrada(receta: Receta, cat: Catalogo, elegidos: Record<string
     }
     if (ent.tipo === 'medida') {
       const n = typeof crudo === 'number' ? crudo : Number(String(crudo).replace(',', '.'));
-      if (!Number.isFinite(n) || n <= 0) {
+      // Las medidas con mínimo 0 (cantidades: bases, regatones) aceptan 0.
+      if (!Number.isFinite(n) || n < 0 || (n === 0 && ent.min !== 0)) {
         avisos.push({ nivel: 'error', mensaje: `${ent.nombre}: "${crudo}" no es una medida válida` });
         vars[clave] = 0;
         continue;

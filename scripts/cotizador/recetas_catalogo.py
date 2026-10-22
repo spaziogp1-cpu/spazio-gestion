@@ -114,34 +114,94 @@ WEB = "Proporciones del cotizador de la web (sin plano)"
 
 # ---------------------------------------------------------------- espejos
 TONO = {"tono": {"tipo": "opcion", "nombre": "Espejo", "permitidos": ["plata", "bronce", "gris", "color"], "def": "plata"}}
+# Plata: 3 a 6 mm. Bronce y gris: solo 4 mm. De color: laminado 3+3 o 4+3.
+ESPESOR_ESPEJO = {
+    "espesor_plata": {"tipo": "opcion", "nombre": "Espesor", "atributo": "espesor", "permitidos": ["3", "4", "5", "6"],
+                      "def": "4", "mostrarSi": "tono == 'plata'"},
+    "espesor_color": {"tipo": "opcion", "nombre": "Espesor", "atributo": "composicion_espejo", "permitidos": ["3e+3", "4e+3"],
+                      "def": "3e+3", "mostrarSi": "tono == 'color'"},
+}
+# El laminado de color no se bisela (no tiene precio de biselado).
+BISEL = {"biselado": {"tipo": "opcion", "nombre": "Biselado", "permitidos": ["no", "si"], "def": "no", "mostrarSi": "tono != 'color'"}}
+
+
+def terminacion(forma):
+    """forma: True, False o una condición ("forma == 'si'"). Biselado: precio de "biselado" de Vidpro."""
+    f = (lambda a, b: f"si({forma}, '{a}', '{b}')") if isinstance(forma, str) else (lambda a, b: f"'{a if forma else b}'")
+    return f"si(biselado == 'si', {f('biselado-forma', 'biselado')}, {f('pulido-forma', 'pulido-recto')})"
 
 
 def espejo(l, a, forma, molde, redondo=False):
-    term = "'pulido-forma'" if forma else "'pulido-recto'"
+    """forma y molde: True/False, o una condición sobre las entradas (espejo personalizado)."""
     medidas = ({"D": {"tipo": "medida", "nombre": "Diámetro", "def": l}} if redondo else
                {"L": {"tipo": "medida", "nombre": "Ancho", "def": l}, "H": {"tipo": "medida", "nombre": "Alto", "def": a}})
     ancho, largo = ("D", "D") if redondo else ("L", "H")
     lineas = [{"id": "espejo", "nombre": "Espejo", "regla": "m2",
                "insumoFormula": "si(tono == 'plata', 'espejo', si(tono == 'color', 'espejo-laminado-color', 'espejo-color'))",
-               "variante": {"espesor": "'4'", "terminacion_espejo": term, "composicion_espejo": "'3e+3'"}, "ancho": ancho, "largo": largo,
-               "nota": "Espejo 4 mm pulido" + (" con forma" if forma else "") + "; bronce y gris, espejo color; de color, laminado 3+3"}]
+               "variante": {"espesor": "si(tono == 'plata', espesor_plata, '4')", "terminacion_espejo": terminacion(forma),
+                            "composicion_espejo": "si(tono == 'color', espesor_color, '3e+3')"},
+               "ancho": ancho, "largo": largo,
+               "nota": "Plata 3 a 6 mm; bronce y gris 4 mm; de color, laminado 3+3 o 4+3. Pulido o biselado"}]
     if forma:
         # El laminado de color no tiene precio con forma: se le suma el recargo de forma.
-        lineas.append({"id": "forma", "nombre": "Recargo por forma", "regla": "porcentaje", "condicion": "tono == 'color'",
+        cond = "tono == 'color'" + (f" && {forma}" if isinstance(forma, str) else "")
+        lineas.append({"id": "forma", "nombre": "Recargo por forma", "regla": "porcentaje", "condicion": cond,
                        "porcentaje": "aj.recargo_forma", "sobre": ["espejo"]})
     if molde:
-        lineas.append({"id": "molde", "nombre": "Mano de obra del molde", "regla": "porcentaje",
-                       "porcentaje": "aj.recargo_molde", "sobre": ["espejo"]})
+        l = {"id": "molde", "nombre": "Mano de obra del molde", "regla": "porcentaje",
+             "porcentaje": "aj.recargo_molde", "sobre": ["espejo"]}
+        if isinstance(molde, str):
+            l["condicion"] = molde
+        lineas.append(l)
     lineas += [{"id": "perfil_j", "nombre": "Perfil J de aluminio", "regla": "ml", "insumo": "perfil-j-aluminio",
                 "cantidad": "3", "metros": "0.4", "nota": "3 tiras de 40 cm atrás"},
                {"id": "silicona", "nombre": "Pegado con silicona", "regla": "fijo", "insumo": "silicona-espejo"}]
-    entradas = {**medidas, **TONO}
+    personal = {}
+    if isinstance(forma, str):
+        personal["con_forma"] = {"tipo": "opcion", "nombre": "Forma", "permitidos": ["no", "si"], "def": "no"}
+    if isinstance(molde, str):
+        personal["con_molde"] = {"tipo": "opcion", "nombre": "Molde", "permitidos": ["no", "si"], "def": "no"}
+    entradas = {**medidas, **personal, **TONO, **ESPESOR_ESPEJO, **BISEL}
     return {"orden": list(entradas), "entradas": entradas, "lineas": lineas}
+
+
+def mesa_personalizada():
+    """Mesa sin modelo: tapa y bases de partida; el resto se arma en el desglose del presupuesto."""
+    rec = receta(RECT(100, 50, 40), "v10",
+                 [pieza("tapa", "Tapa", 1, "L", "P", nota="Cambiá medidas o cantidad en el desglose"),
+                  bases("bases", "Bases", "cant_bases", "P", nota="Agregá más vidrios con «+ Agregar vidrio»")], None)
+    ent = rec["entradas"]
+    ent.update({
+        "cant_bases": {"tipo": "medida", "nombre": "Bases", "min": 0, "max": 10, "def": 2},
+        "forma_tapa": {"tipo": "opcion", "nombre": "Forma en la tapa", "permitidos": ["no", "si"], "def": "no"},
+        "ajuste": {"tipo": "opcion", "nombre": "Ajuste (20%)", "permitidos": ["mesa baja", "mesa alta", "sin ajuste"],
+                   "def": "mesa baja"},
+        "uv_extra": {"tipo": "medida", "nombre": "Pegado UV extra (cm)", "min": 0, "max": 2000, "def": 0},
+        "insertos": {"tipo": "opcion", "nombre": "Insertos", "permitidos": ["no", "si"], "def": "no"},
+        "cant_regatones": {"tipo": "medida", "nombre": "Regatones", "min": 0, "max": 20, "def": 0},
+    })
+    piezas = ["tapa", "bases"]
+    rec["lineas"] += [
+        {"id": "forma", "nombre": "Recargo por forma", "regla": "porcentaje", "condicion": "forma_tapa == 'si'",
+         "porcentaje": "aj.recargo_forma", "sobre": ["tapa"], "nota": "Tapa con forma o puntas redondeadas: 20%"},
+        {"id": "ajuste_baja", "nombre": "Ajuste", "regla": "porcentaje", "condicion": "ajuste == 'mesa baja'",
+         "porcentaje": "aj.ajuste_vidpro", "sobre": piezas + ["forma"], "nota": "Mesa baja: 20% sobre todos los vidrios"},
+        {"id": "ajuste_alta", "nombre": "Ajuste", "regla": "porcentaje", "condicion": "ajuste == 'mesa alta'",
+         "porcentaje": "aj.ajuste_vidpro", "sobre": ["bases"], "nota": "Mesa alta: 20% solo sobre las bases"},
+        {"id": "uv", "nombre": "Pegado UV", "regla": "ml", "insumo": "pegado-uv", "condicion": "cant_bases * (H - 1) + uv_extra > 0",
+         "variante": {"tipo_vidrio": FAMILIAS["v10"]["uv"](["color", COLOR_BASES])},
+         "metros": "(cant_bases * (H - 1) + uv_extra) / 100", "nota": "Cada base pegada en su alto, más el UV extra"},
+        {**INSERTOS_ALTA[0], "insumoFormula": "si(en(espesor, '8', '10'), 'insertos-mesa-alta-10', 'insertos-mesa-alta-12')"},
+        {**REGATONES, "cantidad": "cant_regatones", "condicion": "cant_regatones > 0"},
+    ]
+    rec["orden"] = list(ent)
+    return rec
 
 
 # ---------------------------------------------------------------- catálogo
 R, AUX, COM, ESC, EST, REC, ESP = ("Mesas ratonas", "Mesas auxiliares", "Mesas de comedor", "Escritorios",
                                    "Estantes", "Recibidores y consolas", "Espejos")
+PERS = "Personalizados"
 C = []  # (nombre, categoría, receta, nota)
 
 # --- Ratonas UV
@@ -314,6 +374,12 @@ for nombre, l, a, forma, molde, redondo in [
     C.append((nombre, ESP, espejo(l, a, forma, molde, redondo),
               "Con molde: +30% de mano de obra" if molde else ("Pulido con forma" if forma else "Pulido recto")))
 
+# --- Personalizados: sin modelo, se arman en el desglose
+C.append(("Espejo Personalizado", PERS, espejo(60, 80, "con_forma == 'si'", "con_molde == 'si'"),
+          "Cualquier forma: medidas del rectángulo que lo contiene; vidrios extra en el desglose"))
+C.append(("Mesa Personalizada", PERS, mesa_personalizada(),
+          "Sin modelo: se arma en el desglose (tapa, bases y vidrios agregados)"))
+
 # ---------------------------------------------------------------- SQL
 q = lambda s: "'" + s.replace("'", "''") + "'"
 out = ["""-- =====================================================================
@@ -322,6 +388,8 @@ out = ["""-- ===================================================================
 -- publica cada receta como versión nueva solo si cambió. Se puede correr de nuevo.
 -- Se ejecuta después de 2026-10_componentes.sql y 2026-10_recetas_piloto.sql.
 -- =====================================================================
+
+insert into public.cot_categorias (nombre, orden) values ('Personalizados', 5) on conflict (nombre) do nothing;
 
 create or replace function pg_temp.publicar_receta(p_nombre text, p_categoria text, p_def jsonb, p_nota text) returns text
 language plpgsql as $$

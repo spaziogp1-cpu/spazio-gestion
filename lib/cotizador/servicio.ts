@@ -110,12 +110,12 @@ export function limpiarPiezas(receta: Receta, piezas: unknown): AjustesPiezas {
   return out;
 }
 
-/** Deja solo vidrios agregados válidos: hasta 10, del vidrio de una pieza por m² de la receta. */
+/** Deja solo vidrios agregados válidos: hasta 20, del vidrio de una pieza por m² de la receta. */
 export function limpiarAgregadas(receta: Receta, extras: unknown): PiezaAgregada[] {
   if (!Array.isArray(extras)) return [];
   const m2 = new Set(receta.lineas.filter((l) => l.regla === 'm2').map((l) => l.id));
   const out: PiezaAgregada[] = [];
-  for (const x of extras.slice(0, 10)) {
+  for (const x of extras.slice(0, 20)) {
     if (!x || typeof x !== 'object') continue;
     const a = x as Record<string, unknown>;
     const id = String(a.id ?? '');
@@ -196,15 +196,24 @@ export async function calcularItem(
 }
 
 /** "140 × 60 × 35 cm · Bronce · 10 mm" a partir de lo elegido. */
+/** Entradas de uso interno: no van en la descripción que ve el cliente. */
+const INTERNAS = new Set(['ajuste', 'uv_extra']);
+
 export function describirItem(receta: Receta, valores: Record<string, number | string>, catalogo: Catalogo): string {
   const medidas: string[] = [];
   const opciones: string[] = [];
   const visibles = new Set(entradasVisibles(receta, valores));
   for (const [k, e] of Object.entries(receta.entradas)) {
-    if (!visibles.has(k)) continue;
+    if (!visibles.has(k) || INTERNAS.has(k)) continue;
     const v = valores[k] ?? e.def;
     if (v == null || v === '') continue;
-    if (e.tipo === 'medida') medidas.push(`${/^di[aá]metro$/i.test(e.nombre) ? 'Ø ' : ''}${String(v).replace('.', ',')}`);
+    if (e.tipo === 'medida' && e.min !== 0) medidas.push(`${/^di[aá]metro$/i.test(e.nombre) ? 'Ø ' : ''}${String(v).replace('.', ',')}`);
+    else if (e.tipo === 'medida') {
+      // Las que admiten 0 (bases, regatones, UV extra) son cantidades: con su nombre y solo si no son 0.
+      if (Number(v) === 0) continue;
+      const u = /^(.*?)\s*\((\w+)\)$/.exec(e.nombre.toLowerCase());
+      opciones.push(u ? `${u[1]} ${String(v).replace('.', ',')} ${u[2]}` : `${e.nombre.toLowerCase()}: ${String(v).replace('.', ',')}`);
+    }
     else {
       const etq = (e.atributo && catalogo.valores[e.atributo]?.[String(v)]?.etiqueta) || String(v);
       const nombre = e.nombre.toLowerCase();

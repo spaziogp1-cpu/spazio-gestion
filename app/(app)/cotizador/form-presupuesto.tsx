@@ -521,7 +521,13 @@ function ItemPresupuesto({
                 return (
                   <div className="campo" key={k}>
                     <label htmlFor={`m-${item.key}-${k}`}>
-                      {e.nombre} <span className="quiet">(cm{e.min != null && e.max != null ? `, ${e.min} a ${e.max}` : ''})</span>
+                      {e.nombre}{' '}
+                      {e.min === 0 ? (
+                        // Cantidad (bases, regatones…): sin "cm".
+                        e.max != null && <span className="quiet">(0 a {e.max})</span>
+                      ) : (
+                        <span className="quiet">(cm{e.min != null && e.max != null ? `, ${e.min} a ${e.max}` : ''})</span>
+                      )}
                     </label>
                     <input
                       id={`m-${item.key}-${k}`}
@@ -737,7 +743,7 @@ function Desglose({ item, lineas, onCambiar }: { item: Item; lineas: LineaCosto[
           })}
         </tbody>
       </table>
-      {vidrios.length > 0 && item.extras.length < 10 && (
+      {vidrios.length > 0 && item.extras.length < 20 && (
         <button type="button" className="btn btn-chico" style={{ marginTop: 8 }} onClick={agregar}>
           + Agregar vidrio
         </button>
