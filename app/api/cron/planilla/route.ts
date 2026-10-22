@@ -20,16 +20,18 @@ async function autorizado(request: NextRequest) {
 
 async function correr(request: NextRequest) {
   if (!(await autorizado(request))) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  try {
-    const db = crearAdmin('Planilla original');
-    const r = await importarDeOriginal(db);
-    // Después, los pedidos de la app que todavía no se pudieron escribir en la planilla.
-    const escritos = await sincronizarPendientes(db).catch((e) => ({ ok: 0, error: 1, detalle: String(e) }));
-    return NextResponse.json({ ok: true, ...r, escritos });
-  } catch (e) {
+  const db = crearAdmin('Planilla original');
+  // Cada parte va por separado: si falla la importación, igual se escriben los pendientes.
+  const importadas = await importarDeOriginal(db).catch((e) => {
     console.error('planilla original', e);
-    return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });
-  }
+    return { error: e instanceof Error ? e.message : String(e) };
+  });
+  const escritos = await sincronizarPendientes(db).catch((e) => {
+    console.error('planilla pendientes', e);
+    return { error: e instanceof Error ? e.message : String(e) };
+  });
+  const ok = !('error' in importadas) && !('error' in escritos);
+  return NextResponse.json({ ok, importadas, escritos }, { status: ok ? 200 : 500 });
 }
 
 export const GET = correr;
