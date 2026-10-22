@@ -8,9 +8,10 @@ const PRODUCTO_POR_CATEGORIA: Record<string, string> = {
   'mesas de comedor': 'mesa alta',
   escritorios: 'escritorio',
   'recibidores y consolas': 'recibidor',
-  espejos: 'espejo',
-  estantes: 'estante',
-  'sillas y taburetes': 'silla',
+  espejos: 'espejos',
+  estantes: 'estanteria',
+  'sillas y taburetes': 'sillas',
+  personalizados: 'Personalizado',
 };
 
 export type ItemPedido = {
@@ -44,6 +45,7 @@ export function itemParaPedido(d: {
     const v = d.valores[k];
     if (v == null || v === '') continue;
     if (e.tipo === 'medida') {
+      if (e.min === 0) continue; // cantidades (bases, regatones), no medidas
       medidas.push(String(v).replace('.', ','));
       continue;
     }
@@ -54,8 +56,8 @@ export function itemParaPedido(d: {
   }
   const esp = d.vidrio?.composicion ?? (d.vidrio?.espesor ? `${d.vidrio.espesor}mm` : '');
   return {
-    producto: PRODUCTO_POR_CATEGORIA[(d.categoria ?? '').toLowerCase()] ?? 'mueble',
-    modelo: d.titulo.replace(/^mesa\s+/i, '').toLowerCase(),
+    producto: /^taburete/i.test(d.titulo) ? 'taburete' : /^espejo/i.test(d.titulo) ? 'espejos' : (PRODUCTO_POR_CATEGORIA[(d.categoria ?? '').toLowerCase()] ?? 'mueble'),
+    modelo: d.titulo.replace(/^(mesa|espejo|silla|taburete|estanter[ií]a|recibidor)\s+/i, '').toLowerCase(),
     medidas: medidas.join('x'),
     color,
     material: esp,

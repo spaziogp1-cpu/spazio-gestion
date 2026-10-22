@@ -59,3 +59,17 @@ test('Aire alta redonda: tapa de melamina y espesor de float', () => {
   assert.equal(it.cantidad, 2);
   assert.equal(itemParaPedido({ titulo: 'Cosa', categoria: null, receta: null, valores: {}, etiquetas, precio: 1, cantidad: 1 }).producto, 'mueble');
 });
+
+test('sillas, taburetes y espejos como en la planilla', () => {
+  const etiquetas = { tapizado: { mocca: 'Mocca' } };
+  const receta = { entradas: { color: { tipo: 'opcion' as const, nombre: 'Tapizado', atributo: 'tapizado' } }, lineas: [] };
+  const silla = itemParaPedido({ titulo: 'Silla Cesca', categoria: 'Sillas y taburetes', receta, valores: { color: 'mocca' }, etiquetas, precio: 1, cantidad: 4 });
+  assert.equal(silla.producto, 'sillas');
+  assert.equal(silla.modelo, 'cesca');
+  assert.equal(silla.color, 'mocca');
+  const tab = itemParaPedido({ titulo: 'Taburete Duna', categoria: 'Sillas y taburetes', receta, valores: {}, etiquetas, precio: 1, cantidad: 1 });
+  assert.equal(tab.producto, 'taburete');
+  assert.equal(tab.modelo, 'duna');
+  const esp = itemParaPedido({ titulo: 'Espejo Personalizado', categoria: 'Personalizados', receta: null, valores: {}, etiquetas, precio: 1, cantidad: 1 });
+  assert.deepEqual([esp.producto, esp.modelo], ['espejos', 'personalizado']);
+});

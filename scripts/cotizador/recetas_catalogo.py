@@ -202,6 +202,7 @@ def mesa_personalizada():
 R, AUX, COM, ESC, EST, REC, ESP = ("Mesas ratonas", "Mesas auxiliares", "Mesas de comedor", "Escritorios",
                                    "Estantes", "Recibidores y consolas", "Espejos")
 PERS = "Personalizados"
+SILLAS = "Sillas y taburetes"
 C = []  # (nombre, categoría, receta, nota)
 
 # --- Ratonas UV
@@ -380,6 +381,28 @@ C.append(("Espejo Personalizado", PERS, espejo(60, 80, "con_forma == 'si'", "con
 C.append(("Mesa Personalizada", PERS, mesa_personalizada(),
           "Sin modelo: se arma en el desglose (tapa, bases y vidrios agregados)"))
 
+# --- Sillas y taburetes: precio por unidad, no cambia con el tapizado
+TAPIZADO = {"color": {"tipo": "opcion", "nombre": "Tapizado", "atributo": "tapizado", "def": "mocca"}}
+TAPIZADOS = [("mocca", "Mocca"), ("almendra", "Almendra"), ("beige", "Beige"), ("verde-ingles", "Verde inglés"),
+             ("negro", "Negro"), ("gris-claro", "Gris claro"), ("seco", "Seco"), ("edward-dl", "Edward DL"),
+             ("microcuadro-negro", "Microcuadro negro"), ("rojo", "Rojo"), ("naranja", "Naranja")]
+
+
+def silla(lineas):
+    return {"orden": list(TAPIZADO), "entradas": TAPIZADO, "lineas": lineas}
+
+
+TAPIZADO_BELEN = {"id": "tapizado", "nombre": "Tapizado (Belén)", "regla": "unidad", "insumo": "tapizado-cesca"}
+stg = lambda modelo, nota: {"id": "stg", "nombre": "STG", "regla": "unidad", "insumo": "estructura-stg",
+                            "variante": {"modelo": f"'{modelo}'"}, "nota": nota}
+C.append(("Silla Cesca", SILLAS, silla([
+    {"id": "estructura", "nombre": "Estructura (Alberto)", "regla": "unidad", "insumo": "silla-cesca"}, TAPIZADO_BELEN]),
+    "Estructura de Alberto y tapizado de Belén"))
+C.append(("Silla Cesca Cerrada", SILLAS, silla([stg("silla-cesca-cerrada", "Lista de STG"), TAPIZADO_BELEN]),
+          "Estructura de STG (a confirmar) y tapizado de Belén"))
+C.append(("Silla Duna", SILLAS, silla([stg("silla-duna", "Llega completa de STG")]), "STG la hace completa"))
+C.append(("Taburete Duna", SILLAS, silla([stg("taburete-duna", "Llega completo de STG")]), "STG lo hace completo"))
+
 # ---------------------------------------------------------------- SQL
 q = lambda s: "'" + s.replace("'", "''") + "'"
 out = ["""-- =====================================================================
@@ -389,7 +412,9 @@ out = ["""-- ===================================================================
 -- Se ejecuta después de 2026-10_componentes.sql y 2026-10_recetas_piloto.sql.
 -- =====================================================================
 
-insert into public.cot_categorias (nombre, orden) values ('Personalizados', 5) on conflict (nombre) do nothing;
+insert into public.cot_categorias (nombre, orden) values ('Personalizados', 5), ('Sillas y taburetes', 70) on conflict (nombre) do nothing;
+insert into public.cot_atributos (clave, nombre, orden) values ('tapizado', 'Tapizado', 20) on conflict (clave) do nothing;
+""" + "\n".join(f"insert into public.cot_atributo_valores (atributo, valor, etiqueta, grupos, orden) values ('tapizado', '{v}', '{e}', '{{}}', {i}) on conflict (atributo, valor) do nothing;" for i, (v, e) in enumerate(TAPIZADOS)) + """
 
 create or replace function pg_temp.publicar_receta(p_nombre text, p_categoria text, p_def jsonb, p_nota text) returns text
 language plpgsql as $$

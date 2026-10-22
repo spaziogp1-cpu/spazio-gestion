@@ -62,7 +62,7 @@ export const TIPOS_PAGO = [
 ] as const;
 
 // Sugerencias tomadas de la planilla (se puede escribir cualquier otro valor).
-export const PRODUCTOS_SUGERIDOS = ['mesa ratona', 'mesa alta', 'mesa auxiliar', 'mesa de luz', 'mueble', 'vidrio'];
+export const PRODUCTOS_SUGERIDOS = ['mesa ratona', 'mesa alta', 'mesa auxiliar', 'mesa de luz', 'escritorio', 'espejos', 'estanteria', 'sillas', 'taburete', 'mueble', 'vidrio'];
 export const MATERIALES_SUGERIDOS = ['10mm', '4+4', '5+5', '6+6', '3+3'];
 
 export function nombreDe(lista: readonly { id: string; nombre: string }[], id: string | null | undefined) {
