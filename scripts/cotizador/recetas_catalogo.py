@@ -381,27 +381,63 @@ C.append(("Espejo Personalizado", PERS, espejo(60, 80, "con_forma == 'si'", "con
 C.append(("Mesa Personalizada", PERS, mesa_personalizada(),
           "Sin modelo: se arma en el desglose (tapa, bases y vidrios agregados)"))
 
-# --- Sillas y taburetes: precio por unidad, no cambia con el tapizado
-TAPIZADO = {"color": {"tipo": "opcion", "nombre": "Tapizado", "atributo": "tapizado", "def": "mocca"}}
-TAPIZADOS = [("mocca", "Mocca"), ("almendra", "Almendra"), ("beige", "Beige"), ("verde-ingles", "Verde inglés"),
-             ("negro", "Negro"), ("gris-claro", "Gris claro"), ("seco", "Seco"), ("edward-dl", "Edward DL"),
-             ("microcuadro-negro", "Microcuadro negro"), ("rojo", "Rojo"), ("naranja", "Naranja")]
+# --- Sillas y taburetes: precio por unidad, no cambia con la tela ni el color
+TELA = {"tela": {"tipo": "opcion", "nombre": "Tela", "permitidos": ["panne", "cuerina", "algodón texturado"], "def": "panne"}}
+TAPIZADO = {"color": {"tipo": "opcion", "nombre": "Color", "atributo": "tapizado", "def": "a-elegir"}}
+TAPIZADOS = [("a-elegir", "A elegir"), ("amarillo", "Amarillo"), ("azul", "Azul"), ("gris", "Gris"), ("verde", "Verde"),
+             ("rosa", "Rosa"), ("rojo", "Rojo"), ("negro", "Negro"), ("marron", "Marrón"), ("microcuadro-blanco", "Microcuadro blanco"),
+             ("microcuadro-negro", "Microcuadro negro"), ("violeta", "Violeta"), ("almendra", "Almendra"), ("celeste", "Celeste"),
+             ("beige", "Beige"), ("oceano", "Océano"), ("catalogo", "Otro del catálogo")]
 
 
-def silla(lineas):
-    return {"orden": list(TAPIZADO), "entradas": TAPIZADO, "lineas": lineas}
+def silla(lineas, cantidad=1):
+    ent = {**TELA, **TAPIZADO}
+    if cantidad != 1:
+        lineas = [{**l, "cantidad": str(cantidad)} for l in lineas]
+    return {"orden": list(ent), "entradas": ent, "lineas": lineas}
 
 
 TAPIZADO_BELEN = {"id": "tapizado", "nombre": "Tapizado (Belén)", "regla": "unidad", "insumo": "tapizado-cesca"}
+CESCA = [{"id": "estructura", "nombre": "Estructura (Alberto)", "regla": "unidad", "insumo": "silla-cesca"}, TAPIZADO_BELEN]
 stg = lambda modelo, nota: {"id": "stg", "nombre": "STG", "regla": "unidad", "insumo": "estructura-stg",
                             "variante": {"modelo": f"'{modelo}'"}, "nota": nota}
-C.append(("Silla Cesca", SILLAS, silla([
-    {"id": "estructura", "nombre": "Estructura (Alberto)", "regla": "unidad", "insumo": "silla-cesca"}, TAPIZADO_BELEN]),
+DUNA = [stg("silla-duna", "Llega completa de STG")]
+C.append(("Silla Cesca", SILLAS, silla(CESCA), "Estructura de Alberto y tapizado de Belén"))
+C.append(("Silla Cesca Cerrada", SILLAS, silla([
+    {"id": "estructura", "nombre": "Estructura (Alberto)", "regla": "unidad", "insumo": "silla-cesca-cerrada",
+     "nota": "Precio a confirmar con Alberto"}, TAPIZADO_BELEN]),
     "Estructura de Alberto y tapizado de Belén"))
-C.append(("Silla Cesca Cerrada", SILLAS, silla([stg("silla-cesca-cerrada", "Lista de STG"), TAPIZADO_BELEN]),
-          "Estructura de STG (a confirmar) y tapizado de Belén"))
-C.append(("Silla Duna", SILLAS, silla([stg("silla-duna", "Llega completa de STG")]), "STG la hace completa"))
+C.append(("Silla Duna", SILLAS, silla(DUNA), "STG la hace completa"))
 C.append(("Taburete Duna", SILLAS, silla([stg("taburete-duna", "Llega completo de STG")]), "STG lo hace completo"))
+
+# --- Combos de la web
+RECETAS = {nombre: rec for nombre, _, rec, _ in C}
+
+
+def combo_mesa(mesa, sillas, n=4, medidas=None):
+    """La receta de la mesa más n sillas (sus líneas con prefijo "sillas_")."""
+    m = json.loads(json.dumps(mesa))
+    if medidas:
+        for k, v in medidas.items():
+            m["entradas"][k]["def"] = v
+    ent = {**m["entradas"], "tela": TELA["tela"],
+           "color_sillas": {**TAPIZADO["color"], "nombre": "Color de las sillas"}}
+    lineas = m["lineas"] + [{**l, "id": "sillas_" + l["id"], "nombre": f"{n} sillas: " + l["nombre"][0].lower() + l["nombre"][1:],
+                             "cantidad": str(n)} for l in sillas]
+    return {"orden": [*m.get("orden", list(m["entradas"])), "tela", "color_sillas"], "entradas": ent, "lineas": lineas}
+
+
+from recetas_piloto import aire  # noqa: E402
+
+COMBOS = "Combos"
+C.append(("Combo Silla Cesca", COMBOS, silla(CESCA, 4), "4 Sillas Cesca (web)"))
+C.append(("Combo Silla Duna", COMBOS, silla(DUNA, 4), "4 Sillas Duna (web)"))
+C.append(("Combo Mesa Constelación + 4 Sillas Cesca", COMBOS, combo_mesa(RECETAS["Mesa Constelación"], CESCA), "Web: 140×70, 180×90 o 200×100"))
+C.append(("Combo Mesa Aire Alta Rectangular + 4 Sillas Cesca", COMBOS, combo_mesa(aire(True, redonda=False), CESCA),
+          "Web: 160×80, 180×90 o 200×100"))
+C.append(("Combo Mesa Aire Alta Redonda + 4 Sillas Cesca", COMBOS, combo_mesa(aire(True), CESCA), "Web: Ø 100, 120 o 140"))
+C.append(("Combo Mesa Tiempo + 4 Sillas Cesca", COMBOS, combo_mesa(RECETAS["Mesa Tiempo"], CESCA), "Web: 160×80, 180×90 o 200×100"))
+C.append(("Combo Mesa Sol + 4 Sillas Cesca", COMBOS, combo_mesa(RECETAS["Mesa Sol"], CESCA), "Web: Ø 80 a 140"))
 
 # ---------------------------------------------------------------- SQL
 q = lambda s: "'" + s.replace("'", "''") + "'"
@@ -412,8 +448,19 @@ out = ["""-- ===================================================================
 -- Se ejecuta después de 2026-10_componentes.sql y 2026-10_recetas_piloto.sql.
 -- =====================================================================
 
-insert into public.cot_categorias (nombre, orden) values ('Personalizados', 5), ('Sillas y taburetes', 70) on conflict (nombre) do nothing;
+insert into public.cot_categorias (nombre, orden) values ('Personalizados', 5), ('Sillas y taburetes', 70), ('Combos', 80) on conflict (nombre) do nothing;
 insert into public.cot_atributos (clave, nombre, orden) values ('tapizado', 'Tapizado', 20) on conflict (clave) do nothing;
+-- Colores de tapizado: los de la web (spaziodesign.net, 22/10/2026).
+delete from public.cot_atributo_valores where atributo = 'tapizado'
+  and valor not in (""" + ", ".join(f"'{v}'" for v, _ in TAPIZADOS) + """);
+-- La estructura de la Cesca Cerrada es de Alberto (no de STG). Precio a confirmar: el de la lista.
+insert into public.cot_insumos (codigo, tipo, nombre, unidad, atributos, proveedor_id, orden, notas)
+values ('silla-cesca-cerrada', 'estructura', 'Estructura Silla Cesca Cerrada', 'unidad', '{}',
+        (select id from public.proveedores where nombre = 'Alberto'), 205, 'Precio a confirmar')
+on conflict (codigo) do nothing;
+insert into public.cot_tarifas (insumo_id, variante, precio, nota, vigente_desde)
+select i.id, '{}'::jsonb, 160000, 'A confirmar con Alberto', '2026-10-22' from public.cot_insumos i
+where i.codigo = 'silla-cesca-cerrada' and not exists (select 1 from public.cot_tarifas t where t.insumo_id = i.id and t.vigente_hasta is null);
 """ + "\n".join(f"insert into public.cot_atributo_valores (atributo, valor, etiqueta, grupos, orden) values ('tapizado', '{v}', '{e}', '{{}}', {i}) on conflict (atributo, valor) do nothing;" for i, (v, e) in enumerate(TAPIZADOS)) + """
 
 create or replace function pg_temp.publicar_receta(p_nombre text, p_categoria text, p_def jsonb, p_nota text) returns text

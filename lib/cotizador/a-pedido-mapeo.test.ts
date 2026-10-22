@@ -73,3 +73,10 @@ test('sillas, taburetes y espejos como en la planilla', () => {
   const esp = itemParaPedido({ titulo: 'Espejo Personalizado', categoria: 'Personalizados', receta: null, valores: {}, etiquetas, precio: 1, cantidad: 1 });
   assert.deepEqual([esp.producto, esp.modelo], ['espejos', 'personalizado']);
 });
+
+test('combos de la web', () => {
+  const a = itemParaPedido({ titulo: 'Combo Mesa Tiempo + 4 Sillas Cesca', categoria: 'Combos', receta: null, valores: {}, etiquetas: {}, precio: 1, cantidad: 1 });
+  assert.deepEqual([a.producto, a.modelo], ['mesa alta', 'tiempo + 4 sillas cesca']);
+  const b = itemParaPedido({ titulo: 'Combo Silla Duna', categoria: 'Combos', receta: null, valores: {}, etiquetas: {}, precio: 1, cantidad: 1 });
+  assert.deepEqual([b.producto, b.modelo], ['sillas', 'duna']);
+});

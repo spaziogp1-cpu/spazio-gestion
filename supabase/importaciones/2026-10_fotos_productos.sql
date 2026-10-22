@@ -4,6 +4,8 @@
 -- =====================================================================
 update public.cot_productos p set foto_url = v.foto, tiendanube_url = v.url
 from (values
+  ('Combo Silla Cesca', 'https://acdn-us.mitiendanube.com/stores/006/675/281/products/gemini_generated_image_ypm9h0ypm9h0ypm9-8ca3de2cd7e239eb4b17920835921834-640-0.webp', 'https://www.spaziodesign.net/productos/combo-silla-cesca-t983v/'),
+  ('Combo Silla Duna', 'https://acdn-us.mitiendanube.com/stores/006/675/281/products/gemini_generated_image_l9nql6l9nql6l9nq-8d15021f1f71a9981817920834686869-640-0.webp', 'https://www.spaziodesign.net/productos/combo-silla-duna-vsma0/'),
   ('Mesa Canoa Redonda', 'https://acdn-us.mitiendanube.com/stores/006/675/281/products/sape-loca-f7fb18caa3e157c4ac17896604113148-640-0.webp', 'https://www.spaziodesign.net/productos/canoa-redonda-1aaqt/'),
   ('Mesa Nube', 'https://acdn-us.mitiendanube.com/stores/006/675/281/products/sape-e29b9559cbca5dc33a17885322240995-640-0.webp', 'https://www.spaziodesign.net/productos/mesa-nube-1cfe5/'),
   ('Mesa Aire Alta Redonda', 'https://acdn-us.mitiendanube.com/stores/006/675/281/products/render-1-2299492b8d32ee88bf17882773321308-640-0.webp', 'https://www.spaziodesign.net/productos/mesa-aire-alta-redonda-1q7xf/'),

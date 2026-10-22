@@ -197,5 +197,7 @@ end $$;
 """]
 for nombre, receta, nota in RECETAS:
     out.append(f"select pg_temp.publicar_receta({q(nombre)}, {q(json.dumps(receta, ensure_ascii=False))}::jsonb, {q(nota)});")
-open("supabase/importaciones/2026-10_recetas_piloto.sql", "w").write("\n".join(out) + "\n")
-print("ok")
+if __name__ == "__main__":  # importado desde recetas_catalogo.py (combos), solo se usan las recetas
+    open("supabase/importaciones/2026-10_recetas_piloto.sql", "w").write("\n".join(out) + "\n")
+if __name__ == "__main__":
+    print("ok")

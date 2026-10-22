@@ -7,6 +7,8 @@ BASE = "https://www.spaziodesign.net/productos/"
 CDN = "https://acdn-us.mitiendanube.com/stores/006/675/281/products/"
 
 FOTOS = {
+    "Combo Silla Cesca": ("combo-silla-cesca-t983v", "gemini_generated_image_ypm9h0ypm9h0ypm9-8ca3de2cd7e239eb4b17920835921834"),
+    "Combo Silla Duna": ("combo-silla-duna-vsma0", "gemini_generated_image_l9nql6l9nql6l9nq-8d15021f1f71a9981817920834686869"),
     "Mesa Canoa Redonda": ("canoa-redonda-1aaqt", "sape-loca-f7fb18caa3e157c4ac17896604113148"),
     "Mesa Nube": ("mesa-nube-1cfe5", "sape-e29b9559cbca5dc33a17885322240995"),
     "Mesa Aire Alta Redonda": ("mesa-aire-alta-redonda-1q7xf", "render-1-2299492b8d32ee88bf17882773321308"),

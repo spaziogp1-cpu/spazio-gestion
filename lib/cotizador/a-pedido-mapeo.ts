@@ -14,6 +14,14 @@ const PRODUCTO_POR_CATEGORIA: Record<string, string> = {
   personalizados: 'Personalizado',
 };
 
+/** Producto de la planilla según el nombre (taburetes, espejos y combos) o la categoría. */
+function productoDe(titulo: string, categoria: string | null): string {
+  if (/^taburete/i.test(titulo)) return 'taburete';
+  if (/^espejo/i.test(titulo)) return 'espejos';
+  if (/^combo/i.test(titulo)) return /\bmesa\b/i.test(titulo) ? 'mesa alta' : 'sillas';
+  return PRODUCTO_POR_CATEGORIA[(categoria ?? '').toLowerCase()] ?? 'mueble';
+}
+
 export type ItemPedido = {
   producto: string;
   modelo: string;
@@ -56,8 +64,11 @@ export function itemParaPedido(d: {
   }
   const esp = d.vidrio?.composicion ?? (d.vidrio?.espesor ? `${d.vidrio.espesor}mm` : '');
   return {
-    producto: /^taburete/i.test(d.titulo) ? 'taburete' : /^espejo/i.test(d.titulo) ? 'espejos' : (PRODUCTO_POR_CATEGORIA[(d.categoria ?? '').toLowerCase()] ?? 'mueble'),
-    modelo: d.titulo.replace(/^(mesa|espejo|silla|taburete|estanter[ií]a|recibidor)\s+/i, '').toLowerCase(),
+    producto: productoDe(d.titulo, d.categoria),
+    modelo: d.titulo
+      .replace(/^combo\s+/i, '')
+      .replace(/^(mesa|espejo|silla|taburete|estanter[ií]a|recibidor)\s+/i, '')
+      .toLowerCase(),
     medidas: medidas.join('x'),
     color,
     material: esp,
