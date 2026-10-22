@@ -1,7 +1,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { HOJA_VENTAS, estadoPlanilla, fechaPlanilla, filasDelPedido, filasPedido, type PedidoParaPlanilla } from './filas';
-import { escribir, escribirVarios, extenderTabla, leer, planillaConfigurada } from './google';
+import { HOJA_VENTAS, estadoPlanilla, fechaPlanilla, filasDelPedido, filasPedido, ultimoNumero, type PedidoParaPlanilla } from './filas';
+import { escribeEnOriginal, escribir, escribirVarios, extenderTabla, leer, planillaConfigurada } from './google';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Cliente = SupabaseClient<any, any, any>;
@@ -35,17 +35,37 @@ export async function anotarPendiente(db: Cliente, pedidoId: string): Promise<vo
   await db.from('planilla_sync').upsert({ pedido_id: pedidoId, estado: 'pendiente' }, { onConflict: 'pedido_id', ignoreDuplicates: true });
 }
 
+/** Número con el que figura en la planilla original un pedido que vino de ahí (si es distinto). */
+async function numeroEnOriginal(db: Cliente, pedidoId: string): Promise<number | null> {
+  if (!escribeEnOriginal()) return null;
+  const { data } = await db.from('planilla_origen').select('numero_planilla').eq('pedido_id', pedidoId).not('numero_planilla', 'is', null).limit(1).maybeSingle();
+  return data?.numero_planilla ?? null;
+}
+
 /** Escribe un pedido nuevo en VENTAS_2026, una fila por producto. No duplica si ya está. */
 export async function agregarPedido(db: Cliente, pedidoId: string): Promise<{ ok: boolean; error?: string }> {
   if (!planillaConfigurada()) return { ok: false, error: 'Planilla sin configurar' };
   try {
-    const p = await cargar(db, pedidoId);
+    let p = await cargar(db, pedidoId);
     if (!p) return { ok: false, error: 'Pedido no encontrado' };
     const [B, D, A] = await Promise.all([leer(`${HOJA_VENTAS}!B:B`), leer(`${HOJA_VENTAS}!D:D`), leer(`${HOJA_VENTAS}!A:A`)]);
-    const existentes = filasDelPedido(B, D, p.numero, p.cliente.nombre);
+    const otroNumero = await numeroEnOriginal(db, pedidoId);
+    const existentes = [
+      ...filasDelPedido(B, D, p.numero, p.cliente.nombre),
+      ...(otroNumero && otroNumero !== p.numero ? filasDelPedido(B, D, otroNumero, p.cliente.nombre) : []),
+    ];
     if (existentes.length) {
       await registrar(db, pedidoId, { estado: 'ok', filas: existentes.length, error: null, sincronizado_en: new Date().toISOString() });
       return { ok: true };
+    }
+    // En la planilla cada N° de compra es el anterior + 1. Si el número del pedido quedó atrás
+    // (por ejemplo, alguien cargó una venta a mano en la planilla mientras tanto), el pedido
+    // pasa al número siguiente, así la numeración sigue en orden en las dos.
+    const ultimo = ultimoNumero(B);
+    if (escribeEnOriginal() && p.numero <= ultimo) {
+      const { error } = await db.rpc('planilla_renumerar', { p_pedido: pedidoId, p_minimo: ultimo + 1 });
+      if (error) console.error('planilla: renumerar', error.message);
+      else p = (await cargar(db, pedidoId)) ?? p;
     }
     const filas = filasPedido(p);
     const desde = Math.max(A.length, B.length) + 1;
@@ -68,8 +88,11 @@ export async function actualizarPedido(db: Cliente, pedidoId: string): Promise<v
   try {
     const p = await cargar(db, pedidoId);
     if (!p) return;
-    const [B, D] = await Promise.all([leer(`${HOJA_VENTAS}!B:B`), leer(`${HOJA_VENTAS}!D:D`)]);
-    const filas = filasDelPedido(B, D, p.numero, p.cliente.nombre);
+    const [B, D, otroNumero] = await Promise.all([leer(`${HOJA_VENTAS}!B:B`), leer(`${HOJA_VENTAS}!D:D`), numeroEnOriginal(db, pedidoId)]);
+    const filas = [
+      ...filasDelPedido(B, D, p.numero, p.cliente.nombre),
+      ...(otroNumero && otroNumero !== p.numero ? filasDelPedido(B, D, otroNumero, p.cliente.nombre) : []),
+    ];
     await escribirVarios(
       filas.flatMap((f) => [
         { range: `${HOJA_VENTAS}!K${f}`, values: [[estadoPlanilla(p.etapa)]] },

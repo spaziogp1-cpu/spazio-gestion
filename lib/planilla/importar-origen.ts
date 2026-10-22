@@ -3,12 +3,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { calcularFechaLimite } from '@/lib/fechas';
 import { leerReglaPlazo } from '@/lib/parametros';
 import { HOJA_VENTAS } from './filas';
-import { leerOrigen, planillaConfigurada } from './google';
+import { escribeEnOriginal, leerOrigen, planillaConfigurada } from './google';
 import { normalizarNombre, ventasDesdeFilas, type VentaPlanilla } from './origen';
 import { agregarPedido as agregarACopia, anotarPendiente } from './sync';
 
 // Trae a la app las ventas que el equipo carga a mano en la planilla original.
-// Cada venta nueva se crea como pedido (con sus tareas y avisos) y la app la escribe en la copia.
+// Cada venta nueva se crea como pedido (con sus tareas y avisos). Las que se cargan en la app
+// se escriben en esa misma planilla (sync.ts), y acá se reconocen por número y cliente.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Cliente = SupabaseClient<any, any, any>;
@@ -138,8 +139,13 @@ export async function importarDeOriginal(db: Cliente, opciones: { simular?: bool
       cercanos.push({ id: pedidoId, numero: nuevo?.numero ?? 0, fecha_venta: v.fecha_venta, clientes: { nombre: v.cliente.nombre, email: v.cliente.email, telefono: v.cliente.telefono } });
       r.creadas.push(`#${nuevo?.numero ?? '?'} ${v.cliente.nombre}`);
 
-      await anotarPendiente(db, pedidoId).catch(() => {});
-      await agregarACopia(db, pedidoId).catch((e) => console.error('copia', e));
+      if (escribeEnOriginal()) {
+        // Ya está en la planilla (de ahí vino): no se vuelve a escribir.
+        await db.from('planilla_sync').upsert({ pedido_id: pedidoId, estado: 'ok', filas: v.filas.length, error: null, sincronizado_en: new Date().toISOString() }).then(() => undefined, () => undefined);
+      } else {
+        await anotarPendiente(db, pedidoId).catch(() => {});
+        await agregarACopia(db, pedidoId).catch((e) => console.error('copia', e));
+      }
     } catch (e) {
       const detalle = e instanceof Error ? e.message : String(e);
       r.errores.push(`#${v.numero ?? '?'} ${v.cliente.nombre}: ${detalle}`);

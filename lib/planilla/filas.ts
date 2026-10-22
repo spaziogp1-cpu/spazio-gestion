@@ -111,9 +111,21 @@ export function filasDelPedido(columnaB: string[][], columnaD: string[][], numer
   const nombre = cliente.trim().toLowerCase();
   const filas: number[] = [];
   for (let i = 0; i < columnaB.length; i++) {
-    if ((columnaB[i]?.[0] ?? '').trim() === String(numero) && (columnaD[i]?.[0] ?? '').trim().toLowerCase() === nombre) {
+    if (numeroCelda(columnaB[i]?.[0]) === numero && (columnaD[i]?.[0] ?? '').trim().toLowerCase() === nombre) {
       filas.push(i + desdeFila);
     }
   }
   return filas;
+}
+
+/** El N° de compra de una celda tal como se ve ("1.024", "1,024" o "556"). */
+export function numeroCelda(v: string | undefined): number | null {
+  const t = (v ?? '').trim();
+  if (!/^\d{1,3}([.,]?\d{3})*$/.test(t)) return null;
+  return Number(t.replace(/[.,]/g, ''));
+}
+
+/** El N° de compra más alto de la columna B. */
+export function ultimoNumero(columnaB: string[][]): number {
+  return columnaB.reduce((max, f) => Math.max(max, numeroCelda(f?.[0]) ?? 0), 0);
 }

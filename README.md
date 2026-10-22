@@ -51,7 +51,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 | `EMAIL_REMITENTE` | Config | Opcional, p. ej. `Spazio Gestión <gestion@spaziodesign.net>` |
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID` | **Secret** | Más adelante, para avisos por WhatsApp |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | **Secret** | Contenido completo del .json de la cuenta de servicio de Google |
-| `PLANILLA_ID` | Config | ID de la planilla donde se escriben las ventas (hoy, la copia de pruebas) |
+| `PLANILLA_DESTINO_ID` | Opcional | Solo si los pedidos se tienen que escribir en otra planilla. Sin esto se escriben en Plantilla_Spazio_2026 (la original). `PLANILLA_ID` ya no se usa |
 | `TIENDANUBE_APP_ID` | Config | ID de la app creada en el portal de socios de Tienda Nube |
 | `TIENDANUBE_CLIENT_SECRET` | **Secret** | Secreto de esa app (también firma los avisos de ventas) |
 | `WHATSAPP_PLANTILLA_RESUMEN` | Config | Nombre de la plantilla aprobada (por defecto `resumen_diario`) |

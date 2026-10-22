@@ -101,7 +101,7 @@ export async function probarPlanilla(): Promise<EstadoAjustes> {
   const { supabase } = await miembroActual();
   try {
     const { planillaConfigurada } = await import('@/lib/planilla/google');
-    if (!planillaConfigurada()) return { error: 'Falta cargar GOOGLE_SERVICE_ACCOUNT_JSON y PLANILLA_ID en Vercel.' };
+    if (!planillaConfigurada()) return { error: 'Falta cargar GOOGLE_SERVICE_ACCOUNT_JSON en Vercel.' };
     const { probarConexion, sincronizarPendientes } = await import('@/lib/planilla/sync');
     const encabezado = await probarConexion();
     const r = await sincronizarPendientes(supabase);

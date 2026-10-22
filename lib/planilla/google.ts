@@ -6,7 +6,7 @@ type Credenciales = { client_email: string; private_key: string };
 let cache: { token: string; vence: number } | null = null;
 
 export function planillaConfigurada(): boolean {
-  return Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON && process.env.PLANILLA_ID);
+  return Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
 }
 
 function credenciales(): Credenciales {
@@ -21,6 +21,17 @@ function credenciales(): Credenciales {
   if (!c.client_email || !c.private_key) throw new Error('Al JSON de la cuenta de servicio le falta client_email o private_key');
   return { client_email: c.client_email, private_key: c.private_key.replace(/\\n/g, '\n') };
 }
+
+// Plantilla_Spazio_2026: la planilla original donde trabaja el equipo.
+const ORIGEN_POR_DEFECTO = '1ppckkUctylxwGsAm0cGToYjCkcEdgk7EUTcxdH9lqQA';
+export const idOrigen = () => idPlanilla(process.env.PLANILLA_ORIGEN_ID) ?? ORIGEN_POR_DEFECTO;
+/**
+ * Dónde escribe la app los pedidos nuevos: la misma planilla original.
+ * PLANILLA_DESTINO_ID permite mandarlos a otra (por ejemplo, una copia de pruebas).
+ * PLANILLA_ID (la copia que se usó al principio) ya no se usa.
+ */
+export const idDestino = () => idPlanilla(process.env.PLANILLA_DESTINO_ID) ?? idOrigen();
+export const escribeEnOriginal = () => idDestino() === idOrigen();
 
 const b64 = (s: string | Buffer) => Buffer.from(s).toString('base64url');
 
@@ -65,8 +76,7 @@ export function idPlanilla(crudo: string | undefined): string | null {
 }
 
 async function sheets(ruta: string, init?: RequestInit, idPedido?: string) {
-  const id = idPedido ?? idPlanilla(process.env.PLANILLA_ID);
-  if (!id) throw new Error('Falta PLANILLA_ID');
+  const id = idPedido ?? idDestino();
   const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}${ruta}`, {
     ...init,
     headers: { Authorization: `Bearer ${await token()}`, 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
@@ -78,7 +88,7 @@ async function sheets(ruta: string, init?: RequestInit, idPedido?: string) {
     throw new Error('La cuenta de servicio no tiene acceso: compartile la planilla como Editor');
   }
   if (r.status === 404)
-    throw new Error(`No se encontró la planilla (ID usado: ${id.slice(0, 6)}…${id.slice(-4)}, ${id.length} caracteres): revisá PLANILLA_ID`);
+    throw new Error(`No se encontró la planilla (ID usado: ${id.slice(0, 6)}…${id.slice(-4)}, ${id.length} caracteres): revisá PLANILLA_DESTINO_ID / PLANILLA_ORIGEN_ID`);
   if (!r.ok) throw new Error(`Google Sheets ${r.status}: ${(await r.text()).slice(0, 200)}`);
   return r.json();
 }
@@ -90,9 +100,6 @@ export async function leer(a1: string): Promise<string[][]> {
   return j.values ?? [];
 }
 
-// Planilla donde el equipo carga las ventas a mano (la original). Solo se lee.
-const ORIGEN_POR_DEFECTO = '1ppckkUctylxwGsAm0cGToYjCkcEdgk7EUTcxdH9lqQA';
-export const idOrigen = () => idPlanilla(process.env.PLANILLA_ORIGEN_ID) ?? ORIGEN_POR_DEFECTO;
 
 /** Lee la planilla original con los números sin formato y las fechas como texto. */
 export async function leerOrigen(a1: string): Promise<(string | number | boolean)[][]> {

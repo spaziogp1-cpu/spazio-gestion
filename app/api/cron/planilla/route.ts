@@ -1,11 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { importarDeOriginal } from '@/lib/planilla/importar-origen';
+import { sincronizarPendientes } from '@/lib/planilla/sync';
 import { crearAdmin } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-// Lo llama Supabase (pg_cron) cada 15 minutos: trae las ventas nuevas de la planilla original.
+// Lo llama Supabase (pg_cron) cada 15 minutos: trae las ventas nuevas de la planilla original
+// y escribe en ella los pedidos de la app que quedaron pendientes.
 // Acepta la clave propia guardada en la base o CRON_SECRET.
 async function autorizado(request: NextRequest) {
   const h = request.headers.get('authorization') ?? '';
@@ -19,8 +21,11 @@ async function autorizado(request: NextRequest) {
 async function correr(request: NextRequest) {
   if (!(await autorizado(request))) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   try {
-    const r = await importarDeOriginal(crearAdmin('Planilla original'));
-    return NextResponse.json({ ok: true, ...r });
+    const db = crearAdmin('Planilla original');
+    const r = await importarDeOriginal(db);
+    // Después, los pedidos de la app que todavía no se pudieron escribir en la planilla.
+    const escritos = await sincronizarPendientes(db).catch((e) => ({ ok: 0, error: 1, detalle: String(e) }));
+    return NextResponse.json({ ok: true, ...r, escritos });
   } catch (e) {
     console.error('planilla original', e);
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 500 });

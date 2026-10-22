@@ -49,3 +49,14 @@ test('encuentra las filas por número y cliente (el 488 está repetido)', () => 
   assert.deepEqual(filasDelPedido(B, D, 488, '19 Puntos SRL'), [3]);
   assert.deepEqual(filasDelPedido(B, D, 488, 'oriana huici '), [4]);
 });
+
+test('número de compra como se ve en la planilla', async () => {
+  const { numeroCelda, ultimoNumero } = await import('./filas');
+  assert.equal(numeroCelda('556'), 556);
+  assert.equal(numeroCelda('1.024'), 1024);
+  assert.equal(numeroCelda('1,024'), 1024);
+  assert.equal(numeroCelda('N DE COMPRA'), null);
+  assert.equal(numeroCelda(''), null);
+  assert.equal(ultimoNumero([['N DE COMPRA'], ['554'], ['556'], [], ['555']]), 556);
+  assert.deepEqual(filasDelPedido([['N'], ['1.024']], [['C'], ['Ana Paz']], 1024, 'ana paz'), [2]);
+});

@@ -39,7 +39,8 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
   const syncOk = filasSync.filter((x) => x.estado === 'ok').length;
   const syncPend = filasSync.filter((x) => x.estado === 'pendiente').length;
   const syncErr = filasSync.filter((x) => x.estado === 'error');
-  const planilla = Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON && process.env.PLANILLA_ID);
+  const planilla = Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+  const planillaDestino = process.env.PLANILLA_DESTINO_ID ? 'otra planilla (PLANILLA_DESTINO_ID)' : 'Plantilla_Spazio_2026 (la original)';
   const equipo = (eq ?? []) as { id: string; nombre: string; alias_planilla: string | null; email: string; telefono: string | null; rol: string; activo: boolean }[];
   const valores = Object.fromEntries(((params ?? []) as { clave: string; valor: string }[]).map((p) => [p.clave, p.valor]));
   const whatsapp = Boolean(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_ID);
@@ -152,10 +153,10 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
             </div>
             <div className="seccion form-bloque">
               <p className="small">
-                Cada venta nueva se agrega en <strong>VENTAS_2026</strong> (una fila por producto), y al cambiar la etapa se actualizan ESTADO y FECHA REAL DE ENTREGA.
+                Cada venta nueva que se carga en la app se agrega en <strong>VENTAS_2026</strong> de {planillaDestino} (una fila por producto), y al cambiar la etapa se actualizan ESTADO y FECHA REAL DE ENTREGA.
               </p>
               <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>
-                <li>Conexión: {planilla ? '✓ configurada' : '✗ falta GOOGLE_SERVICE_ACCOUNT_JSON y PLANILLA_ID'}</li>
+                <li>Conexión: {planilla ? '✓ configurada' : '✗ falta GOOGLE_SERVICE_ACCOUNT_JSON'}</li>
                 <li>
                   Pedidos escritos: {syncOk} · pendientes: {syncPend} · con error: {syncErr.length}
                 </li>
