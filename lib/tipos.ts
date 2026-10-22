@@ -137,6 +137,7 @@ export type Tarea = {
   creado_por: string | null;
   prioridad: 'baja' | 'media' | 'alta';
   vencimiento: string | null;
+  hora?: string | null; // HH:MM:SS, opcional
   estado: 'pendiente' | 'en_curso' | 'bloqueada' | 'hecha';
   bloqueo: string | null;
   pedido_id: string | null;

@@ -73,7 +73,10 @@ export function NuevaTarea({
           </div>
           <div className="campo">
             <label>Para cuándo</label>
-            <input name="vencimiento" type="date" defaultValue={hoyAR()} />
+            <div className="fecha-hora">
+              <input name="vencimiento" type="date" defaultValue={hoyAR()} aria-label="Día" />
+              <input name="hora" type="time" step={900} aria-label="Hora (opcional)" title="Hora (opcional): va al calendario y avisa antes" />
+            </div>
           </div>
           <div className="campo">
             <label>Prioridad</label>
@@ -146,6 +149,7 @@ export function FilaTarea({ t, equipo, contexto = true }: { t: Tarea; equipo: Mi
           {t.vencimiento && !hecha && (
             <span className={t.vencida ? 'mal' : dias === 0 ? 'hoy' : ''}>
               {dias !== null && dias >= -1 && dias <= 1 ? relativo(dias) : fechaCorta(t.vencimiento)}
+              {t.hora ? ` · ${t.hora.slice(0, 5)}` : ''}
             </span>
           )}
           {t.estado === 'bloqueada' && <span className="chip chip-atrasado">Trabada{t.bloqueo ? `: ${t.bloqueo}` : ''}</span>}
@@ -187,7 +191,10 @@ export function FilaTarea({ t, equipo, contexto = true }: { t: Tarea; equipo: Mi
               </div>
               <div className="campo">
                 <label>Para cuándo</label>
-                <input name="vencimiento" type="date" defaultValue={t.vencimiento ?? ''} />
+                <div className="fecha-hora">
+                  <input name="vencimiento" type="date" defaultValue={t.vencimiento ?? ''} aria-label="Día" />
+                  <input name="hora" type="time" step={900} defaultValue={t.hora?.slice(0, 5) ?? ''} aria-label="Hora (opcional)" />
+                </div>
               </div>
               <div className="campo">
                 <label>Prioridad</label>

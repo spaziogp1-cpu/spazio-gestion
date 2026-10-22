@@ -811,3 +811,7 @@ input.formula { font-size: 16px; }
 }
 .presu-costo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border: 1px dashed var(--line); }
 .presu-costo-valor { font-size: 20px; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+
+.fecha-hora { display: flex; gap: 6px; }
+.fecha-hora input[type='date'] { flex: 1 1 auto; min-width: 0; }
+.fecha-hora input[type='time'] { flex: 0 0 104px; }

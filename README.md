@@ -37,6 +37,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 17. `supabase/migrations/0016_etapa_embalada.sql` — etapa "Embalada"; "Lista" pasa a llamarse "Fabricada"
 18. `supabase/migrations/0017_avisos_reportes_recordatorios.sql` — reportes de la mañana y de la tarde y recordatorios antes de entregas y visitas (pg_cron cada minuto)
 19. `supabase/migrations/0018_notificaciones_celular.sql` — notificaciones en el celular (Web Push)
+20. `supabase/migrations/0019_tareas_con_hora.sql` — tareas con hora: van al calendario y avisan 30 minutos antes
 
 ## Variables en Vercel (Settings → Environment Variables)
 

@@ -257,7 +257,7 @@ export const HERRAMIENTAS: Herramienta[] = [
   {
     name: 'crear_tarea',
     title: 'Crear tarea',
-    description: 'Crea una tarea. "responsable": nombre de la persona, "equipo" para todo el equipo, o vacío para quien pregunta. "vencimiento" en AAAA-MM-DD. Opcional: número de pedido relacionado.',
+    description: 'Crea una tarea. "responsable": nombre de la persona, "equipo" para todo el equipo, o vacío para quien pregunta. "vencimiento" en AAAA-MM-DD; "hora" opcional en HH:MM (va al calendario y avisa antes). Opcional: número de pedido relacionado.',
     soloLectura: false,
     inputSchema: {
       type: 'object',
@@ -265,6 +265,7 @@ export const HERRAMIENTAS: Herramienta[] = [
         titulo: { type: 'string' },
         responsable: { type: 'string' },
         vencimiento: { type: 'string', description: 'AAAA-MM-DD' },
+        hora: { type: 'string', description: 'HH:MM, opcional (necesita vencimiento)' },
         prioridad: { type: 'string', enum: ['baja', 'media', 'alta'] },
         pedido_numero: { type: 'number' },
         descripcion: { type: 'string' },
@@ -277,6 +278,10 @@ export const HERRAMIENTAS: Herramienta[] = [
       const responsable_id = await miembroPorNombre(db, str(a.responsable), yo);
       const pedido = a.pedido_numero ? await pedidoPorNumero(db, a.pedido_numero) : null;
       const prioridad = ['baja', 'media', 'alta'].includes(String(a.prioridad)) ? String(a.prioridad) : 'media';
+      const vencimiento = a.vencimiento ? fechaOk(a.vencimiento, 'vencimiento') : null;
+      const horaTxt = str(a.hora);
+      if (horaTxt && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(horaTxt)) throw new ErrorUsuario('La hora tiene que ser HH:MM');
+      if (horaTxt && !vencimiento) throw new ErrorUsuario('Para poner hora hace falta el día (vencimiento)');
       const { data, error } = await db
         .from('tareas')
         .insert({
@@ -285,7 +290,8 @@ export const HERRAMIENTAS: Herramienta[] = [
           responsable_id,
           creado_por: yo.id,
           prioridad,
-          vencimiento: a.vencimiento ? fechaOk(a.vencimiento, 'vencimiento') : null,
+          vencimiento,
+          ...(horaTxt ? { hora: horaTxt.padStart(5, '0') } : {}),
           pedido_id: pedido?.id ?? null,
         })
         .select('id')

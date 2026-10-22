@@ -53,12 +53,12 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
       .neq('etapa', 'cancelado')
       .or(`and(fecha_entrega_programada.gte.${desde},fecha_entrega_programada.lte.${hasta}),and(fecha_limite.gte.${desde},fecha_limite.lte.${hasta})`),
     supabase.from('visitas').select('id, nombre, fecha, hora, motivo, estado, atiende_id').gte('fecha', desde).lte('fecha', hasta).neq('estado', 'cancelada'),
-    supabase
-      .from('tareas_resumen')
-      .select('id, titulo, vencimiento, responsable_id, responsable_nombre, prioridad, pedido_id, vencida')
-      .neq('estado', 'hecha')
-      .gte('vencimiento', desde)
-      .lte('vencimiento', hasta),
+    (async () => {
+      const q = (cols: string) => supabase.from('tareas_resumen').select(cols).neq('estado', 'hecha').gte('vencimiento', desde).lte('vencimiento', hasta);
+      const r = await q('id, titulo, vencimiento, hora, responsable_id, responsable_nombre, prioridad, pedido_id, vencida');
+      // Sin la migración 0019 todavía no hay hora.
+      return r.error ? q('id, titulo, vencimiento, responsable_id, responsable_nombre, prioridad, pedido_id, vencida') : r;
+    })(),
     supabase
       .from('proveedor_pendientes')
       .select('id, proveedor_nombre, fecha_esperada, detalle, pedido_id, pedido_numero, cliente_nombre, es_stock, demorado')
@@ -117,6 +117,7 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
     eventos.push({
       tipo: 'tarea',
       fecha: t.vencimiento,
+      hora: t.hora,
       titulo: t.titulo,
       detalle: t.responsable_nombre ?? 'Todo el equipo',
       href: t.pedido_id ? `/pedidos/${t.pedido_id}` : '/tareas?de=todos',

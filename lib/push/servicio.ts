@@ -44,7 +44,8 @@ export async function enviarAviso(db: Cliente, id: string): Promise<{ enviados: 
   if (!a) return { enviados: 0, fallidos: 0, borrados: 0 };
   if (a.anulada_en) {
     // Un recordatorio reprogramado o cancelado reemplaza al que quedó en el celular (mismo tag).
-    if (!a.tipo.startsWith('recordatorio')) return { enviados: 0, fallidos: 0, borrados: 0 };
+    // Una tarea que se completó no necesita otra notificación.
+    if (!a.tipo.startsWith('recordatorio') || a.cuerpo?.startsWith('Ya se completó')) return { enviados: 0, fallidos: 0, borrados: 0 };
     return enviarAUsuario(db, a.usuario_id, { titulo: `Cambió · ${a.titulo}`, cuerpo: a.cuerpo, url: `/avisos/abrir/${a.id}`, tag: tagDe(a as Aviso) }, { ttl: 3600, urgencia: 'normal' });
   }
   return enviarAUsuario(db, a.usuario_id, { titulo: a.titulo, cuerpo: a.cuerpo, url: `/avisos/abrir/${a.id}`, tag: tagDe(a as Aviso) }, opcionesDe(a as Aviso));

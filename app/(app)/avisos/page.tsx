@@ -24,6 +24,7 @@ const ETIQUETA: Record<string, string> = {
   reporte_tarde: 'Reporte de la tarde',
   recordatorio_entrega: 'Recordatorio de entrega',
   recordatorio_visita: 'Recordatorio de visita',
+  recordatorio_tarea: 'Recordatorio de tarea',
   tarea_asignada: 'Tarea',
   tarea_vencida: 'Tarea vencida',
   pedido_atrasado: 'Pedido atrasado',

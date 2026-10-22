@@ -26,7 +26,7 @@ export default async function TareasPage({ searchParams }: { searchParams: Promi
   const tareas = (data ?? []) as Tarea[];
   // Dentro de cada grupo, las de prioridad alta primero.
   const peso = { alta: 0, media: 1, baja: 2 } as const;
-  tareas.sort((a, b) => (a.vencimiento ?? '9999') .localeCompare(b.vencimiento ?? '9999') || peso[a.prioridad] - peso[b.prioridad]);
+  tareas.sort((a, b) => (a.vencimiento ?? '9999').localeCompare(b.vencimiento ?? '9999') || (a.hora ?? '99').localeCompare(b.hora ?? '99') || peso[a.prioridad] - peso[b.prioridad]);
 
   const vencidas = tareas.filter((t) => t.vencida).length;
   const link = (cambios: { de?: string | null; ver?: string | null }) => {

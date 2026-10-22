@@ -252,6 +252,8 @@ export async function guardarAvisos(_prev: EstadoAjustes, fd: FormData): Promise
     if (!dias.length) return { error: 'Elegí al menos un día.' };
     const minutos = Math.round(Number(fd.get('recordatorio_minutos')));
     if (!(minutos >= 5 && minutos <= 240)) return { error: 'El recordatorio tiene que ser entre 5 y 240 minutos antes.' };
+    const minutosTarea = Math.round(Number(fd.get('recordatorio_tarea_minutos') ?? 30));
+    if (!(minutosTarea >= 5 && minutosTarea <= 240)) return { error: 'El recordatorio de las tareas tiene que ser entre 5 y 240 minutos antes.' };
     const zona = String(fd.get('zona_horaria') ?? '').trim() || 'America/Argentina/Buenos_Aires';
     try {
       new Intl.DateTimeFormat('es-AR', { timeZone: zona });
@@ -264,6 +266,7 @@ export async function guardarAvisos(_prev: EstadoAjustes, fd: FormData): Promise
       { clave: 'reporte_dias', valor: dias.join(','), nota: 'Días con reporte: 1 = lunes … 7 = domingo' },
       { clave: 'recordatorio_minutos', valor: String(minutos), nota: 'Minutos antes de una entrega o visita para el recordatorio' },
       { clave: 'zona_horaria', valor: zona, nota: 'Zona horaria de los avisos' },
+      { clave: 'recordatorio_tarea_minutos', valor: String(minutosTarea), nota: 'Minutos antes de una tarea con hora para el recordatorio' },
     ];
     const { error } = await supabase.from('parametros').upsert(filas, { onConflict: 'clave' });
     if (error) return { error: `No se pudo guardar: ${error.message}` };

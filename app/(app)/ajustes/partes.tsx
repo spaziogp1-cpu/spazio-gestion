@@ -333,9 +333,13 @@ export function FormAvisos({ valores, editable }: { valores: Record<string, stri
           <input id="av-tarde" name="reporte_tarde_hora" type="time" step={300} defaultValue={valores.reporte_tarde_hora ?? '18:00'} disabled={!editable} />
         </div>
         <div className="campo">
-          <label htmlFor="av-min">Recordatorio (minutos antes)</label>
+          <label htmlFor="av-min">Entregas y visitas (minutos antes)</label>
           <input id="av-min" name="recordatorio_minutos" type="number" min={5} max={240} defaultValue={valores.recordatorio_minutos ?? '40'} disabled={!editable} />
         </div>
+      </div>
+      <div className="campo" style={{ maxWidth: 260 }}>
+        <label htmlFor="av-min-t">Tareas con hora (minutos antes)</label>
+        <input id="av-min-t" name="recordatorio_tarea_minutos" type="number" min={5} max={240} defaultValue={valores.recordatorio_tarea_minutos ?? '30'} disabled={!editable} />
       </div>
       <div className="campo">
         <span className="etiqueta">Días con reporte</span>
