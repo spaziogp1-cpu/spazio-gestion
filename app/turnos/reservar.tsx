@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { fechaCorta, fechaLarga, type Horario } from '@/lib/turnos';
 import { reservarTurno, type EstadoTurno } from './actions';
 
@@ -16,13 +16,18 @@ export function Reservar({
   const [dia, setDia] = useState(dias[0][0]);
   const [hora, setHora] = useState<string | null>(null);
   const [estado, accion, enviando] = useActionState<EstadoTurno, FormData>(reservarTurno, {});
+  const datos = useRef<HTMLDivElement>(null);
+  // Al elegir el horario, los datos quedan a la vista (en el celular están más abajo).
+  useEffect(() => {
+    if (hora) datos.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [hora]);
   const horas = dias.find(([d]) => d === dia)?.[1] ?? [];
   const manana = horas.filter((h) => h.hora < '13:00');
   const tarde = horas.filter((h) => h.hora >= '13:00');
 
   return (
     <form action={accion} className="form-bloque">
-      <div className="campo">
+      <div className="turnos-paso">
         <span className="etiqueta">1. Elegí el día</span>
         <div className="turnos-dias" role="radiogroup" aria-label="Día">
           {dias.map(([d]) => {
@@ -48,15 +53,15 @@ export function Reservar({
         </div>
       </div>
 
-      <div className="campo">
+      <div className="turnos-paso">
         <span className="etiqueta">2. Elegí el horario · {fechaLarga(dia)}</span>
         {[
           ['Mañana', manana],
           ['Tarde', tarde],
         ].map(([nombre, hs]) =>
           (hs as Horario[]).length ? (
-            <div key={nombre as string}>
-              <span className="quiet small">{nombre as string}</span>
+            <div key={nombre as string} className="turnos-franja">
+              <span>{nombre as string}</span>
               <div className="turnos-horas" role="radiogroup" aria-label={`Horarios de la ${String(nombre).toLowerCase()}`}>
                 {(hs as Horario[]).map((h) => (
                   <button
@@ -77,7 +82,7 @@ export function Reservar({
       </div>
 
       {hora && (
-        <div className="form-bloque turnos-datos">
+        <div className="turnos-paso turnos-datos" ref={datos}>
           <span className="etiqueta">3. Tus datos</span>
           <input type="hidden" name="fecha" value={dia} />
           <input type="hidden" name="hora" value={hora} />
@@ -85,8 +90,9 @@ export function Reservar({
           <input type="text" name="sitio" tabIndex={-1} autoComplete="off" className="turnos-trampa" aria-hidden="true" />
           <div className="campo">
             <label htmlFor="t-nombre">Nombre y apellido</label>
-            <input id="t-nombre" name="nombre" required minLength={2} autoComplete="name" defaultValue={previo?.nombre} />
+            <input id="t-nombre" name="nombre" type="text" required minLength={2} autoComplete="name" defaultValue={previo?.nombre} />
           </div>
+          <div className="fila-2">
           <div className="campo">
             <label htmlFor="t-tel">WhatsApp</label>
             <input id="t-tel" name="telefono" type="tel" required inputMode="tel" autoComplete="tel" placeholder="11 5555-1234" defaultValue={previo?.telefono} />
@@ -97,6 +103,7 @@ export function Reservar({
             </label>
             <input id="t-email" name="email" type="email" autoComplete="email" defaultValue={previo?.email ?? ''} />
           </div>
+          </div>
           <div className="campo">
             <label htmlFor="t-motivo">
               ¿Qué te gustaría ver? <span className="quiet">(opcional)</span>
@@ -105,7 +112,7 @@ export function Reservar({
           </div>
           {estado.error && <p className="error-form">{estado.error}</p>}
           <button className="btn btn-primario" disabled={enviando}>
-            {enviando ? 'Reservando…' : `Reservar el ${fechaLarga(dia)} a las ${hora}`}
+            {enviando ? 'Reservando…' : `Reservar el ${fechaCorta(dia).dia} ${fechaCorta(dia).numero} a las ${hora}`}
           </button>
         </div>
       )}

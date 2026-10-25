@@ -817,31 +817,42 @@ input.formula { font-size: 16px; }
 .fecha-hora input[type='time'] { flex: 0 0 104px; }
 
 /* ---------------------------------------------------------------- Turnos online (página pública) */
-.turnos { min-height: 100dvh; padding: 24px 16px 48px; display: grid; justify-items: center; align-content: start; gap: 16px; }
-.turnos-cabecera { width: 100%; max-width: 560px; font-size: 18px; }
+.turnos { min-height: 100dvh; padding: 32px 16px 56px; display: grid; justify-items: center; align-content: start; gap: 20px; }
+.turnos-cabecera, .turnos-card { width: 100%; max-width: 620px; min-width: 0; }
+.turnos-cabecera { font-size: 18px; }
 .turnos-cabecera .marca-nombre { color: var(--ink); }
 .turnos-cabecera .marca-sub { color: var(--ink-3); }
-.turnos-card { width: 100%; max-width: 560px; padding: 24px 20px; display: grid; gap: 18px; }
-.turnos-card h1 { font-family: var(--fuente-serif); font-weight: 400; font-size: 32px; line-height: 1.1; }
-.turnos-card .sub { color: var(--ink-2); font-size: 15px; line-height: 1.5; }
+.turnos-card { padding: 28px 24px; display: grid; gap: 22px; }
+.turnos-card > *, .turnos-card form, .turnos-card .campo { min-width: 0; }
+.turnos-card h1 { font-family: var(--fuente-serif); font-weight: 400; font-size: clamp(30px, 6vw, 38px); line-height: 1.05; }
+.turnos-card .sub { color: var(--ink-2); font-size: 15px; line-height: 1.5; margin-top: -10px; }
 .turnos-card .aviso { background: var(--surface-2); color: var(--ink-2); }
-.turnos-dias { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+.turnos-card form.form-bloque { gap: 22px; }
+.turnos-paso { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.turnos-paso > .etiqueta { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; color: var(--ink-2); }
+.turnos-dias { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; }
 .turnos-dia {
-  flex: 0 0 auto; width: 62px; padding: 8px 0; display: grid; justify-items: center; gap: 1px; scroll-snap-align: start;
+  padding: 8px 0 7px; display: grid; justify-items: center; gap: 1px;
   border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); cursor: pointer; font: inherit;
+  transition: border-color .15s, background .15s;
 }
-.turnos-dia-nombre, .turnos-dia-mes { font-size: 12px; color: var(--ink-3); text-transform: capitalize; }
-.turnos-dia-numero { font-size: 20px; font-weight: 600; }
+.turnos-dia-nombre, .turnos-dia-mes { font-size: 11px; color: var(--ink-3); text-transform: capitalize; }
+.turnos-dia-numero { font-size: 19px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
 .turnos-dia.activo { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .turnos-dia.activo .turnos-dia-nombre, .turnos-dia.activo .turnos-dia-mes { color: var(--accent-ink); opacity: 0.85; }
-.turnos-horas { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; margin: 6px 0 10px; }
+.turnos-franja { display: grid; gap: 6px; }
+.turnos-franja > span { font-size: 12px; color: var(--ink-3); }
+.turnos-horas { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
 .turnos-hora {
   padding: 10px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink);
-  font: inherit; font-variant-numeric: tabular-nums; font-weight: 550; cursor: pointer;
+  font: inherit; font-size: 15px; font-variant-numeric: tabular-nums; font-weight: 550; cursor: pointer; transition: border-color .15s, background .15s;
 }
 .turnos-hora:hover, .turnos-dia:hover { border-color: var(--accent); }
 .turnos-hora.activo { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.turnos-datos { border-top: 1px solid var(--line); padding-top: 16px; }
+.turnos-datos { border-top: 1px solid var(--line); padding-top: 20px; }
+.turnos-datos .fila-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 520px) { .turnos-datos .fila-2 { grid-template-columns: 1fr; } .turnos-card { padding: 22px 16px; } }
+.turnos-datos .btn-primario { width: 100%; justify-content: center; padding-block: 12px; font-size: 15px; white-space: normal; text-align: center; }
 .turnos-trampa { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
 .turnos-resumen { display: grid; gap: 2px; padding: 16px; border-radius: 12px; background: var(--surface-2); }
 .turnos-resumen-fecha { font-size: 18px; font-weight: 600; text-transform: capitalize; }
