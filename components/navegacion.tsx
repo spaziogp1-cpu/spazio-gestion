@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { BotonBuscar } from './boton-buscar';
 import { Marca } from './marca';
 import { SelectorTema } from './tema';
 import { usePathname } from 'next/navigation';
@@ -57,6 +58,7 @@ export function Sidebar({ nombre, avisos }: { nombre: string; avisos: number }) 
       <Link href="/pedidos/nuevo" className="btn btn-primario" style={{ marginBottom: 12 }}>
         <IconoMas /> Nuevo pedido
       </Link>
+      <BotonBuscar />
       {SECCIONES.map(({ href, nombre, color }) => (
         <Link key={href} href={href} className="navlink" aria-current={activo(path, href) ? 'page' : undefined}>
           <span className="punto-seccion" style={{ background: `var(--c-${color})` }} aria-hidden="true" /> {nombre}

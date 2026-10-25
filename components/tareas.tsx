@@ -128,7 +128,7 @@ export function FilaTarea({ t, equipo, contexto = true }: { t: Tarea; equipo: Mi
   const dias = t.vencimiento ? diasEntre(hoyAR(), t.vencimiento) : null;
 
   return (
-    <div className={`tarea${hecha ? ' tarea-hecha' : ''}${t.vencida && !hecha ? ' tarea-vencida' : ''}`}>
+    <div id={`tarea-${t.id}`} style={{ scrollMarginTop: 80 }} className={`tarea${hecha ? ' tarea-hecha' : ''}${t.vencida && !hecha ? ' tarea-vencida' : ''}`}>
       <button
         type="button"
         className={`check${hecha ? ' check-on' : ''}`}

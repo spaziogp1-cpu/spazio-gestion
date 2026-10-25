@@ -123,3 +123,9 @@ export const IconoEntregas = (p: P) => (
     <circle cx="17" cy="17.5" r="1.8" />
   </svg>
 );
+export const IconoBuscar = (p: P) => (
+  <svg {...base} {...p}>
+    <circle cx="11" cy="11" r="6.5" />
+    <path d="m20 20-4.2-4.2" />
+  </svg>
+);
