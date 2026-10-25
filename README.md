@@ -38,6 +38,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 18. `supabase/migrations/0017_avisos_reportes_recordatorios.sql` — reportes de la mañana y de la tarde y recordatorios antes de entregas y visitas (pg_cron cada minuto)
 19. `supabase/migrations/0018_notificaciones_celular.sql` — notificaciones en el celular (Web Push)
 20. `supabase/migrations/0019_tareas_con_hora.sql` — tareas con hora: van al calendario y avisan 30 minutos antes
+21. `supabase/migrations/0027_gift_cards.sql` — gift cards: página pública de compra, emisión con código, saldo y canjes
 
 ## Variables en Vercel (Settings → Environment Variables)
 
@@ -161,3 +162,17 @@ cp .env.example .env.local   # completar con los datos de Supabase
 npm run dev
 npm test                     # pruebas de fechas y montos
 ```
+
+## Gift cards
+
+1. Corré la migración `0027_gift_cards.sql` en Supabase → SQL Editor.
+2. En la app: **Gift cards → Datos de pago**, cargá alias, CBU, titular y el WhatsApp de Spazio.
+3. La página pública es `https://spazio-gestion.vercel.app/gift-card` (el botón de Tienda Nube apunta ahí).
+   El saldo se consulta en `/gift-card/saldo`.
+
+Circuito: el cliente pide la tarjeta → aviso al equipo → desde **Gift cards** se le mandan los datos para
+transferir por WhatsApp → cuando la transferencia está acreditada en el home banking, un admin la confirma y se
+emite el código `SPZ-XXXX-XXXX` (se ve una sola vez; se guarda cifrado). Si hay `RESEND_API_KEY`, le llega
+el correo a quien la recibe y el aviso a quien compró; por WhatsApp se manda con el botón (mensaje ya escrito).
+Vence el mismo día 3 meses después (o el último día del mes) y se puede prorrogar 30 días una vez.
+Para usarla, en **Gift cards → Usar saldo** se descuenta con el código y el número de pedido.

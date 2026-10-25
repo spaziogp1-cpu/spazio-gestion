@@ -129,3 +129,10 @@ export const IconoBuscar = (p: P) => (
     <path d="m20 20-4.2-4.2" />
   </svg>
 );
+export const IconoGiftCard = (p: P) => (
+  <svg {...base} {...p}>
+    <rect x="3" y="6" width="18" height="13" rx="2" />
+    <path d="M3 11h18M12 6v13" />
+    <path d="M12 6c-1.5-2.5-5-2.5-5 0 0 1.2 2 1.6 5 0zM12 6c1.5-2.5 5-2.5 5 0 0 1.2-2 1.6-5 0z" />
+  </svg>
+);

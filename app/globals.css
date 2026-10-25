@@ -937,3 +937,66 @@ input.formula { font-size: 16px; }
 .buscar-pagina-grupo { margin-top: 18px; padding: 8px; }
 .buscar-pagina-grupo h2 { font-size: 15px; margin: 8px 10px 6px; }
 .tarea:target, .item:target { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 10px; }
+
+/* ===================================================================
+   Gift card (página pública /gift-card y sección interna)
+   Tarjeta "Luz filtrada": papel claro y vidrios ámbar, rosa, verde y humo.
+   =================================================================== */
+.gc-tarjeta {
+  position: relative; width: 100%; aspect-ratio: 1000 / 630; border-radius: 18px; overflow: hidden;
+  background: #f4f0e8; color: #1d1c1a; container-type: inline-size;
+  box-shadow: 0 1px 2px rgb(26 24 20 / 0.06), 0 18px 40px rgb(26 24 20 / 0.12);
+}
+.gc-tarjeta-chica { border-radius: 12px; }
+.gc-vidrio, .gc-luz { position: absolute; display: block; }
+.gc-vidrio { mix-blend-mode: multiply; }
+.gc-vidrio-ambar { left: 52%; top: 10.5%; width: 17%; height: 66.7%; background: rgb(227 162 59 / 0.8); box-shadow: inset 2px 0 0 rgb(255 255 255 / 0.7); }
+.gc-vidrio-rosa  { left: 61.2%; top: 23.5%; width: 19%; height: 63.5%; background: rgb(217 130 138 / 0.74); box-shadow: inset 2px 0 0 rgb(255 255 255 / 0.6); }
+.gc-vidrio-verde { left: 73.6%; top: 6.3%; width: 12%; height: 52.4%; background: rgb(127 174 156 / 0.55); box-shadow: inset 2px 0 0 rgb(255 255 255 / 0.7); }
+.gc-vidrio-humo  { left: 81.2%; top: 47.6%; width: 9.2%; height: 35.2%; background: rgb(61 59 54 / 0.5); }
+.gc-luz { filter: blur(10px); opacity: 0.22; }
+.gc-luz-1 { left: 55.6%; top: 16.5%; width: 17%; height: 66.7%; background: #e3a23b; }
+.gc-luz-2 { left: 64.8%; top: 29.5%; width: 19%; height: 63.5%; background: #d9828a; }
+.gc-contenido { position: relative; height: 100%; width: 52%; box-sizing: border-box; padding: 6.4cqi; display: flex; flex-direction: column; justify-content: space-between; }
+.gc-logo { width: 15cqi; height: auto; display: block; }
+.gc-pie { display: grid; gap: 0.8cqi; min-width: 0; }
+.gc-titulo, .gc-etiqueta { font-size: 3cqi; letter-spacing: 0.9cqi; text-transform: uppercase; font-weight: 500; }
+.gc-etiqueta { font-size: 1.5cqi; letter-spacing: 0.4cqi; color: #57534c; order: -1; }
+.gc-monto { font-size: 7cqi; font-weight: 500; letter-spacing: -0.1cqi; line-height: 1; overflow-wrap: anywhere; }
+.gc-frase { font-size: 1.7cqi; font-style: italic; color: #6b655c; }
+.gc-para { font-size: 1.9cqi; color: #3a3732; overflow-wrap: anywhere; }
+.gc-datos { display: grid; gap: 0.3cqi; font-size: 1.6cqi; color: #57534c; margin-top: 0.6cqi; }
+.gc-codigo { font-family: var(--mono); font-size: 2cqi; letter-spacing: 0.15cqi; color: #1d1c1a; }
+
+.gc-publica .turnos-card { max-width: 620px; }
+.gc-publica .turnos-cabecera img { width: 112px; height: auto; display: block; }
+.gc-hero { display: grid; gap: 18px; }
+.gc-montos { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.gc-monto-btn {
+  min-height: 48px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  font: inherit; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; padding: 8px 10px;
+}
+.gc-monto-btn:hover { border-color: var(--accent); }
+.gc-monto-btn[aria-checked='true'] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.gc-ocasiones { display: flex; flex-wrap: wrap; gap: 6px; }
+.gc-contador { font-size: 12px; color: var(--ink-3); text-align: right; }
+.gc-resumen { display: grid; gap: 6px; padding: 14px 16px; border-radius: 12px; background: var(--surface-2); font-size: 14px; }
+.gc-resumen div { display: flex; justify-content: space-between; gap: 12px; }
+.gc-resumen strong { font-variant-numeric: tabular-nums; }
+.gc-pasos { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--ink-2); font-size: 15px; line-height: 1.5; }
+.gc-condiciones { font-size: 13px; color: var(--ink-3); line-height: 1.55; border-top: 1px solid var(--line); padding-top: 16px; }
+.gc-condiciones ul { margin: 6px 0 0; padding-left: 18px; }
+.gc-saldo-grande { font-size: 34px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.gc-estado { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+.gc-estado-activa, .gc-estado-emitida { background: var(--ok-soft); color: var(--ok); }
+.gc-estado-pendiente_pago, .gc-estado-todavia_no { background: var(--warn-soft); color: var(--warn); }
+.gc-estado-en_revision { background: var(--c-violeta-bg); color: var(--c-violeta-tx); }
+.gc-estado-vencida, .gc-estado-anulada, .gc-estado-cancelada, .gc-estado-usada { background: var(--surface-2); color: var(--ink-2); }
+
+/* Sección interna */
+.gc-codigo-nuevo { font-family: var(--mono); font-size: 22px; letter-spacing: 1px; padding: 12px 14px; border-radius: 10px; background: var(--ok-soft); color: var(--ok); text-align: center; }
+.gc-fila { display: grid; gap: 6px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.lista li:last-child .gc-fila { border-bottom: 0; }
+.gc-fila-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.gc-fila-cab strong { font-variant-numeric: tabular-nums; }
+.gc-mini { width: 132px; flex-shrink: 0; }
