@@ -23,7 +23,7 @@ export async function optimizarConGoogle(pedido: unknown): Promise<{ ok: true; r
       const msg = (j as { error?: { message?: string; status?: string } }).error;
       const texto =
         r.status === 403
-          ? 'Google rechazó el pedido: habilitá Route Optimization API y dale a la cuenta de servicio el rol "Route Optimization Editor"'
+          ? `Google rechazó el pedido (${/disabled|not been used/i.test(msg?.message ?? '') ? 'la Route Optimization API no está habilitada' : /permission/i.test(msg?.message ?? '') ? 'a la cuenta de servicio le falta el rol "Route Optimization Editor"' : 'habilitá Route Optimization API y dale a la cuenta de servicio el rol "Route Optimization Editor"'})${msg?.message ? `. Google dice: ${msg.message.slice(0, 220)}` : ''}`
           : `Route Optimization respondió ${r.status}${msg?.message ? `: ${msg.message.slice(0, 160)}` : ''}`;
       return { ok: false, error: texto };
     }
