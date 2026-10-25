@@ -9,6 +9,7 @@ import { leerMonto, texto } from '@/lib/formato';
 import { leerReglaPlazo } from '@/lib/parametros';
 import { miembroActual } from '@/lib/sesion';
 import { vincularPresupuesto } from '@/lib/cotizador/a-pedido';
+import { generarRemito } from '@/lib/remitos/servicio';
 import { actualizarPedido as actualizarEnPlanilla, agregarPedido as agregarAPlanilla, anotarPendiente } from '@/lib/planilla/sync';
 
 export type Estado = { error?: string; ok?: string };
@@ -103,6 +104,8 @@ export async function crearPedido(_prev: Estado, fd: FormData): Promise<Estado> 
   // La fila en la planilla se escribe después de responder, para no demorar la carga.
   await anotarPendiente(supabase, id).catch(() => {});
   after(() => agregarAPlanilla(supabase, id));
+  // El remito se arma y se sube a Drive después de responder.
+  after(() => generarRemito(id).then((r) => !r.ok && console.error('remito', r.error), (e) => console.error('remito', e)));
 
   revalidatePath('/pedidos');
   redirect(`/pedidos/${id}?nuevo=1`);
@@ -242,4 +245,13 @@ export async function borrarArchivo(pedidoId: string, archivoId: string): Promis
   await supabase.storage.from('archivos').remove([data.ruta]);
   await supabase.from('archivos').delete().eq('id', archivoId);
   revalidatePath(`/pedidos/${pedidoId}`);
+}
+
+/** Vuelve a generar el remito del pedido (versión nueva), por ejemplo después de registrar un pago. */
+export async function regenerarRemito(pedidoId: string): Promise<Estado> {
+  const { miembro } = await miembroActual();
+  const r = await generarRemito(pedidoId, { quien: miembro.email });
+  revalidatePath(`/pedidos/${pedidoId}`);
+  if (!r.ok) return { error: r.error ?? 'No se pudo generar el remito.' };
+  return r.error ? { error: r.error } : { ok: `Remito generado y guardado en Drive (${r.nombre}).` };
 }

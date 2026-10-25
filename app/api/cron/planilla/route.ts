@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { importarDeOriginal } from '@/lib/planilla/importar-origen';
 import { sincronizarPendientes } from '@/lib/planilla/sync';
+import { subirPendientes } from '@/lib/remitos/servicio';
 import { crearAdmin } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
@@ -30,8 +31,10 @@ async function correr(request: NextRequest) {
     console.error('planilla pendientes', e);
     return { error: e instanceof Error ? e.message : String(e) };
   });
+  // Remitos que no se pudieron subir a Drive.
+  const remitos = await subirPendientes().catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
   const ok = !('error' in importadas) && !('error' in escritos);
-  return NextResponse.json({ ok, importadas, escritos }, { status: ok ? 200 : 500 });
+  return NextResponse.json({ ok, importadas, escritos, remitos }, { status: ok ? 200 : 500 });
 }
 
 export const GET = correr;

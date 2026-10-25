@@ -464,3 +464,34 @@ export async function probarGoogleMaps(): Promise<EstadoAjustes> {
     return { error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+// Remitos en Google Drive: guarda el link del script del dueño de la carpeta y lo prueba.
+export async function guardarDriveRemitos(_prev: EstadoAjustes, fd: FormData): Promise<EstadoAjustes> {
+  try {
+    await soloAdmin();
+    const url = String(fd.get('url') ?? '').trim();
+    if (url && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url))
+      return { error: 'El link tiene que ser el de la aplicación web del script: https://script.google.com/macros/s/…/exec' };
+    const { crearAdmin } = await import('@/lib/supabase/admin');
+    const db = crearAdmin();
+    const { configDrive, subirADrive } = await import('@/lib/remitos/servicio');
+    const cfg = await configDrive(db);
+    if (!cfg) return { error: 'Falta correr la migración 0025 (remitos) en Supabase.' };
+    const { error } = await db.from('integraciones').update({ datos: { ...cfg, url: url || null }, actualizado_en: new Date().toISOString() }).eq('clave', 'drive_remitos');
+    if (error) return { error: `No se pudo guardar: ${error.message}` };
+    revalidatePath('/ajustes');
+    if (!url) return { ok: 'Guardado (sin Drive).' };
+    // Prueba: sube un PDF chico a la carpeta.
+    const { PDFDocument, StandardFonts } = await import('pdf-lib');
+    const doc = await PDFDocument.create();
+    const pag = doc.addPage([300, 120]);
+    pag.drawText('Prueba de conexión de Spazio Gestión', { x: 20, y: 60, size: 12, font: await doc.embedFont(StandardFonts.Helvetica) });
+    const r = await subirADrive({ ...cfg, url }, 'Prueba de conexión - Spazio Gestión.pdf', await doc.save());
+    if (!r.ok) return { error: `Guardado, pero la prueba falló: ${r.error}` };
+    const { subirPendientes } = await import('@/lib/remitos/servicio');
+    const p = await subirPendientes();
+    return { ok: `Conectado: se subió un PDF de prueba a la carpeta (podés borrarlo).${p.ok ? ` También se subieron ${p.ok} remitos pendientes.` : ''}` };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}

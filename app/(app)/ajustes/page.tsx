@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { miembroActual } from '@/lib/sesion';
 import { NotificacionesCelular } from './push';
 import { fechaCorta } from '@/lib/fechas';
-import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormAvisos, FormParametros, FormReparto, FormTurnos, FormVehiculo, ProbarGoogleMaps, type VehiculoAjustes, ImportarTiendaNube, ProbarPlanilla, ProbarReportes, ProbarResumen } from './partes';
+import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormAvisos, FormParametros, FormReparto, FormDriveRemitos, FormTurnos, FormVehiculo, ProbarGoogleMaps, type VehiculoAjustes, ImportarTiendaNube, ProbarPlanilla, ProbarReportes, ProbarResumen } from './partes';
 
 async function conexionTiendaNube() {
   try {
@@ -45,6 +45,20 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
   const valores = Object.fromEntries(((params ?? []) as { clave: string; valor: string }[]).map((p) => [p.clave, p.valor]));
   const { data: vehiculosData } = await supabase.from('vehiculos').select('*').order('orden').order('creado_en');
   const vehiculos = (vehiculosData ?? []) as VehiculoAjustes[];
+  // Remitos en Drive (la configuración está en integraciones: solo la lee el servidor).
+  let drive: { url: string | null; codigo: string; pendientes: number } | null = null;
+  if (admin) {
+    try {
+      const { crearAdmin } = await import('@/lib/supabase/admin');
+      const { configDrive, codigoScript } = await import('@/lib/remitos/servicio');
+      const db = crearAdmin();
+      const cfg = await configDrive(db);
+      const { count } = await db.from('remitos').select('id', { count: 'exact', head: true }).in('estado', ['pendiente', 'error']);
+      if (cfg) drive = { url: cfg.url, codigo: codigoScript(cfg), pendientes: count ?? 0 };
+    } catch {
+      drive = null;
+    }
+  }
   const whatsapp = Boolean(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_ID);
   const email = Boolean(process.env.RESEND_API_KEY);
   const cron = Boolean(process.env.CRON_SECRET && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY));
@@ -124,6 +138,20 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
               <FormReparto valores={valores} editable={admin} />
             </div>
           </section>
+          {admin && (
+            <section className="card" id="remitos" style={{ scrollMarginTop: 80 }}>
+              <div className="card-titulo">
+                <h2>Remitos en Google Drive</h2>
+              </div>
+              <div className="seccion form-bloque">
+                <p className="small">
+                  Cada venta nueva (cargada en la app o de Tienda Nube) genera su remito en PDF: queda en los archivos del pedido y se guarda en la carpeta «remitos» de
+                  Google Drive.
+                </p>
+                {drive ? <FormDriveRemitos url={drive.url} codigo={drive.codigo} pendientes={drive.pendientes} /> : <p className="aviso aviso-mal">Falta correr la migración 0025 (remitos) en Supabase.</p>}
+              </div>
+            </section>
+          )}
           <section className="card" id="vehiculos" style={{ scrollMarginTop: 80 }}>
             <div className="card-titulo">
               <h2>Vehículos</h2>

@@ -15,6 +15,7 @@ import {
   borrarPago,
   cambiarEtapa,
   guardarItem,
+  regenerarRemito,
   registrarArchivo,
   type Estado,
 } from '../actions';
@@ -525,5 +526,32 @@ export function EditarPedido({ p, equipo }: { p: PedidoResumen; equipo: { id: st
         </div>
       </form>
     </section>
+  );
+}
+
+// Remito en PDF: se genera solo al cargar la venta; acá se puede volver a generar (por ejemplo, después de un pago).
+export function BotonRemito({ pedidoId, ultimo }: { pedidoId: string; ultimo: { version: number; estado: string; drive_url: string | null; error: string | null } | null }) {
+  const [pendiente, iniciar] = useTransition();
+  const [estado, setEstado] = useState<Estado>({});
+  return (
+    <div className="small" style={{ marginBottom: 10 }}>
+      <div className="acciones" style={{ alignItems: 'center' }}>
+        <span>
+          <span className="faint">Remito: </span>
+          {!ultimo ? 'todavía no se generó' : ultimo.estado === 'ok' ? 'guardado en Drive' : ultimo.estado === 'error' ? 'no se pudo subir a Drive (se reintenta solo)' : 'en el pedido, falta subirlo a Drive'}
+          {ultimo && ultimo.version > 1 ? ` · versión ${ultimo.version}` : ''}
+        </span>
+        {ultimo?.drive_url && (
+          <a href={ultimo.drive_url} target="_blank" rel="noopener noreferrer">
+            Abrir en Drive
+          </a>
+        )}
+        <button type="button" className="btn btn-chico" disabled={pendiente} onClick={() => iniciar(async () => setEstado(await regenerarRemito(pedidoId)))}>
+          {pendiente ? 'Generando…' : ultimo ? 'Generar de nuevo' : 'Generar remito'}
+        </button>
+      </div>
+      {estado.ok && <p className="aviso aviso-ok" style={{ marginTop: 6 }}>{estado.ok}</p>}
+      {estado.error && <p className="error-form" style={{ marginTop: 6 }}>{estado.error}</p>}
+    </div>
   );
 }

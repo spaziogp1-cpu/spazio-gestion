@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { calcularFechaLimite } from '@/lib/fechas';
 import { leerReglaPlazo } from '@/lib/parametros';
 import { agregarPedido as agregarAPlanilla, anotarPendiente } from '@/lib/planilla/sync';
+import { generarRemito } from '@/lib/remitos/servicio';
 import { leerConexion, obtenerOrden, ordenesPagadasDesde } from './api';
 import { pedidoDesdeOrden, type OrdenTN } from './mapeo';
 
@@ -124,6 +125,7 @@ export async function procesarOrden(db: Cliente, ordenId: number, yaLeida?: Orde
 
     await anotarPendiente(db, pedidoId).catch(() => {});
     await agregarAPlanilla(db, pedidoId).catch((e) => console.error('planilla tn', e));
+    await generarRemito(pedidoId, { quien: 'Tienda Nube' }).catch((e) => console.error('remito tn', e));
     return { estado: 'creado', pedidoId };
   } catch (e) {
     const detalle = e instanceof Error ? e.message : String(e);

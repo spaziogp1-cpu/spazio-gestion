@@ -1,7 +1,7 @@
 'use client';
 
 import { startTransition, useActionState, useState, useTransition } from 'react';
-import { cambiarMiContrasena, crearClaveIA, traerDePlanillaOriginal, definirContrasena, enviarmeResumen, guardarMiembro, guardarAvisos, guardarParametros, guardarReparto, guardarTurnos, guardarVehiculo, probarGoogleMaps, importarTiendaNube, probarPlanilla, probarReporte, revocarClaveIA, type EstadoAjustes } from './actions';
+import { cambiarMiContrasena, crearClaveIA, traerDePlanillaOriginal, definirContrasena, enviarmeResumen, guardarMiembro, guardarAvisos, guardarParametros, guardarDriveRemitos, guardarReparto, guardarTurnos, guardarVehiculo, probarGoogleMaps, importarTiendaNube, probarPlanilla, probarReporte, revocarClaveIA, type EstadoAjustes } from './actions';
 
 type Miembro = { id: string; nombre: string; alias_planilla: string | null; email: string; telefono: string | null; rol: string; activo: boolean };
 
@@ -720,6 +720,60 @@ export function ProbarGoogleMaps() {
       </div>
       {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}
       {estado.error && <p className="error-form">{estado.error}</p>}
+    </div>
+  );
+}
+
+export function FormDriveRemitos({ url, codigo, pendientes }: { url: string | null; codigo: string; pendientes: number }) {
+  const [estado, accion, guardando] = useActionState<EstadoAjustes, FormData>(guardarDriveRemitos, {});
+  const [copiado, setCopiado] = useState(false);
+  return (
+    <div className="form-bloque">
+      <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>
+        <li>Conexión: {url ? '✓ conectado' : '✗ falta conectar'}</li>
+        {pendientes > 0 && <li>Remitos esperando para subir: {pendientes}</li>}
+      </ul>
+      <details open={!url}>
+        <summary className="small">Cómo conectarlo (una sola vez, con la cuenta dueña de la carpeta)</summary>
+        <ol className="small" style={{ paddingLeft: 18 }}>
+          <li>Entrá a script.google.com con tu cuenta de Google y tocá «Nuevo proyecto».</li>
+          <li>Borrá lo que aparece, pegá el código de abajo y guardá.</li>
+          <li>Arriba, elegí la función «autorizar» y tocá «Ejecutar». Aceptá los permisos de Drive.</li>
+          <li>«Implementar» → «Nueva implementación» → tipo «Aplicación web». Ejecutar como: «Yo». Quién tiene acceso: «Cualquier persona». Implementar.</li>
+          <li>Copiá la «URL de la aplicación web» (termina en /exec) y pegala acá abajo.</li>
+        </ol>
+        <div className="acciones" style={{ marginBottom: 6 }}>
+          <button
+            type="button"
+            className="btn btn-chico"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(codigo);
+                setCopiado(true);
+                setTimeout(() => setCopiado(false), 2000);
+              } catch {
+                /* se puede copiar a mano */
+              }
+            }}
+          >
+            {copiado ? '¡Copiado!' : 'Copiar código'}
+          </button>
+        </div>
+        <textarea readOnly value={codigo} rows={10} style={{ fontFamily: 'monospace', fontSize: 12 }} onFocus={(e) => e.currentTarget.select()} />
+      </details>
+      <form onSubmit={enviar(accion)} className="form-bloque">
+        <div className="campo">
+          <label htmlFor="drive-url">URL de la aplicación web del script</label>
+          <input id="drive-url" name="url" type="text" defaultValue={url ?? ''} placeholder="https://script.google.com/macros/s/…/exec" />
+        </div>
+        {estado.error && <p className="error-form">{estado.error}</p>}
+        {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}
+        <div>
+          <button className="btn btn-primario btn-chico" disabled={guardando}>
+            {guardando ? 'Probando…' : 'Guardar y probar'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

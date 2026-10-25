@@ -13,7 +13,7 @@ import type { Archivo, Cliente, Comentario, Evento, Item, Pago, PedidoProveedor,
 import { FilaProveedor, NuevoPedidoProveedor } from './proveedores-pedido';
 import { ListaTareas, NuevaTarea } from '@/components/tareas';
 import { CAMPOS_OCULTOS, autorEvento, textoEvento } from './historial';
-import { BorrarPago, EditarPedido, FormComentario, FormPago, ItemEditable, NuevoItem, SelectorEtapa, SubirArchivos, BorrarArchivo } from './partes';
+import { BorrarPago, EditarPedido, FormComentario, FormPago, ItemEditable, NuevoItem, SelectorEtapa, SubirArchivos, BorrarArchivo, BotonRemito } from './partes';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -51,6 +51,7 @@ export default async function FichaPedido({
     leerReglaPlazo(supabase),
     supabase.from('tareas_resumen').select('*').eq('pedido_id', id).order('estado').order('vencimiento', { nullsFirst: false }),
   ]);
+  const { data: remitoData } = await supabase.from('remitos').select('version, estado, drive_url, error').eq('pedido_id', id).order('version', { ascending: false }).limit(1).maybeSingle();
   // Entrega del pedido (la más reciente); si la migración 0022 no está, no se muestra.
   const { data: entregaData } = await supabase
     .from('entregas')
@@ -224,6 +225,7 @@ export default async function FichaPedido({
               <SubirArchivos pedidoId={p.id} />
             </div>
             <div className="seccion">
+              <BotonRemito pedidoId={p.id} ultimo={remitoData as { version: number; estado: string; drive_url: string | null; error: string | null } | null} />
               {archivos.length === 0 ? (
                 <p className="quiet small">Fotos de la mesa, comprobantes, planos. Hasta 20 MB cada uno.</p>
               ) : (
