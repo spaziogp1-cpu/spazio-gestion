@@ -1,7 +1,7 @@
 'use client';
 
 import { startTransition, useActionState, useState, useTransition } from 'react';
-import { cambiarMiContrasena, crearClaveIA, traerDePlanillaOriginal, definirContrasena, enviarmeResumen, guardarMiembro, guardarAvisos, guardarParametros, importarTiendaNube, probarPlanilla, probarReporte, revocarClaveIA, type EstadoAjustes } from './actions';
+import { cambiarMiContrasena, crearClaveIA, traerDePlanillaOriginal, definirContrasena, enviarmeResumen, guardarMiembro, guardarAvisos, guardarParametros, guardarTurnos, importarTiendaNube, probarPlanilla, probarReporte, revocarClaveIA, type EstadoAjustes } from './actions';
 
 type Miembro = { id: string; nombre: string; alias_planilla: string | null; email: string; telefono: string | null; rol: string; activo: boolean };
 
@@ -389,5 +389,84 @@ export function ProbarReportes() {
       )}
       {estado.error && <p className="error-form">{estado.error}</p>}
     </div>
+  );
+}
+
+export function FormTurnos({ valores, editable }: { valores: Record<string, string>; editable: boolean }) {
+  const [estado, accion, guardando] = useActionState<EstadoAjustes, FormData>(guardarTurnos, {});
+  let horarios: Record<string, string> = {};
+  try {
+    horarios = JSON.parse(valores.turnos_horarios ?? '{}');
+  } catch {
+    horarios = {};
+  }
+  const cerrados = (valores.turnos_cerrados ?? '')
+    .split(',')
+    .filter(Boolean)
+    .map((f) => f.split('-').reverse().join('/'))
+    .join('\n');
+  return (
+    <form onSubmit={enviar(accion)} className="form-bloque">
+      <label className="small" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <input type="checkbox" name="turnos_activo" defaultChecked={(valores.turnos_activo ?? 'si') === 'si'} disabled={!editable} /> Tomar turnos online
+      </label>
+      <div className="campo">
+        <span className="etiqueta">Horario de atención</span>
+        {NOMBRES_DIAS.map((n, i) => {
+          const [desde, hasta] = (horarios[String(i + 1)] ?? '').split('-');
+          return (
+            <div key={n} className="acciones" style={{ gap: 8, alignItems: 'center' }}>
+              <label className="small" style={{ display: 'flex', gap: 4, alignItems: 'center', width: 64 }}>
+                <input type="checkbox" name={`abre_${i + 1}`} defaultChecked={Boolean(desde)} disabled={!editable} /> {n}
+              </label>
+              <input type="time" step={900} name={`desde_${i + 1}`} defaultValue={desde || '10:00'} disabled={!editable} style={{ width: 120 }} aria-label={`${n} desde`} />
+              <span className="quiet small">a</span>
+              <input type="time" step={900} name={`hasta_${i + 1}`} defaultValue={hasta || '18:00'} disabled={!editable} style={{ width: 120 }} aria-label={`${n} hasta`} />
+            </div>
+          );
+        })}
+      </div>
+      <div className="fila fila-2">
+        <div className="campo">
+          <label htmlFor="tu-dur">Duración de cada turno (minutos)</label>
+          <input id="tu-dur" name="turnos_duracion" type="number" min={10} max={240} step={5} defaultValue={valores.turnos_duracion ?? '30'} disabled={!editable} />
+        </div>
+        <div className="campo">
+          <label htmlFor="tu-cupo">Visitas por horario</label>
+          <input id="tu-cupo" name="turnos_cupo" type="number" min={1} max={10} defaultValue={valores.turnos_cupo ?? '1'} disabled={!editable} />
+        </div>
+        <div className="campo">
+          <label htmlFor="tu-ant">Anticipación mínima (horas)</label>
+          <input id="tu-ant" name="turnos_anticipacion_horas" type="number" min={0} max={168} defaultValue={valores.turnos_anticipacion_horas ?? '3'} disabled={!editable} />
+        </div>
+        <div className="campo">
+          <label htmlFor="tu-dias">Se puede reservar hasta (días)</label>
+          <input id="tu-dias" name="turnos_dias_adelante" type="number" min={1} max={90} defaultValue={valores.turnos_dias_adelante ?? '21'} disabled={!editable} />
+        </div>
+      </div>
+      <div className="campo">
+        <label htmlFor="tu-dir">Dirección del showroom</label>
+        <input id="tu-dir" name="showroom_direccion" type="text" placeholder="Calle 123, Barrio, Ciudad" defaultValue={valores.showroom_direccion ?? ''} disabled={!editable} />
+      </div>
+      <div className="campo">
+        <label htmlFor="tu-wa">WhatsApp de contacto</label>
+        <input id="tu-wa" name="showroom_whatsapp" type="tel" placeholder="11 5555-1234" defaultValue={valores.showroom_whatsapp ?? ''} disabled={!editable} />
+      </div>
+      <div className="campo">
+        <label htmlFor="tu-cerr">
+          Días cerrados <span className="quiet">(además de los feriados; uno por renglón, como 24/12)</span>
+        </label>
+        <textarea id="tu-cerr" name="turnos_cerrados" rows={3} defaultValue={cerrados} disabled={!editable} />
+      </div>
+      {estado.error && <p className="error-form">{estado.error}</p>}
+      {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}
+      {editable && (
+        <div>
+          <button className="btn btn-primario btn-chico" disabled={guardando}>
+            Guardar
+          </button>
+        </div>
+      )}
+    </form>
   );
 }

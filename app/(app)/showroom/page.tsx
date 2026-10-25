@@ -1,15 +1,19 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { fechaCorta, hoyAR, sumarDiasCorridos } from '@/lib/fechas';
 import { miembroActual } from '@/lib/sesion';
 import type { Visita } from '@/lib/tipos';
-import { FilaVisita, NuevaVisita } from './partes';
+import { FilaVisita, LinkTurnos, NuevaVisita } from './partes';
 
 export const metadata: Metadata = { title: 'Showroom' };
 
 export default async function ShowroomPage() {
   const { miembro, supabase } = await miembroActual();
   const hoy = hoyAR();
-  const [{ data: eq }, { data }] = await Promise.all([
+  const h = await headers();
+  const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'spazio-gestion.vercel.app';
+  const urlTurnos = `${host.startsWith('localhost') ? 'http' : 'https'}://${host}/turnos`;
+  const [{ data: eq }, { data }, { data: activoParam }] = await Promise.all([
     supabase.from('equipo').select('id, nombre').eq('activo', true).order('nombre'),
     supabase
       .from('visitas')
@@ -17,6 +21,7 @@ export default async function ShowroomPage() {
       .gte('fecha', sumarDiasCorridos(hoy, -14))
       .order('fecha')
       .order('hora', { nullsFirst: true }),
+    supabase.from('parametros').select('valor').eq('clave', 'turnos_activo').maybeSingle(),
   ]);
   const equipo = (eq ?? []) as { id: string; nombre: string }[];
   const visitas = (data ?? []) as Visita[];
@@ -95,6 +100,14 @@ export default async function ShowroomPage() {
         </div>
 
         <div className="col">
+          <section className="card">
+            <div className="card-titulo">
+              <h2>Turnos online</h2>
+            </div>
+            <div className="seccion">
+              <LinkTurnos url={urlTurnos} activo={activoParam?.valor !== 'no'} />
+            </div>
+          </section>
           <section className="card">
             <div className="card-titulo">
               <h2>Próximas</h2>

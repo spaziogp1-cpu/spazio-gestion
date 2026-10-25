@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { miembroActual } from '@/lib/sesion';
 import { NotificacionesCelular } from './push';
 import { fechaCorta } from '@/lib/fechas';
-import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormAvisos, FormParametros, ImportarTiendaNube, ProbarPlanilla, ProbarReportes, ProbarResumen } from './partes';
+import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormAvisos, FormParametros, FormTurnos, ImportarTiendaNube, ProbarPlanilla, ProbarReportes, ProbarResumen } from './partes';
 
 async function conexionTiendaNube() {
   try {
@@ -102,6 +102,18 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
             </div>
             <div className="seccion">
               <FormParametros valores={valores} editable={admin} />
+            </div>
+          </section>
+          <section className="card" id="turnos" style={{ scrollMarginTop: 80 }}>
+            <div className="card-titulo">
+              <h2>Turnos del showroom</h2>
+            </div>
+            <div className="seccion form-bloque">
+              <p className="small">
+                El link para mandarle a los clientes está en Showroom. Acá se eligen los días y horarios que se ofrecen; los feriados y los horarios ya
+                reservados no aparecen.
+              </p>
+              <FormTurnos valores={valores} editable={admin} />
             </div>
           </section>
           <section className="card">

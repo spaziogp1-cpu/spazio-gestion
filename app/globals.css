@@ -815,3 +815,36 @@ input.formula { font-size: 16px; }
 .fecha-hora { display: flex; gap: 6px; }
 .fecha-hora input[type='date'] { flex: 1 1 auto; min-width: 0; }
 .fecha-hora input[type='time'] { flex: 0 0 104px; }
+
+/* ---------------------------------------------------------------- Turnos online (página pública) */
+.turnos { min-height: 100dvh; padding: 24px 16px 48px; display: grid; justify-items: center; align-content: start; gap: 16px; }
+.turnos-cabecera { width: 100%; max-width: 560px; font-size: 18px; }
+.turnos-cabecera .marca-nombre { color: var(--ink); }
+.turnos-cabecera .marca-sub { color: var(--ink-3); }
+.turnos-card { width: 100%; max-width: 560px; padding: 24px 20px; display: grid; gap: 18px; }
+.turnos-card h1 { font-family: var(--fuente-serif); font-weight: 400; font-size: 32px; line-height: 1.1; }
+.turnos-card .sub { color: var(--ink-2); font-size: 15px; line-height: 1.5; }
+.turnos-card .aviso { background: var(--surface-2); color: var(--ink-2); }
+.turnos-dias { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+.turnos-dia {
+  flex: 0 0 auto; width: 62px; padding: 8px 0; display: grid; justify-items: center; gap: 1px; scroll-snap-align: start;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); cursor: pointer; font: inherit;
+}
+.turnos-dia-nombre, .turnos-dia-mes { font-size: 12px; color: var(--ink-3); text-transform: capitalize; }
+.turnos-dia-numero { font-size: 20px; font-weight: 600; }
+.turnos-dia.activo { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.turnos-dia.activo .turnos-dia-nombre, .turnos-dia.activo .turnos-dia-mes { color: var(--accent-ink); opacity: 0.85; }
+.turnos-horas { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; margin: 6px 0 10px; }
+.turnos-hora {
+  padding: 10px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink);
+  font: inherit; font-variant-numeric: tabular-nums; font-weight: 550; cursor: pointer;
+}
+.turnos-hora:hover, .turnos-dia:hover { border-color: var(--accent); }
+.turnos-hora.activo { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.turnos-datos { border-top: 1px solid var(--line); padding-top: 16px; }
+.turnos-trampa { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.turnos-resumen { display: grid; gap: 2px; padding: 16px; border-radius: 12px; background: var(--surface-2); }
+.turnos-resumen-fecha { font-size: 18px; font-weight: 600; text-transform: capitalize; }
+.turnos-resumen-hora { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--accent); }
+.turnos-acciones { flex-wrap: wrap; }
+.turnos-acciones .btn { text-decoration: none; }

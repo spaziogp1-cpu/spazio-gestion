@@ -184,4 +184,7 @@ export type Visita = {
   notas: string | null;
   pedido_id: string | null;
   creado_en: string;
+  /** 'web': lo reservó el cliente desde el link de turnos (necesita la migración 0021). */
+  origen?: string;
+  email?: string | null;
 };

@@ -19,6 +19,46 @@ function enviar(accion: (fd: FormData) => void) {
 }
 
 // ---------------------------------------------------------------------
+// Link de turnos online para mandarle al cliente
+// ---------------------------------------------------------------------
+export function LinkTurnos({ url, activo }: { url: string; activo: boolean }) {
+  const [copiado, setCopiado] = useState(false);
+  const mensaje = `¡Hola! Podés elegir el día y el horario para visitar nuestro showroom acá: ${url}`;
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      window.prompt('Copiá el link', url);
+    }
+  };
+  return (
+    <div className="form-bloque">
+      <p className="small">
+        Mandale este link al cliente: elige el día y el horario libre, y el turno aparece acá y en el calendario.
+        {!activo && <strong> Ahora está apagado (se prende en Ajustes).</strong>}
+      </p>
+      <code className="small" style={{ wordBreak: 'break-all' }}>{url}</code>
+      <div className="acciones">
+        <button type="button" className="btn btn-chico btn-primario" onClick={copiar}>
+          {copiado ? '¡Copiado!' : 'Copiar link'}
+        </button>
+        <a className="btn btn-chico" href={`https://wa.me/?text=${encodeURIComponent(mensaje)}`} target="_blank" rel="noopener noreferrer">
+          Enviar por WhatsApp
+        </a>
+        <a className="btn btn-chico btn-fantasma" href={url} target="_blank" rel="noopener noreferrer">
+          Ver la página
+        </a>
+        <Link className="btn btn-chico btn-fantasma" href="/ajustes#turnos">
+          Horarios
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
 // Alta: con turno o "llegó sin turno"
 // ---------------------------------------------------------------------
 export function NuevaVisita({ equipo, yo }: { equipo: Miembro[]; yo: string }) {
@@ -143,6 +183,7 @@ export function FilaVisita({ v, equipo, mostrarFecha = false }: { v: Visita; equ
             <div className="item-titulo">
               {v.nombre}
               {!v.con_turno && <span className="chip" style={{ marginLeft: 6 }}>Sin turno</span>}
+              {v.origen === 'web' && <span className="chip" style={{ marginLeft: 6 }}>Reservó online</span>}
             </div>
             <div className="item-detalle">
               {[v.motivo, atiende && `atiende ${atiende}`].filter(Boolean).join(' · ') || '—'}

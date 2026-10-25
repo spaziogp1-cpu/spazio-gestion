@@ -285,3 +285,54 @@ export async function probarReporte(tipo: 'manana' | 'tarde'): Promise<EstadoAju
   revalidatePath('/', 'layout');
   return { ok: 'Listo: está en Avisos.', id: data as string };
 }
+
+// Turnos online del showroom (página /turnos).
+export async function guardarTurnos(_prev: EstadoAjustes, fd: FormData): Promise<EstadoAjustes> {
+  try {
+    const { supabase } = await soloAdmin();
+    const hora = (v: FormDataEntryValue | null) => {
+      const t = String(v ?? '').trim();
+      return /^([01]\d|2[0-3]):[0-5]\d$/.test(t) ? t : null;
+    };
+    const horarios: Record<string, string> = {};
+    for (let d = 1; d <= 7; d++) {
+      if (fd.get(`abre_${d}`) !== 'on') continue;
+      const desde = hora(fd.get(`desde_${d}`));
+      const hasta = hora(fd.get(`hasta_${d}`));
+      if (!desde || !hasta || desde >= hasta) return { error: `Revisá el horario del día ${['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'][d - 1]}.` };
+      horarios[String(d)] = `${desde}-${hasta}`;
+    }
+    const entero = (k: string, min: number, max: number, nombre: string) => {
+      const n = Math.round(Number(fd.get(k)));
+      if (!(n >= min && n <= max)) throw new Error(`${nombre}: entre ${min} y ${max}.`);
+      return String(n);
+    };
+    // Días cerrados: uno por renglón o separados por coma, como 24/12 o 24/12/2026.
+    const anio = Number(new Intl.DateTimeFormat('en', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric' }).format(new Date()));
+    const cerrados: string[] = [];
+    for (const t of String(fd.get('turnos_cerrados') ?? '').split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean)) {
+      const m = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/.exec(t) ?? null;
+      const iso = /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : null;
+      if (!m && !iso) return { error: `"${t}" no es una fecha (escribila como 24/12 o 24/12/2026).` };
+      cerrados.push(iso ?? `${m![3] ? (m![3].length === 2 ? 2000 + Number(m![3]) : Number(m![3])) : anio}-${m![2].padStart(2, '0')}-${m![1].padStart(2, '0')}`);
+    }
+    const filas = [
+      { clave: 'turnos_activo', valor: fd.get('turnos_activo') === 'on' ? 'si' : 'no', nota: 'Turnos online del showroom: si / no' },
+      { clave: 'turnos_horarios', valor: JSON.stringify(horarios), nota: 'Horario de cada día (1 = lunes … 7 = domingo). Sin horario: cerrado' },
+      { clave: 'turnos_duracion', valor: entero('turnos_duracion', 10, 240, 'Duración'), nota: 'Minutos de cada turno' },
+      { clave: 'turnos_cupo', valor: entero('turnos_cupo', 1, 10, 'Visitas por horario'), nota: 'Cuántas visitas pueden reservar el mismo horario' },
+      { clave: 'turnos_anticipacion_horas', valor: entero('turnos_anticipacion_horas', 0, 168, 'Anticipación'), nota: 'Horas mínimas de anticipación para reservar' },
+      { clave: 'turnos_dias_adelante', valor: entero('turnos_dias_adelante', 1, 90, 'Días adelante'), nota: 'Hasta cuántos días adelante se puede reservar' },
+      { clave: 'turnos_cerrados', valor: [...new Set(cerrados)].sort().join(','), nota: 'Días sin turnos, además de los feriados (AAAA-MM-DD separados por coma)' },
+      { clave: 'showroom_direccion', valor: String(fd.get('showroom_direccion') ?? '').trim().slice(0, 200), nota: 'Dirección del showroom (se muestra al reservar)' },
+      { clave: 'showroom_whatsapp', valor: String(fd.get('showroom_whatsapp') ?? '').trim().slice(0, 40), nota: 'WhatsApp de contacto que se muestra al reservar' },
+    ];
+    const { error } = await supabase.from('parametros').upsert(filas, { onConflict: 'clave' });
+    if (error) return { error: `No se pudo guardar: ${error.message}` };
+    revalidatePath('/ajustes');
+    revalidatePath('/showroom');
+    return { ok: 'Guardado. La página de turnos ya muestra los horarios nuevos.' };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}
