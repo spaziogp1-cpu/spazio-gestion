@@ -436,3 +436,31 @@ export async function guardarVehiculo(id: string | null, _prev: EstadoAjustes, f
     return { error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+// Prueba la conexión con Google: ubicar una dirección (Geocoding) y armar un recorrido mínimo (Route Optimization).
+export async function probarGoogleMaps(): Promise<EstadoAjustes> {
+  try {
+    await soloAdmin();
+    const lineas: string[] = [];
+    const { geocodificar } = await import('@/lib/entregas/geocodificar');
+    const g = await geocodificar('Belaustegui 355, CABA, Argentina');
+    lineas.push(g.ok ? `✓ Geocoding: ${g.ubicacion.direccionGoogle}` : `✗ Geocoding: ${g.error}`);
+    const { optimizarConGoogle } = await import('@/lib/entregas/google-rutas');
+    const { proyectoGoogle } = await import('@/lib/google/cuenta-servicio');
+    if (!proyectoGoogle()) lineas.push('✗ Route Optimization: falta la cuenta de servicio');
+    else {
+      const p = { latitude: -34.5985, longitude: -58.4395 };
+      const r = await optimizarConGoogle({
+        model: {
+          shipments: [{ deliveries: [{ arrivalWaypoint: { location: { latLng: { latitude: -34.6037, longitude: -58.3816 } } }, duration: '600s' }] }],
+          vehicles: [{ startWaypoint: { location: { latLng: p } }, endWaypoint: { location: { latLng: p } }, costPerHour: 1 }],
+        },
+      });
+      lineas.push(r.ok ? `✓ Route Optimization (proyecto ${proyectoGoogle()})` : `✗ Route Optimization: ${r.error}`);
+    }
+    const mal = lineas.some((l) => l.startsWith('✗'));
+    return mal ? { error: lineas.join(' · ') } : { ok: lineas.join(' · ') };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}

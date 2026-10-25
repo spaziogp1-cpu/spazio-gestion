@@ -1,7 +1,7 @@
 'use client';
 
 import { startTransition, useActionState, useState, useTransition } from 'react';
-import { cambiarMiContrasena, crearClaveIA, traerDePlanillaOriginal, definirContrasena, enviarmeResumen, guardarMiembro, guardarAvisos, guardarParametros, guardarReparto, guardarTurnos, guardarVehiculo, importarTiendaNube, probarPlanilla, probarReporte, revocarClaveIA, type EstadoAjustes } from './actions';
+import { cambiarMiContrasena, crearClaveIA, traerDePlanillaOriginal, definirContrasena, enviarmeResumen, guardarMiembro, guardarAvisos, guardarParametros, guardarReparto, guardarTurnos, guardarVehiculo, probarGoogleMaps, importarTiendaNube, probarPlanilla, probarReporte, revocarClaveIA, type EstadoAjustes } from './actions';
 
 type Miembro = { id: string; nombre: string; alias_planilla: string | null; email: string; telefono: string | null; rol: string; activo: boolean };
 
@@ -705,5 +705,21 @@ export function FormVehiculo({ v, editable }: { v?: VehiculoAjustes; editable: b
         </div>
       )}
     </form>
+  );
+}
+
+export function ProbarGoogleMaps() {
+  const [pendiente, iniciar] = useTransition();
+  const [estado, setEstado] = useState<EstadoAjustes>({});
+  return (
+    <div className="form-bloque">
+      <div>
+        <button type="button" className="btn btn-chico" disabled={pendiente} onClick={() => iniciar(async () => setEstado(await probarGoogleMaps()))}>
+          {pendiente ? 'Probando…' : 'Probar conexión con Google'}
+        </button>
+      </div>
+      {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}
+      {estado.error && <p className="error-form">{estado.error}</p>}
+    </div>
   );
 }

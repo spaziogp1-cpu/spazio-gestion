@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { miembroActual } from '@/lib/sesion';
 import { NotificacionesCelular } from './push';
 import { fechaCorta } from '@/lib/fechas';
-import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormAvisos, FormParametros, FormReparto, FormTurnos, FormVehiculo, type VehiculoAjustes, ImportarTiendaNube, ProbarPlanilla, ProbarReportes, ProbarResumen } from './partes';
+import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormAvisos, FormParametros, FormReparto, FormTurnos, FormVehiculo, ProbarGoogleMaps, type VehiculoAjustes, ImportarTiendaNube, ProbarPlanilla, ProbarReportes, ProbarResumen } from './partes';
 
 async function conexionTiendaNube() {
   try {
@@ -114,8 +114,13 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
               <p className="small">
                 Define qué pedidos entran a Entregas y cómo se calcula la carga y el tiempo de cada parada. Al guardar, se recalculan las entregas que todavía no
                 están en una ruta.{' '}
-                {process.env.GOOGLE_MAPS_SERVER_KEY ? 'Google Maps: ✓ conectado.' : 'Google Maps: falta la clave GOOGLE_MAPS_SERVER_KEY en Vercel.'}
               </p>
+              <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>
+                <li>Clave del servidor (GOOGLE_MAPS_SERVER_KEY): {process.env.GOOGLE_MAPS_SERVER_KEY ? '✓ cargada' : '✗ no la encuentra en este deploy'}</li>
+                <li>Clave del mapa (NEXT_PUBLIC_GOOGLE_MAPS_KEY): {process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ? '✓ cargada' : '✗ no la encuentra en este deploy'}</li>
+                <li>Cuenta de servicio de Google: {process.env.GOOGLE_SERVICE_ACCOUNT_JSON ? '✓ cargada' : '✗ falta'}</li>
+              </ul>
+              {admin && <ProbarGoogleMaps />}
               <FormReparto valores={valores} editable={admin} />
             </div>
           </section>
