@@ -95,3 +95,15 @@ test('costo y links', () => {
   assert.match(l, /origin=-34.5985%2C-58.4395/);
   assert.match(l, /waypoints=-34.6%2C-58.38/);
 });
+
+test('sin franja: entra en cualquier hora de la jornada y nunca queda fuera de franja', () => {
+  const es = [ent('libre', -34.6037, -58.3816, { desde: null, hasta: null }), ent('con', -34.5875, -58.4300, { desde: '15:00', hasta: '18:00' })];
+  const p = planificarEstimado(deposito, [kangoo], es);
+  assert.equal(p.omitidas.length, 0);
+  const paradas = p.rutas[0].paradas;
+  assert.equal(paradas[0].entregaId, 'con', 'lo que tiene franja se ubica primero');
+  assert.ok(paradas.every((x) => !x.fueraDeFranja));
+  const req = armarPedidoGoogle('2026-10-28', deposito, [kangoo], es);
+  assert.equal('timeWindows' in req.model.shipments[0].deliveries[0], false);
+  assert.equal(req.model.shipments[1].deliveries[0].timeWindows?.length, 1);
+});

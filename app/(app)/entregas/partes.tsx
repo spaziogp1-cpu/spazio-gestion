@@ -82,7 +82,7 @@ export function FilaEntrega({ e, pedido, maps }: { e: Entrega; pedido?: PedidoDe
           <div className="xs" style={{ marginTop: 4, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <span>
               {e.fecha_acordada ? fechaCorta(e.fecha_acordada) : 'Sin fecha'}
-              {franja(e.franja_desde, e.franja_hasta) && ` · ${franja(e.franja_desde, e.franja_hasta)}`}
+              {franja(e.franja_desde, e.franja_hasta) ? ` · ${franja(e.franja_desde, e.franja_hasta)}` : ' · sin franja (horario de la ruta)'}
             </span>
             <span className="faint">
               Carga {unidadesTexto(e.unidades)} · {e.minutos} min · {e.personas} {e.personas === 1 ? 'persona' : 'personas'}
@@ -205,11 +205,11 @@ export function FilaEntrega({ e, pedido, maps }: { e: Entrega; pedido?: PedidoDe
               <input id={`fe-${e.id}`} name="fecha_acordada" type="date" defaultValue={e.fecha_acordada ?? ''} />
             </div>
             <div className="campo">
-              <label htmlFor={`fd-${e.id}`}>{e.tipo === 'expreso' ? 'Recibe desde' : 'Franja desde'}</label>
+              <label htmlFor={`fd-${e.id}`}>{e.tipo === 'expreso' ? 'Recibe desde' : 'Franja desde'} <span className="quiet">(opcional)</span></label>
               <input id={`fd-${e.id}`} name="franja_desde" type="time" step={900} defaultValue={e.franja_desde?.slice(0, 5) ?? ''} />
             </div>
             <div className="campo">
-              <label htmlFor={`fh-${e.id}`}>{e.tipo === 'expreso' ? 'Recibe hasta' : 'Franja hasta'}</label>
+              <label htmlFor={`fh-${e.id}`}>{e.tipo === 'expreso' ? 'Recibe hasta' : 'Franja hasta'} <span className="quiet">(opcional)</span></label>
               <input id={`fh-${e.id}`} name="franja_hasta" type="time" step={900} defaultValue={e.franja_hasta?.slice(0, 5) ?? ''} />
             </div>
           </div>

@@ -58,12 +58,12 @@ export async function entregasPlan(db: Cliente, entregas: Entrega[], fecha: stri
   const limite = new Map(((peds ?? []) as { id: string; fecha_limite: string }[]).map((p) => [p.id, p.fecha_limite]));
   const urgenteHasta = sumarDiasCorridos(fecha, 2);
   return entregas
-    .filter((e) => e.lat != null && e.lng != null && e.franja_desde && e.franja_hasta)
+    .filter((e) => e.lat != null && e.lng != null)
     .map((e) => ({
       id: e.id,
       punto: { lat: e.lat!, lng: e.lng! },
-      desde: e.franja_desde!.slice(0, 5),
-      hasta: e.franja_hasta!.slice(0, 5),
+      desde: e.franja_desde && e.franja_hasta ? e.franja_desde.slice(0, 5) : null,
+      hasta: e.franja_desde && e.franja_hasta ? e.franja_hasta.slice(0, 5) : null,
       minutos: e.minutos,
       unidades: Number(e.unidades),
       personas: e.personas,

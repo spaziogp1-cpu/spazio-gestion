@@ -10,8 +10,8 @@ export type Punto = { lat: number; lng: number };
 export type EntregaPlan = {
   id: string;
   punto: Punto;
-  desde: string; // HH:MM, franja del cliente
-  hasta: string;
+  desde: string | null; // HH:MM, franja del cliente (opcional: sin franja, cualquier hora de la jornada)
+  hasta: string | null;
   minutos: number; // en la parada
   unidades: number;
   personas: number;
@@ -108,14 +108,14 @@ export function horariosConOrden(
   // Sale lo más tarde posible sin llegar tarde a la primera parada.
   if (entregas.length) {
     const ida = tramos?.[0] ?? viaje(deposito, entregas[0].punto);
-    t = Math.max(aMin(v.desde), aMin(entregas[0].desde) - ida.minutos);
+    t = entregas[0].desde ? Math.max(aMin(v.desde), aMin(entregas[0].desde) - ida.minutos) : aMin(v.desde);
   }
   const salida = t;
   entregas.forEach((e, i) => {
     const tramo = tramos?.[i] ?? viaje(donde, e.punto);
     t += tramo.minutos;
     km += tramo.km;
-    const espera = Math.max(0, aMin(e.desde) - t);
+    const espera = e.desde ? Math.max(0, aMin(e.desde) - t) : 0;
     t += espera;
     const llegada = t;
     t += e.minutos;
@@ -126,7 +126,7 @@ export function horariosConOrden(
       minutosViaje: Math.round(tramo.minutos),
       km: Math.round(tramo.km * 10) / 10,
       espera: Math.round(espera),
-      fueraDeFranja: llegada > aMin(e.hasta),
+      fueraDeFranja: e.hasta ? llegada > aMin(e.hasta) : false,
     });
     donde = e.punto;
   });
@@ -144,7 +144,8 @@ export function horariosConOrden(
 function rutaValida(r: Omit<RutaPlan, 'vehiculoId'>, v: VehiculoPlan, es: EntregaPlan[]): boolean {
   const carga = es.reduce((s, e) => s + e.unidades, 0);
   if (carga > v.capacidad + 1e-9) return false;
-  if (r.paradas.some((p, i) => aMin(p.llegada) > aMin(es[i].hasta) - MARGEN_FRANJA)) return false;
+  const hasta = (e: EntregaPlan) => (e.hasta ? aMin(e.hasta) - MARGEN_FRANJA : Infinity);
+  if (r.paradas.some((p, i) => aMin(p.llegada) > hasta(es[i]))) return false;
   const fin = r.regreso ?? r.paradas.at(-1)?.salida ?? v.desde;
   return aMin(fin) <= aMin(v.hasta);
 }
@@ -157,7 +158,11 @@ function rutaValida(r: Omit<RutaPlan, 'vehiculoId'>, v: VehiculoPlan, es: Entreg
 export function planificarEstimado(deposito: Punto, vehiculos: VehiculoPlan[], entregas: EntregaPlan[], viaje: Viaje = viajeEstimado): Plan {
   const rutas = new Map<string, EntregaPlan[]>(vehiculos.map((v) => [v.id, []]));
   const omitidas: Omitida[] = [];
-  const orden = [...entregas].sort((a, b) => Number(b.urgente) - Number(a.urgente) || aMin(a.desde) - aMin(b.desde) || aMin(a.hasta) - aMin(b.hasta));
+  const m = (h: string | null, def: number) => (h ? aMin(h) : def);
+  // Primero lo urgente, después lo que tiene franja (más restringido), y por hora.
+  const orden = [...entregas].sort(
+    (a, b) => Number(b.urgente) - Number(a.urgente) || Number(!a.hasta) - Number(!b.hasta) || m(a.desde, 0) - m(b.desde, 0) || m(a.hasta, 1440) - m(b.hasta, 1440),
+  );
   const COSTO_VEHICULO = 45; // minutos equivalentes por sumar un vehículo
 
   for (const e of orden) {
@@ -213,15 +218,17 @@ export function armarPedidoGoogle(fecha: string, deposito: Punto, vehiculos: Veh
   const fin = vehiculos.reduce((m, v) => Math.max(m, aMin(v.hasta)), 0);
   return {
     model: {
-      globalStartTime: iso(fecha, aHora(Math.min(inicio, ...entregas.map((e) => aMin(e.desde))))),
-      globalEndTime: iso(fecha, aHora(Math.max(fin, ...entregas.map((e) => aMin(e.hasta))))),
+      globalStartTime: iso(fecha, aHora(Math.min(inicio, ...entregas.filter((e) => e.desde).map((e) => aMin(e.desde!))))),
+      globalEndTime: iso(fecha, aHora(Math.max(fin, ...entregas.filter((e) => e.hasta).map((e) => aMin(e.hasta!))))),
       shipments: entregas.map((e) => ({
         label: e.id,
         deliveries: [
           {
             arrivalWaypoint: latLng(e.punto),
             duration: `${Math.round(e.minutos * 60)}s`,
-            timeWindows: [{ startTime: iso(fecha, e.desde), endTime: iso(fecha, aHora(Math.max(aMin(e.desde), aMin(e.hasta) - MARGEN_FRANJA))) }],
+            ...(e.desde && e.hasta
+              ? { timeWindows: [{ startTime: iso(fecha, e.desde), endTime: iso(fecha, aHora(Math.max(aMin(e.desde), aMin(e.hasta) - MARGEN_FRANJA))) }] }
+              : {}),
           },
         ],
         loadDemands: { unidades: { amount: cuartos(e.unidades) } },
@@ -298,7 +305,7 @@ export function leerRespuestaGoogle(r: RespuestaGoogle, vehiculos: VehiculoPlan[
         minutosViaje: Math.round(viajeSeg / 60),
         km: Math.round((tr.at(i)?.travelDistanceMeters ?? 0) / 100) / 10,
         espera: salidaPrev == null ? 0 : Math.max(0, Math.round(aMin(llegada) - salidaPrev - viajeSeg / 60)),
-        fueraDeFranja: aMin(llegada) > aMin(e.hasta),
+        fueraDeFranja: e.hasta ? aMin(llegada) > aMin(e.hasta) : false,
       };
     });
     const salida = ru.vehicleStartTime ? horaLocal(ru.vehicleStartTime) : v.desde;

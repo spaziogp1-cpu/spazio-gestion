@@ -150,7 +150,7 @@ export function PlanDelDia({
                       <Link href={`/pedidos/${e.pedidoId}`}>{e.titulo}</Link>
                     </div>
                     <div className="item-detalle">
-                      {e.direccion} · {e.franja} · carga {unidadesTexto(e.unidades)}
+                      {e.direccion} · {e.franja || 'sin franja'} · carga {unidadesTexto(e.unidades)}
                     </div>
                     <div className="xs" style={{ color: 'var(--danger)' }}>{motivo}</div>
                   </div>
@@ -233,7 +233,7 @@ function TarjetaRuta({ r, color, fecha, deposito, otros }: { r: RutaVista; color
                   </div>
                   <div className="item-detalle">{p.entrega.direccion}</div>
                   <div className="xs faint">
-                    Franja {p.entrega.franja} · carga {unidadesTexto(p.entrega.unidades)} · {p.entrega.personas} {p.entrega.personas === 1 ? 'persona' : 'personas'}
+                    {p.entrega.franja ? `Franja ${p.entrega.franja}` : 'Sin franja: avisale el horario al cliente'} · carga {unidadesTexto(p.entrega.unidades)} · {p.entrega.personas} {p.entrega.personas === 1 ? 'persona' : 'personas'}
                     {p.minutosViaje != null ? ` · ${p.minutosViaje} min de viaje` : ''}
                     {p.km != null ? ` (${p.km} km)` : ''}
                   </div>
