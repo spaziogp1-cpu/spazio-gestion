@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { nombreEstadoEntrega } from '@/lib/entregas/tipos';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { IconoVolver, IconoWhatsApp } from '@/components/iconos';
@@ -50,6 +51,15 @@ export default async function FichaPedido({
     leerReglaPlazo(supabase),
     supabase.from('tareas_resumen').select('*').eq('pedido_id', id).order('estado').order('vencimiento', { nullsFirst: false }),
   ]);
+  // Entrega del pedido (la más reciente); si la migración 0022 no está, no se muestra.
+  const { data: entregaData } = await supabase
+    .from('entregas')
+    .select('id, estado, intento, motivos, fecha_acordada, franja_desde, franja_hasta')
+    .eq('pedido_id', id)
+    .order('intento', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const entrega = entregaData as { id: string; estado: string; intento: number; motivos: string[]; fecha_acordada: string | null; franja_desde: string | null; franja_hasta: string | null } | null;
   const tareas = (tareasR.data ?? []) as Tarea[];
   const proveedores = (provR.data ?? []) as Proveedor[];
   const pedidosProv = (ppR.data ?? []) as PedidoProveedor[];
@@ -311,6 +321,17 @@ export default async function FichaPedido({
                 <p className="small" style={{ marginTop: 10 }}>
                   <span className="faint">Dirección: </span>
                   {p.direccion_entrega ?? [cliente.direccion, cliente.localidad].filter(Boolean).join(', ')}
+                </p>
+              )}
+              {entrega && (
+                <p className="small" style={{ marginTop: 8 }}>
+                  <span className="faint">Reparto: </span>
+                  <Link href={`/entregas?ver=${entrega.estado === 'revisar' ? 'revisar' : entrega.estado === 'lista' ? 'listas' : ['propuesta', 'confirmada', 'en_camino'].includes(entrega.estado) ? 'en-ruta' : 'cerradas'}#entrega-${entrega.id}`}>
+                    {nombreEstadoEntrega(entrega.estado)}
+                    {entrega.intento > 1 ? ` (intento ${entrega.intento})` : ''}
+                  </Link>
+                  {entrega.estado === 'revisar' && entrega.motivos.length > 0 && <span style={{ color: 'var(--danger)' }}> · {entrega.motivos.join(' · ')}</span>}
+                  {entrega.fecha_acordada && <span className="faint"> · {fechaCorta(entrega.fecha_acordada)}{entrega.franja_desde && entrega.franja_hasta ? `, ${entrega.franja_desde.slice(0, 5)} a ${entrega.franja_hasta.slice(0, 5)}` : ''}</span>}
                 </p>
               )}
             </div>

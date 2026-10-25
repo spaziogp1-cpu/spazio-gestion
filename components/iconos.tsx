@@ -116,3 +116,10 @@ export const IconoCotizador = (p: P) => (
     <path d="M8 7h8M8.5 11h1M11.5 11h1M14.5 11h1M8.5 14h1M11.5 14h1M14.5 14h1M8.5 17h1M11.5 17h4" />
   </svg>
 );
+export const IconoEntregas = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M2 6h11v10H2zM13 9h4l4 4v3h-8z" />
+    <circle cx="6" cy="17.5" r="1.8" />
+    <circle cx="17" cy="17.5" r="1.8" />
+  </svg>
+);

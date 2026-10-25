@@ -336,3 +336,55 @@ export async function guardarTurnos(_prev: EstadoAjustes, fd: FormData): Promise
     return { error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+// Reparto: etapa que habilita el despacho, depósito, carga y tiempos de cada parada.
+const UNIDADES_CLAVES = ['mesa ratona', 'mesa auxiliar', 'mesa de luz', 'espejos', 'escritorio', 'mesa alta', 'mesa alta grande', 'sillas', 'taburete', 'estanteria', 'otro'];
+export async function guardarReparto(_prev: EstadoAjustes, fd: FormData): Promise<EstadoAjustes> {
+  try {
+    const { supabase } = await soloAdmin();
+    const etapa = fd.get('entregas_etapa_despacho') === 'lista' ? 'lista' : 'embalada';
+    const num = (k: string, min: number, max: number, nombre: string) => {
+      const n = Number(String(fd.get(k) ?? '').replace(',', '.'));
+      if (!(n >= min && n <= max)) throw new Error(`${nombre}: entre ${min} y ${max}.`);
+      return n;
+    };
+    const unidades: Record<string, number> = {};
+    for (const k of UNIDADES_CLAVES) unidades[k] = num(`u_${k}`, 0, 20, `Carga de "${k}"`);
+    const tiempos = {
+      base: num('t_base', 0, 120, 'Minutos base'),
+      por_unidad: num('t_por_unidad', 0, 60, 'Minutos por unidad'),
+      por_piso: num('t_por_piso', 0, 30, 'Minutos por piso'),
+      instalacion: num('t_instalacion', 0, 240, 'Minutos de instalación'),
+    };
+    const largo = num('entregas_largo_grande', 50, 400, 'Largo de mesa alta grande');
+    const deposito = String(fd.get('deposito_direccion') ?? '').trim().slice(0, 200);
+    if (!deposito) return { error: 'Escribí la dirección del depósito.' };
+
+    const { data: antes } = await supabase.from('parametros').select('valor').eq('clave', 'deposito_direccion').maybeSingle();
+    const filas: { clave: string; valor: string; nota: string }[] = [
+      { clave: 'entregas_etapa_despacho', valor: etapa, nota: 'Etapa desde la que un pedido entra a Entregas: lista (Fabricada) o embalada' },
+      { clave: 'deposito_direccion', valor: deposito, nota: 'Desde dónde salen los repartos' },
+      { clave: 'entregas_unidades', valor: JSON.stringify(unidades), nota: 'Unidades de carga por producto (1 = una mesa ratona)' },
+      { clave: 'entregas_largo_grande', valor: String(largo), nota: 'Desde qué largo (cm) una mesa alta cuenta como grande' },
+      { clave: 'entregas_tiempos', valor: JSON.stringify(tiempos), nota: 'Minutos en cada parada: base, por unidad de carga, por piso sin ascensor y por instalación' },
+    ];
+    let aviso = '';
+    const { geocodificar, mapsConfigurado } = await import('@/lib/entregas/geocodificar');
+    const { data: lat } = await supabase.from('parametros').select('valor').eq('clave', 'deposito_lat').maybeSingle();
+    if ((antes?.valor !== deposito || !lat?.valor) && mapsConfigurado()) {
+      const r = await geocodificar(`${deposito}, Argentina`);
+      if (r.ok) {
+        filas.push({ clave: 'deposito_lat', valor: String(r.ubicacion.lat), nota: 'Latitud del depósito' }, { clave: 'deposito_lng', valor: String(r.ubicacion.lng), nota: 'Longitud del depósito' });
+        aviso = ` Depósito ubicado: ${r.ubicacion.direccionGoogle}.`;
+      } else aviso = ` No se pudo ubicar el depósito: ${r.error}.`;
+    }
+    const { error } = await supabase.from('parametros').upsert(filas, { onConflict: 'clave' });
+    if (error) return { error: `No se pudo guardar: ${error.message}` };
+    await supabase.rpc('entregas_recalcular');
+    revalidatePath('/ajustes');
+    revalidatePath('/entregas');
+    return { ok: `Guardado. Las entregas abiertas se recalcularon.${aviso}` };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}

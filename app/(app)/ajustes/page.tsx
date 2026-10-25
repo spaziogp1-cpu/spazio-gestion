@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { miembroActual } from '@/lib/sesion';
 import { NotificacionesCelular } from './push';
 import { fechaCorta } from '@/lib/fechas';
-import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormAvisos, FormParametros, FormTurnos, ImportarTiendaNube, ProbarPlanilla, ProbarReportes, ProbarResumen } from './partes';
+import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormAvisos, FormParametros, FormReparto, FormTurnos, ImportarTiendaNube, ProbarPlanilla, ProbarReportes, ProbarResumen } from './partes';
 
 async function conexionTiendaNube() {
   try {
@@ -102,6 +102,19 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
             </div>
             <div className="seccion">
               <FormParametros valores={valores} editable={admin} />
+            </div>
+          </section>
+          <section className="card" id="reparto" style={{ scrollMarginTop: 80 }}>
+            <div className="card-titulo">
+              <h2>Reparto</h2>
+            </div>
+            <div className="seccion form-bloque">
+              <p className="small">
+                Define qué pedidos entran a Entregas y cómo se calcula la carga y el tiempo de cada parada. Al guardar, se recalculan las entregas que todavía no
+                están en una ruta.{' '}
+                {process.env.GOOGLE_MAPS_SERVER_KEY ? 'Google Maps: ✓ conectado.' : 'Google Maps: falta la clave GOOGLE_MAPS_SERVER_KEY en Vercel.'}
+              </p>
+              <FormReparto valores={valores} editable={admin} />
             </div>
           </section>
           <section className="card" id="turnos" style={{ scrollMarginTop: 80 }}>

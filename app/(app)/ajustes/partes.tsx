@@ -1,7 +1,7 @@
 'use client';
 
 import { startTransition, useActionState, useState, useTransition } from 'react';
-import { cambiarMiContrasena, crearClaveIA, traerDePlanillaOriginal, definirContrasena, enviarmeResumen, guardarMiembro, guardarAvisos, guardarParametros, guardarTurnos, importarTiendaNube, probarPlanilla, probarReporte, revocarClaveIA, type EstadoAjustes } from './actions';
+import { cambiarMiContrasena, crearClaveIA, traerDePlanillaOriginal, definirContrasena, enviarmeResumen, guardarMiembro, guardarAvisos, guardarParametros, guardarReparto, guardarTurnos, importarTiendaNube, probarPlanilla, probarReporte, revocarClaveIA, type EstadoAjustes } from './actions';
 
 type Miembro = { id: string; nombre: string; alias_planilla: string | null; email: string; telefono: string | null; rol: string; activo: boolean };
 
@@ -457,6 +457,103 @@ export function FormTurnos({ valores, editable }: { valores: Record<string, stri
           Días cerrados <span className="quiet">(además de los feriados; uno por renglón, como 24/12)</span>
         </label>
         <textarea id="tu-cerr" name="turnos_cerrados" rows={3} defaultValue={cerrados} disabled={!editable} />
+      </div>
+      {estado.error && <p className="error-form">{estado.error}</p>}
+      {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}
+      {editable && (
+        <div>
+          <button className="btn btn-primario btn-chico" disabled={guardando}>
+            Guardar
+          </button>
+        </div>
+      )}
+    </form>
+  );
+}
+
+const UNIDADES_FORM: [string, string, number][] = [
+  ['mesa ratona', 'Mesa ratona', 1],
+  ['mesa auxiliar', 'Mesa auxiliar', 0.5],
+  ['mesa de luz', 'Mesa de luz', 0.5],
+  ['espejos', 'Espejo', 0.5],
+  ['escritorio', 'Escritorio', 2],
+  ['mesa alta', 'Mesa alta', 2],
+  ['mesa alta grande', 'Mesa alta grande', 3],
+  ['sillas', 'Silla (cada una)', 0.25],
+  ['taburete', 'Taburete', 0.25],
+  ['estanteria', 'Estantería', 2],
+  ['otro', 'Otro producto', 1],
+];
+
+export function FormReparto({ valores, editable }: { valores: Record<string, string>; editable: boolean }) {
+  const [estado, accion, guardando] = useActionState<EstadoAjustes, FormData>(guardarReparto, {});
+  const json = (k: string) => {
+    try {
+      return JSON.parse(valores[k] ?? '{}') as Record<string, number>;
+    } catch {
+      return {} as Record<string, number>;
+    }
+  };
+  const unidades = json('entregas_unidades');
+  const tiempos = json('entregas_tiempos');
+  const etapa = valores.entregas_etapa_despacho ?? 'embalada';
+  return (
+    <form onSubmit={enviar(accion)} className="form-bloque">
+      <div className="campo">
+        <span className="etiqueta">Un pedido entra a Entregas cuando llega a</span>
+        <div className="acciones" style={{ gap: 14 }}>
+          {[
+            ['embalada', 'Embalada'],
+            ['lista', 'Fabricada'],
+          ].map(([v, n]) => (
+            <label key={v} className="small" style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <input type="radio" name="entregas_etapa_despacho" value={v} defaultChecked={etapa === v} disabled={!editable} /> {n}
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="campo">
+        <label htmlFor="rep-dep">
+          Depósito <span className="quiet">{valores.deposito_lat ? `(ubicado: ${Number(valores.deposito_lat).toFixed(4)}, ${Number(valores.deposito_lng).toFixed(4)})` : '(sin ubicar todavía)'}</span>
+        </label>
+        <input id="rep-dep" name="deposito_direccion" type="text" defaultValue={valores.deposito_direccion ?? 'Belaustegui 355, Villa Crespo, CABA'} disabled={!editable} />
+      </div>
+      <div className="campo">
+        <span className="etiqueta">Carga de cada producto (1 = una mesa ratona; la Trafic lleva unas 5 y la Kangoo unas 3)</span>
+        <div className="fila fila-3">
+          {UNIDADES_FORM.map(([k, n, d]) => (
+            <div className="campo" key={k}>
+              <label htmlFor={`rep-u-${k}`} className="small">
+                {n}
+              </label>
+              <input id={`rep-u-${k}`} name={`u_${k}`} type="number" min={0} max={20} step={0.25} defaultValue={unidades[k] ?? d} disabled={!editable} />
+            </div>
+          ))}
+          <div className="campo">
+            <label htmlFor="rep-largo" className="small">
+              Mesa alta grande desde (cm de largo)
+            </label>
+            <input id="rep-largo" name="entregas_largo_grande" type="number" min={50} max={400} defaultValue={valores.entregas_largo_grande ?? '160'} disabled={!editable} />
+          </div>
+        </div>
+      </div>
+      <div className="campo">
+        <span className="etiqueta">Minutos en cada parada</span>
+        <div className="fila fila-2">
+          {[
+            ['t_base', 'base', 'Base (estacionar, bajar, firmar)', 15],
+            ['t_por_unidad', 'por_unidad', 'Por cada unidad de carga', 10],
+            ['t_por_piso', 'por_piso', 'Por piso, si no hay ascensor', 5],
+            ['t_instalacion', 'instalacion', 'Si lleva instalación', 20],
+          ].map(([name, k, n, d]) => (
+            <div className="campo" key={name as string}>
+              <label htmlFor={`rep-${name}`} className="small">
+                {n as string}
+              </label>
+              <input id={`rep-${name}`} name={name as string} type="number" min={0} max={240} defaultValue={tiempos[k as string] ?? (d as number)} disabled={!editable} />
+            </div>
+          ))}
+        </div>
       </div>
       {estado.error && <p className="error-form">{estado.error}</p>}
       {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}
