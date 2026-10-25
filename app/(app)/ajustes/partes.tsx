@@ -1,7 +1,7 @@
 'use client';
 
 import { startTransition, useActionState, useState, useTransition } from 'react';
-import { cambiarMiContrasena, crearClaveIA, traerDePlanillaOriginal, definirContrasena, enviarmeResumen, guardarMiembro, guardarAvisos, guardarParametros, guardarReparto, guardarTurnos, importarTiendaNube, probarPlanilla, probarReporte, revocarClaveIA, type EstadoAjustes } from './actions';
+import { cambiarMiContrasena, crearClaveIA, traerDePlanillaOriginal, definirContrasena, enviarmeResumen, guardarMiembro, guardarAvisos, guardarParametros, guardarReparto, guardarTurnos, guardarVehiculo, importarTiendaNube, probarPlanilla, probarReporte, revocarClaveIA, type EstadoAjustes } from './actions';
 
 type Miembro = { id: string; nombre: string; alias_planilla: string | null; email: string; telefono: string | null; rol: string; activo: boolean };
 
@@ -562,6 +562,146 @@ export function FormReparto({ valores, editable }: { valores: Record<string, str
           <button className="btn btn-primario btn-chico" disabled={guardando}>
             Guardar
           </button>
+        </div>
+      )}
+    </form>
+  );
+}
+
+export type VehiculoAjustes = {
+  id: string;
+  nombre: string;
+  fletero: string | null;
+  telefono: string | null;
+  capacidad: number;
+  largo_max: number;
+  ancho_max: number;
+  alto_max: number;
+  personas_max: number;
+  jornada_desde: string;
+  jornada_hasta: string;
+  vuelve_deposito: boolean;
+  dias: string;
+  precio_entrega: number;
+  descuento_desde: number;
+  precio_descuento: number | null;
+  activo: boolean;
+};
+
+export function FormVehiculo({ v, editable }: { v?: VehiculoAjustes; editable: boolean }) {
+  const [estado, accion, guardando] = useActionState<EstadoAjustes, FormData>(guardarVehiculo.bind(null, v?.id ?? null), {});
+  const [abierto, setAbierto] = useState(!v);
+  const dias = (v?.dias ?? '1,2,3,4,5').split(',');
+  const k = v?.id ?? 'nuevo';
+  if (!abierto)
+    return (
+      <div className="item acciones" style={{ justifyContent: 'space-between' }}>
+        <div>
+          <div className="item-titulo">
+            {v!.nombre}
+            {v!.fletero ? ` · ${v!.fletero}` : ''}
+            {!v!.activo && <span className="chip" style={{ marginLeft: 6 }}>Inactivo</span>}
+          </div>
+          <div className="item-detalle">
+            Carga {Number(v!.capacidad)} · mesa hasta {v!.largo_max} × {v!.ancho_max} × {v!.alto_max} cm · {v!.personas_max} personas · {v!.jornada_desde.slice(0, 5)} a {v!.jornada_hasta.slice(0, 5)}
+            {Number(v!.precio_entrega) > 0 ? ` · $${Number(v!.precio_entrega).toLocaleString('es-AR')} por entrega` : ''}
+          </div>
+        </div>
+        {editable && (
+          <button type="button" className="btn btn-chico" onClick={() => setAbierto(true)}>
+            Editar
+          </button>
+        )}
+      </div>
+    );
+  return (
+    <form onSubmit={enviar(accion)} className="form-bloque item">
+      <div className="fila fila-3">
+        <div className="campo">
+          <label htmlFor={`ve-n-${k}`}>Vehículo</label>
+          <input id={`ve-n-${k}`} name="nombre" type="text" defaultValue={v?.nombre ?? ''} placeholder="Trafic" disabled={!editable} />
+        </div>
+        <div className="campo">
+          <label htmlFor={`ve-f-${k}`}>Fletero</label>
+          <input id={`ve-f-${k}`} name="fletero" type="text" defaultValue={v?.fletero ?? ''} disabled={!editable} />
+        </div>
+        <div className="campo">
+          <label htmlFor={`ve-t-${k}`}>Teléfono</label>
+          <input id={`ve-t-${k}`} name="telefono" type="tel" defaultValue={v?.telefono ?? ''} disabled={!editable} />
+        </div>
+      </div>
+      <div className="fila fila-3">
+        <div className="campo">
+          <label htmlFor={`ve-c-${k}`}>Carga (en ratonas)</label>
+          <input id={`ve-c-${k}`} name="capacidad" type="number" min={0.25} step={0.25} defaultValue={v?.capacidad ?? 3} disabled={!editable} />
+        </div>
+        <div className="campo">
+          <label htmlFor={`ve-p-${k}`}>Personas que puede llevar</label>
+          <input id={`ve-p-${k}`} name="personas_max" type="number" min={1} max={6} defaultValue={v?.personas_max ?? 2} disabled={!editable} />
+        </div>
+        <div className="campo">
+          <span className="etiqueta">Mesa embalada hasta (cm)</span>
+          <div className="acciones" style={{ gap: 4, flexWrap: 'nowrap' }}>
+            <input name="largo_max" type="number" aria-label="Largo" defaultValue={v?.largo_max ?? 176} disabled={!editable} style={{ width: 70 }} />
+            <input name="ancho_max" type="number" aria-label="Ancho" defaultValue={v?.ancho_max ?? 117} disabled={!editable} style={{ width: 70 }} />
+            <input name="alto_max" type="number" aria-label="Alto" defaultValue={v?.alto_max ?? 110} disabled={!editable} style={{ width: 70 }} />
+          </div>
+        </div>
+      </div>
+      <div className="fila fila-3">
+        <div className="campo">
+          <label htmlFor={`ve-jd-${k}`}>Jornada desde</label>
+          <input id={`ve-jd-${k}`} name="jornada_desde" type="time" step={900} defaultValue={v?.jornada_desde.slice(0, 5) ?? '08:30'} disabled={!editable} />
+        </div>
+        <div className="campo">
+          <label htmlFor={`ve-jh-${k}`}>Jornada hasta</label>
+          <input id={`ve-jh-${k}`} name="jornada_hasta" type="time" step={900} defaultValue={v?.jornada_hasta.slice(0, 5) ?? '18:30'} disabled={!editable} />
+        </div>
+        <div className="campo">
+          <span className="etiqueta">Días</span>
+          <div className="acciones" style={{ gap: 8 }}>
+            {NOMBRES_DIAS.map((nd, i) => (
+              <label key={nd} className="small" style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                <input type="checkbox" name={`dia_${i + 1}`} defaultChecked={dias.includes(String(i + 1))} disabled={!editable} /> {nd}
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="fila fila-3">
+        <div className="campo">
+          <label htmlFor={`ve-pr-${k}`}>Precio por entrega ($)</label>
+          <input id={`ve-pr-${k}`} name="precio_entrega" type="number" min={0} defaultValue={v?.precio_entrega ?? 0} disabled={!editable} />
+        </div>
+        <div className="campo">
+          <label htmlFor={`ve-dd-${k}`}>Precio especial desde (entregas por viaje)</label>
+          <input id={`ve-dd-${k}`} name="descuento_desde" type="number" min={1} max={50} defaultValue={v?.descuento_desde ?? 3} disabled={!editable} />
+        </div>
+        <div className="campo">
+          <label htmlFor={`ve-pd-${k}`}>Precio especial por entrega ($)</label>
+          <input id={`ve-pd-${k}`} name="precio_descuento" type="number" min={0} defaultValue={v?.precio_descuento ?? ''} disabled={!editable} />
+        </div>
+      </div>
+      <div className="acciones" style={{ gap: 14 }}>
+        <label className="small" style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          <input type="checkbox" name="vuelve_deposito" defaultChecked={v?.vuelve_deposito ?? true} disabled={!editable} /> Vuelve al depósito
+        </label>
+        <label className="small" style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          <input type="checkbox" name="activo" defaultChecked={v?.activo ?? true} disabled={!editable} /> Activo
+        </label>
+      </div>
+      {estado.error && <p className="error-form">{estado.error}</p>}
+      {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}
+      {editable && (
+        <div className="acciones">
+          <button className="btn btn-primario btn-chico" disabled={guardando}>
+            {v ? 'Guardar' : 'Agregar vehículo'}
+          </button>
+          {v && (
+            <button type="button" className="btn btn-chico btn-fantasma" onClick={() => setAbierto(false)}>
+              Cerrar
+            </button>
+          )}
         </div>
       )}
     </form>

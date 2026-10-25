@@ -388,3 +388,51 @@ export async function guardarReparto(_prev: EstadoAjustes, fd: FormData): Promis
     return { error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+// Vehículos de los fleteros (planificación de entregas).
+export async function guardarVehiculo(id: string | null, _prev: EstadoAjustes, fd: FormData): Promise<EstadoAjustes> {
+  try {
+    const { supabase } = await soloAdmin();
+    const t = (k: string) => String(fd.get(k) ?? '').trim();
+    const n = (k: string, min: number, max: number, nombre: string, opcional = false) => {
+      const v = t(k);
+      if (opcional && !v) return null;
+      const x = Number(v.replace(',', '.'));
+      if (!(x >= min && x <= max)) throw new Error(`${nombre}: entre ${min} y ${max}.`);
+      return x;
+    };
+    const hora = (k: string) => {
+      const v = t(k);
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) throw new Error('Escribí la jornada como 08:30.');
+      return v;
+    };
+    if (!t('nombre')) return { error: 'Poné un nombre al vehículo (por ejemplo, Trafic).' };
+    const dias = [1, 2, 3, 4, 5, 6, 7].filter((d) => fd.get(`dia_${d}`) === 'on');
+    const fila = {
+      nombre: t('nombre').slice(0, 60),
+      fletero: t('fletero') || null,
+      telefono: t('telefono') || null,
+      capacidad: n('capacidad', 0.25, 50, 'Capacidad'),
+      largo_max: n('largo_max', 30, 600, 'Largo máximo'),
+      ancho_max: n('ancho_max', 30, 300, 'Ancho máximo'),
+      alto_max: n('alto_max', 30, 300, 'Alto máximo'),
+      personas_max: n('personas_max', 1, 6, 'Personas'),
+      jornada_desde: hora('jornada_desde'),
+      jornada_hasta: hora('jornada_hasta'),
+      vuelve_deposito: fd.get('vuelve_deposito') === 'on',
+      dias: dias.join(','),
+      precio_entrega: n('precio_entrega', 0, 10_000_000, 'Precio por entrega') ?? 0,
+      descuento_desde: n('descuento_desde', 1, 50, 'Descuento desde'),
+      precio_descuento: n('precio_descuento', 0, 10_000_000, 'Precio con descuento', true),
+      activo: fd.get('activo') === 'on',
+    };
+    if (fila.jornada_hasta <= fila.jornada_desde) return { error: 'La jornada tiene que terminar después de empezar.' };
+    const { error } = id ? await supabase.from('vehiculos').update(fila).eq('id', id) : await supabase.from('vehiculos').insert(fila);
+    if (error) return { error: `No se pudo guardar: ${error.message}` };
+    revalidatePath('/ajustes');
+    revalidatePath('/entregas/planificar');
+    return { ok: 'Guardado.' };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}

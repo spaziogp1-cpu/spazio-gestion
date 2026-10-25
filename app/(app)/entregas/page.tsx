@@ -60,6 +60,9 @@ export default async function EntregasPage({ searchParams }: { searchParams: Pro
             {cuenta(['revisar'])} para revisar · {cuenta(['lista'])} listas para planificar
           </p>
         </div>
+        <Link href="/entregas/planificar" className="btn btn-primario btn-chico">
+          Planificar el día
+        </Link>
       </div>
 
       <nav className="filtros" aria-label="Qué entregas ver">
@@ -86,7 +89,7 @@ export default async function EntregasPage({ searchParams }: { searchParams: Pro
               : vista.id === 'listas'
                 ? 'No hay entregas listas. Las que están en Revisar pasan acá cuando tienen todos los datos.'
                 : vista.id === 'en-ruta'
-                  ? 'Todavía no hay rutas: la planificación con mapa llega en la próxima etapa.'
+                  ? 'No hay entregas en rutas confirmadas. Se arman en Planificar el día.'
                   : 'No hay entregas cerradas en los últimos 30 días.'}
           </div>
         ) : (

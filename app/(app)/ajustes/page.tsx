@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { miembroActual } from '@/lib/sesion';
 import { NotificacionesCelular } from './push';
 import { fechaCorta } from '@/lib/fechas';
-import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormAvisos, FormParametros, FormReparto, FormTurnos, ImportarTiendaNube, ProbarPlanilla, ProbarReportes, ProbarResumen } from './partes';
+import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormAvisos, FormParametros, FormReparto, FormTurnos, FormVehiculo, type VehiculoAjustes, ImportarTiendaNube, ProbarPlanilla, ProbarReportes, ProbarResumen } from './partes';
 
 async function conexionTiendaNube() {
   try {
@@ -43,6 +43,8 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
   const planillaDestino = process.env.PLANILLA_DESTINO_ID ? 'otra planilla (PLANILLA_DESTINO_ID)' : 'Plantilla_Spazio_2026 (la original)';
   const equipo = (eq ?? []) as { id: string; nombre: string; alias_planilla: string | null; email: string; telefono: string | null; rol: string; activo: boolean }[];
   const valores = Object.fromEntries(((params ?? []) as { clave: string; valor: string }[]).map((p) => [p.clave, p.valor]));
+  const { data: vehiculosData } = await supabase.from('vehiculos').select('*').order('orden').order('creado_en');
+  const vehiculos = (vehiculosData ?? []) as VehiculoAjustes[];
   const whatsapp = Boolean(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_ID);
   const email = Boolean(process.env.RESEND_API_KEY);
   const cron = Boolean(process.env.CRON_SECRET && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY));
@@ -115,6 +117,25 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
                 {process.env.GOOGLE_MAPS_SERVER_KEY ? 'Google Maps: ✓ conectado.' : 'Google Maps: falta la clave GOOGLE_MAPS_SERVER_KEY en Vercel.'}
               </p>
               <FormReparto valores={valores} editable={admin} />
+            </div>
+          </section>
+          <section className="card" id="vehiculos" style={{ scrollMarginTop: 80 }}>
+            <div className="card-titulo">
+              <h2>Vehículos</h2>
+            </div>
+            <div className="seccion">
+              <p className="small" style={{ marginBottom: 8 }}>
+                Los fleteros y sus vehículos, para planificar las entregas: cuánto llevan, la mesa más grande que entra, la jornada y el precio.
+              </p>
+              {vehiculos.map((v) => (
+                <FormVehiculo key={v.id} v={v} editable={admin} />
+              ))}
+              {admin && (
+                <details style={{ marginTop: 8 }}>
+                  <summary className="small">Agregar un vehículo</summary>
+                  <FormVehiculo editable={admin} />
+                </details>
+              )}
             </div>
           </section>
           <section className="card" id="turnos" style={{ scrollMarginTop: 80 }}>
