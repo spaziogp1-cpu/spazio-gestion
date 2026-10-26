@@ -156,6 +156,25 @@ p { margin: 0; }
   height: 100dvh;
   flex-direction: column;
   gap: 4px;
+  /* Si las secciones no entran en la pantalla, el menú se desplaza solo (sin mover la página). */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.18) transparent;
+}
+.sidebar > * { flex-shrink: 0; }
+.sidebar::-webkit-scrollbar { width: 8px; }
+.sidebar::-webkit-scrollbar-thumb { background: rgb(255 255 255 / 0.18); border-radius: 8px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+/* Pantallas bajas (notebooks): menú más compacto para que entre casi todo. */
+@media (max-height: 820px) {
+  .sidebar { padding-block: 16px; }
+  .sidebar .marca { padding-bottom: 12px; }
+  .sidebar .vidrios { margin-bottom: 8px; }
+  .sidebar .marca-nombre { font-size: 28px; }
+  .sidebar .navlink { min-height: 34px; padding-block: 6px; }
+  .sidebar .btn-primario { margin-bottom: 12px !important; }
+  .sidebar .boton-buscar { margin-bottom: 10px; }
 }
 .marca { display: block; padding: 0 10px 20px; color: inherit; }
 .marca-spazio { display: flex; flex-direction: column; gap: 0; }
