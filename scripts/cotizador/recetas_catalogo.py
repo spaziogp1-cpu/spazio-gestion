@@ -300,7 +300,30 @@ C.append(("Mesa Luz", COM, alta(REDONDA(100, 75), [TAPA_R, bases("bases", "Bases
           PLANO + ": dos pares de bases en V"))
 LUCERO = lambda tapa: [tapa, bases("base_larga", "Base larga", 1, "L - 60", nota="100 cm en la 160 × 90"),
                        bases("bases_cortas", "Bases cortas", 2, "redondear(P * 0.28)", nota="25 cm en la 160 × 90")]
-C.append(("Mesa Lucero Rectangular", COM, alta(RECT(160, 90, 75), LUCERO(TAPA)), "Bases según el plano de la Lucero"))
+def con_float10_incoloro(rec):
+    """Mesa alta que en incoloro también se hace en float 10 mm (en vez de laminado 5+5)."""
+    combinada = "combinada" in rec["entradas"]
+    inc = lambda c: f"{c} == 'incoloro'"
+    hay = f"({inc('color')} || (combinada == 'si' && {inc('color_bases')}))" if combinada else inc("color")
+    rec["entradas"]["tipo_vidrio"] = {"tipo": "opcion", "nombre": "Vidrio incoloro", "permitidos": ["laminado", "float"],
+                                      "def": "laminado", "mostrarSi": f"espesor == '5+5' && {hay}"}
+    rec["orden"].insert(rec["orden"].index("espesor") + 1, "tipo_vidrio")
+    flota = lambda c: f"espesor == '5+5' && tipo_vidrio == 'float' && {inc(c)}"
+    colores = []
+    for l in rec["lineas"]:
+        if l.get("insumo") == "vidrio-laminado":
+            c = l["variante"]["color"]
+            colores.append(c)
+            del l["insumo"]
+            l["insumoFormula"] = f"si({flota(c)}, 'vidrio-float', 'vidrio-laminado')"
+            l["variante"] = {"espesor": "'10'", "composicion": "espesor", "color": c}
+        if l["id"] == "uv":
+            l["variante"]["tipo_vidrio"] = "si(" + " && ".join(flota(c) for c in dict.fromkeys(colores)) + ", 'float', 'laminado')"
+    return rec
+
+
+C.append(("Mesa Lucero Rectangular", COM, con_float10_incoloro(alta(RECT(160, 90, 75), LUCERO(TAPA))),
+          "Bases según el plano de la Lucero. Incoloro: laminado 5+5 o float 10 mm"))
 C.append(("Mesa Lucero Medio Punto", COM, alta(RECT(160, 90, 75), LUCERO(TAPA_F)), PLANO))
 C.append(("Mesa Galaxia", COM, alta(RECT(140, 90, 75), [TAPA, bases("patas", "Patas en V", 4, "redondear(P * 0.3)")]), WEB))
 C.append(("Mesa Galaxia II", COM, alta(RECT(160, 80, 75), [TAPA_F, bases("patas", "Patas en V", 4, "redondear(P * 0.31)", nota="25 cm en la 160 × 80")]),
