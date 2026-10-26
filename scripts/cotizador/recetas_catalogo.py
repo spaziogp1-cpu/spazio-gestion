@@ -327,9 +327,13 @@ C.append(("Estantería Lyra", EST, receta(RECT(60, 50, 77), "v10",
 C.append(("Vinilero Lyra", EST, receta(RECT(40, 40, 40), "v10",
           [pieza("base", "Base", 1, "L", "P"), pieza("laterales", "Laterales", 2, "P", "H", forma=True),
            pieza("fondo", "Fondo", 1, "L", "H", forma=True)], None, "2 * P + L + 2 * H"), WEB))
-C.append(("Rack Núcleo", EST, receta(RECT(120, 40, 60), "v10",
-          [TAPA, pieza("laterales", "Laterales", 2, "P", "H - 1"), pieza("estante", "Estante", 1, "redondear(L * 0.75)", "P"),
-           pieza("patas_estante", "Patas del estante", 2, "P", "redondear(H * 0.45)")], None, "6 * P"), WEB))
+# Plano 26/10/2026 (140 × 30 × 60): tapa y estante 140 × 30; laterales 33 × 30 entre la tapa y el estante;
+# 2 bases de 25 × 30 debajo del estante, 20 cm adentro de cada punta. 60 = 33 + 25 + 2 cm de los dos vidrios.
+C.append(("Rack Núcleo", EST, receta(RECT(140, 30, 60), "v10",
+          [TAPA, pieza("laterales", "Laterales", 2, "P", "H - 2 - redondear(H * 0.42)", nota="33 × 30 en la 140 × 30 × 60"),
+           pieza("estante", "Estante", 1, "L", "P", nota="Misma medida que la tapa"),
+           pieza("bases", "Bases", 2, "P", "redondear(H * 0.42)", nota="25 × 30 en la 140 × 30 × 60; van 20 cm adentro de cada punta")],
+          None, "6 * P"), PLANO))
 C.append(("Recibidor Tori", REC, receta(RECT(110, 30, 100), "v10",
           [pieza("estantes", "Estantes", 3, "L", "P"), pieza("paneles", "Paneles verticales", 2, "P", "H"),
            pieza("separadores", "Separadores", 4, "P", "redondear(H * 0.3)")], None, "14 * P"), WEB))
