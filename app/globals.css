@@ -1013,3 +1013,8 @@ input.formula { font-size: 16px; }
 .gc-fila-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .gc-fila-cab strong { font-variant-numeric: tabular-nums; }
 .gc-mini { width: 132px; flex-shrink: 0; }
+/* Logo negro de la página pública: en tema oscuro se ve en blanco. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema='claro']) .gc-publica .turnos-cabecera img { filter: invert(1); }
+}
+:root[data-tema='oscuro'] .gc-publica .turnos-cabecera img { filter: invert(1); }
