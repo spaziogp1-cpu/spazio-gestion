@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { TarjetaGift } from '@/components/tarjeta-gift';
+import { TarjetaGift, TarjetaGiftDorso } from '@/components/tarjeta-gift';
 import { errorMonto, fechaAR, fechaVencimiento, GC_DEDICATORIA_MAX, GC_MONTOS_SUGERIDOS, GC_OCASIONES, GC_REVISION_DESDE, fraseOcasion } from '@/lib/giftcard';
 import { pedirGiftCard, type EstadoGift } from './actions';
 
@@ -25,7 +25,10 @@ export function Comprar({ hoy, maxInicio }: { hoy: string; maxInicio: string }) 
 
   return (
     <form action={accion} className="form-bloque">
-      <TarjetaGift monto={montoOk ? pesos(monto) : undefined} frase={fraseOcasion(ocasion)} para={para.trim() || undefined} de={de.trim() || undefined} />
+      <div className="gc-caras">
+        <TarjetaGift monto={montoOk ? pesos(monto) : undefined} />
+        <TarjetaGiftDorso de={de.trim()} para={para.trim()} mensaje={dedicatoria.trim() || fraseOcasion(ocasion)} />
+      </div>
 
       <div className="turnos-paso">
         <span className="etiqueta">1. Elegí el monto</span>
@@ -113,7 +116,7 @@ export function Comprar({ hoy, maxInicio }: { hoy: string; maxInicio: string }) 
             maxLength={GC_DEDICATORIA_MAX}
             value={dedicatoria}
             onChange={(e) => setDedicatoria(e.target.value)}
-            placeholder="Para que elijan algo hecho a su medida. ¡Felicidades por esta nueva etapa!"
+            placeholder="Para que elijas algo que te haga sonreír cada vez que lo veas. Un regalo con mucho cariño, para vos."
           />
           <span className="gc-contador">
             {dedicatoria.length}/{GC_DEDICATORIA_MAX}

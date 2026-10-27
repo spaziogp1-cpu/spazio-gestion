@@ -43,7 +43,7 @@ async function entregar(card: DatosCard, codigo: string, monto: number, vence: s
 
   let email: Emitida['email'] = { enviado: false, a: card.para_email };
   if (card.para_email) {
-    const e = emailEntrega({ para: card.para_nombre, de: card.de_nombre, monto, ocasion: card.ocasion, dedicatoria: card.dedicatoria, codigo, vence, urlSaldo, urlLogo: `${base}/logo-spazio-negro.png`, whatsapp: waSpazio });
+    const e = emailEntrega({ para: card.para_nombre, de: card.de_nombre, monto, ocasion: card.ocasion, dedicatoria: card.dedicatoria, codigo, vence, urlSaldo, urlLogo: `${base}/logo-spazio-negro.png`, urlFrente: `${base}/gc-frente.jpg`, whatsapp: waSpazio });
     const r = await enviarEmail(card.para_email, e.asunto, e.html, e.texto);
     email = { enviado: r.ok, a: card.para_email, error: r.error };
   }

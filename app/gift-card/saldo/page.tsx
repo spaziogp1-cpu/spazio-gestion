@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { TarjetaGift } from '@/components/tarjeta-gift';
+import { TarjetaGift, TarjetaGiftDorso } from '@/components/tarjeta-gift';
 import { fechaAR, fraseOcasion, normalizarCodigo } from '@/lib/giftcard';
 import { createClient } from '@/lib/supabase/server';
 
@@ -10,6 +10,7 @@ type Saldo = {
   para_nombre: string;
   de_nombre: string;
   ocasion: string;
+  dedicatoria: string | null;
   monto_inicial: number;
   saldo: number;
   inicio: string;
@@ -57,7 +58,10 @@ export default async function SaldoPage({ searchParams }: { searchParams: Promis
         {codigo && !saldo && <p className="error-form">No encontramos una gift card con ese código. Revisá que esté bien escrito.</p>}
         {saldo && (
           <>
-            <TarjetaGift monto={pesos(saldo.monto_inicial)} frase={fraseOcasion(saldo.ocasion)} para={saldo.para_nombre} de={saldo.de_nombre} codigo={`SPZ-····-${saldo.codigo_fin}`} vence={fechaAR(saldo.vence)} />
+            <div className="gc-caras gc-caras-lado">
+              <TarjetaGift monto={pesos(saldo.monto_inicial)} />
+              <TarjetaGiftDorso de={saldo.de_nombre} para={saldo.para_nombre} mensaje={saldo.dedicatoria || fraseOcasion(saldo.ocasion)} />
+            </div>
             <div className="turnos-resumen">
               <span className="quiet small">Saldo disponible</span>
               <span className="gc-saldo-grande">{pesos(saldo.saldo)}</span>

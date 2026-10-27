@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useTransition } from 'react';
 import { TarjetaGift } from '@/components/tarjeta-gift';
-import { fechaAR, fraseOcasion, linkWhatsAppTexto, mensajePago, nombreOcasion } from '@/lib/giftcard';
+import { fechaAR, linkWhatsAppTexto, mensajePago, nombreOcasion } from '@/lib/giftcard';
 import { canjear, cancelarSolicitud, emitirGiftCard, guardarDatosPago, marcarRevisada, nuevoCodigo, prorrogar, reintegrar, type Emitida, type EstadoGC } from './actions';
 
 export type Solicitud = {
@@ -225,7 +225,7 @@ export function FilaTarjeta({ t, esAdmin, hoy }: { t: Tarjeta; esAdmin: boolean;
     <div className="gc-fila">
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <div className="gc-mini">
-          <TarjetaGift chica frase={fraseOcasion(t.ocasion)} />
+          <TarjetaGift chica />
         </div>
         <div style={{ display: 'grid', gap: 4, minWidth: 0, flex: 1 }}>
           <div className="gc-fila-cab">

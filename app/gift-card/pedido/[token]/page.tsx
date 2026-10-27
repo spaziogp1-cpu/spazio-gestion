@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { TarjetaGift } from '@/components/tarjeta-gift';
+import { TarjetaGift, TarjetaGiftDorso } from '@/components/tarjeta-gift';
 import { fraseOcasion, linkWhatsAppTexto } from '@/lib/giftcard';
 import { createClient } from '@/lib/supabase/server';
 
@@ -14,6 +14,7 @@ type Solicitud = {
   ocasion: string;
   para_nombre: string;
   de_nombre: string;
+  dedicatoria: string | null;
   comprador_nombre: string;
   whatsapp: string;
 };
@@ -47,7 +48,10 @@ export default async function PedidoGiftPage({ params, searchParams }: { params:
         ) : (
           <>
             <h1>{s.estado === 'emitida' ? '¡Ya está activa!' : nuevo ? <>¡Gracias, {nombre}!</> : 'Tu gift card'}</h1>
-            <TarjetaGift monto={pesos(s.monto)} frase={fraseOcasion(s.ocasion)} para={s.para_nombre} de={s.de_nombre} />
+            <div className="gc-caras gc-caras-lado">
+              <TarjetaGift monto={pesos(s.monto)} />
+              <TarjetaGiftDorso de={s.de_nombre} para={s.para_nombre} mensaje={s.dedicatoria || fraseOcasion(s.ocasion)} />
+            </div>
             <div className="turnos-resumen">
               <span className="quiet small">Referencia del pedido</span>
               <span className="turnos-resumen-hora">{s.referencia}</span>
