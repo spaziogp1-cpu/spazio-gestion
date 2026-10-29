@@ -39,6 +39,7 @@ Stack: Next.js + Supabase + Vercel. La especificación completa está en el docu
 19. `supabase/migrations/0018_notificaciones_celular.sql` — notificaciones en el celular (Web Push)
 20. `supabase/migrations/0019_tareas_con_hora.sql` — tareas con hora: van al calendario y avisan 30 minutos antes
 21. `supabase/migrations/0027_gift_cards.sql` — gift cards: página pública de compra, emisión con código, saldo y canjes
+22. `supabase/importaciones/2026-10_float10_mesas_altas.sql` — mesas altas: además del laminado 5+5, float 10 mm en incoloro, gris y bronce
 
 ## Variables en Vercel (Settings → Environment Variables)
 

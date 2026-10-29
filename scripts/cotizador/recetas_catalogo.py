@@ -92,8 +92,30 @@ INSERTOS_ALTA = [
 ENT_INSERTOS = {"insertos": {"tipo": "opcion", "nombre": "Insertos", "permitidos": ["no", "si"], "def": "no"}}
 
 
+def con_float10(rec):
+    """Lo que va en laminado 5+5 también se hace en float 10 mm en incoloro, gris y bronce (29/10/2026)."""
+    combinada = "combinada" in rec["entradas"]
+    ok = lambda c: f"en({c}, 'incoloro', 'gris', 'bronce')"
+    hay = f"({ok('color')} || (combinada == 'si' && {ok('color_bases')}))" if combinada else ok("color")
+    rec["entradas"]["tipo_vidrio"] = {"tipo": "opcion", "nombre": "Tipo de vidrio", "permitidos": ["laminado 5+5", "float 10 mm"],
+                                      "def": "laminado 5+5", "mostrarSi": f"espesor == '5+5' && {hay}"}
+    rec["orden"].insert(rec["orden"].index("espesor") + 1, "tipo_vidrio")
+    flota = lambda c: f"espesor == '5+5' && tipo_vidrio == 'float 10 mm' && {ok(c)}"
+    colores = []
+    for l in rec["lineas"]:
+        if l.get("insumo") == "vidrio-laminado":
+            c = l["variante"]["color"]
+            colores.append(c)
+            del l["insumo"]
+            l["insumoFormula"] = f"si({flota(c)}, 'vidrio-float', 'vidrio-laminado')"
+            l["variante"] = {"espesor": "'10'", "composicion": "espesor", "color": c}
+        if l["id"] == "uv":
+            l["variante"]["tipo_vidrio"] = "si(" + " && ".join(flota(c) for c in dict.fromkeys(colores)) + ", 'float', 'laminado')"
+    return rec
+
+
 def alta(medidas, piezas, uv="2 * (H - 1)"):
-    return receta(medidas, "alta", piezas, "bases", uv, INSERTOS_ALTA, ENT_INSERTOS)
+    return con_float10(receta(medidas, "alta", piezas, "bases", uv, INSERTOS_ALTA, ENT_INSERTOS))
 
 
 def cromada(medidas, modelo, ref, piezas, regatones=4):
@@ -294,36 +316,16 @@ C.append(("Mesa Nube", AUX, receta(RECT(37, 40, 60), "v10",
            pieza("soporte", "Soporte trasero", 1, "L - 2", "redondear(H * 35 / 60)", nota="35 × 35 en la 37 × 40 × 60")], "total",
           "4 * (P - 5) + 2 * (L - 2) + 2 * redondear(H * 35 / 60)"), PLANO))
 
-# --- Mesas altas (laminado 5+5, ajuste solo sobre las bases, insertos opcionales)
+# --- Mesas altas (laminado 5+5 o float 10 mm en incoloro, gris y bronce, ajuste solo sobre las bases, insertos opcionales)
 C.append(("Mesa Sol", COM, alta(REDONDA(100, 75), [TAPA_R, bases("bases", "Base en cruz", 2, "redondear(D * 0.5)")]), WEB))
 C.append(("Mesa Luz", COM, alta(REDONDA(100, 75), [TAPA_R, bases("bases", "Bases en V", 4, "redondear(D * 0.35)", nota="35 cm en la Ø 100")]),
           PLANO + ": dos pares de bases en V"))
 LUCERO = lambda tapa: [tapa, bases("base_larga", "Base larga", 1, "L - 60", nota="100 cm en la 160 × 90"),
                        bases("bases_cortas", "Bases cortas", 2, "redondear(P * 0.28)", nota="25 cm en la 160 × 90")]
-def con_float10_incoloro(rec):
-    """Mesa alta que en incoloro también se hace en float 10 mm (en vez de laminado 5+5)."""
-    combinada = "combinada" in rec["entradas"]
-    inc = lambda c: f"{c} == 'incoloro'"
-    hay = f"({inc('color')} || (combinada == 'si' && {inc('color_bases')}))" if combinada else inc("color")
-    rec["entradas"]["tipo_vidrio"] = {"tipo": "opcion", "nombre": "Vidrio incoloro", "permitidos": ["laminado", "float"],
-                                      "def": "laminado", "mostrarSi": f"espesor == '5+5' && {hay}"}
-    rec["orden"].insert(rec["orden"].index("espesor") + 1, "tipo_vidrio")
-    flota = lambda c: f"espesor == '5+5' && tipo_vidrio == 'float' && {inc(c)}"
-    colores = []
-    for l in rec["lineas"]:
-        if l.get("insumo") == "vidrio-laminado":
-            c = l["variante"]["color"]
-            colores.append(c)
-            del l["insumo"]
-            l["insumoFormula"] = f"si({flota(c)}, 'vidrio-float', 'vidrio-laminado')"
-            l["variante"] = {"espesor": "'10'", "composicion": "espesor", "color": c}
-        if l["id"] == "uv":
-            l["variante"]["tipo_vidrio"] = "si(" + " && ".join(flota(c) for c in dict.fromkeys(colores)) + ", 'float', 'laminado')"
-    return rec
 
 
-C.append(("Mesa Lucero Rectangular", COM, con_float10_incoloro(alta(RECT(160, 90, 75), LUCERO(TAPA))),
-          "Bases según el plano de la Lucero. Incoloro: laminado 5+5 o float 10 mm"))
+C.append(("Mesa Lucero Rectangular", COM, alta(RECT(160, 90, 75), LUCERO(TAPA)),
+          "Bases según el plano de la Lucero"))
 C.append(("Mesa Lucero Medio Punto", COM, alta(RECT(160, 90, 75), LUCERO(TAPA_F)), PLANO))
 C.append(("Mesa Galaxia", COM, alta(RECT(140, 90, 75), [TAPA, bases("patas", "Patas en V", 4, "redondear(P * 0.3)")]), WEB))
 C.append(("Mesa Galaxia II", COM, alta(RECT(160, 80, 75), [TAPA_F, bases("patas", "Patas en V", 4, "redondear(P * 0.31)", nota="25 cm en la 160 × 80")]),
@@ -382,10 +384,10 @@ C.append(("Recibidor Nexo", REC, cromada(RECT(150, 47, 90), "recibidor-nexo", "L
 
 # --- Patas cilíndricas
 PATAS = {"patas": {"tipo": "opcion", "nombre": "Patas", "permitidos": ["aluminio", "acero inoxidable"], "def": "aluminio"}}
-C.append(("Mesa Constelación", COM, receta(RECT(180, 90, 75), "alta", [TAPA], None, None,
+C.append(("Mesa Constelación", COM, con_float10(receta(RECT(180, 90, 75), "alta", [TAPA], None, None,
           [{"id": "patas_juego", "nombre": "Patas cilíndricas (juego de 4)", "regla": "unidad",
-            "insumoFormula": "si(patas == 'aluminio', 'patas-cilindricas-aluminio', 'patas-cilindricas-acero')"}], PATAS),
-          "Tapa laminada 5+5 y juego de 4 patas"))
+            "insumoFormula": "si(patas == 'aluminio', 'patas-cilindricas-aluminio', 'patas-cilindricas-acero')"}], PATAS)),
+          "Tapa laminada 5+5 (o float 10 mm en incoloro, gris y bronce) y juego de 4 patas"))
 C.append(("Mesa Constelación Ratona", R, receta(RECT(100, 50, 40), "v10", [TAPA], None, None,
           [{"id": "patas_juego", "nombre": "Patas cilíndricas de aluminio (juego de 4)", "regla": "unidad",
             "insumo": "patas-cilindricas-aluminio-ratona"}]), "Patas estimadas a la mitad de las de comedor"))
