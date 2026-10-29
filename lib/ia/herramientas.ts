@@ -4,6 +4,8 @@ import { ENVIOS, ETAPAS, nombreEtapa } from '@/lib/constantes';
 import { hoyAR, sumarDiasCorridos } from '@/lib/fechas';
 import { actualizarPedido as actualizarEnPlanilla } from '@/lib/planilla/sync';
 import { armarResumen } from '@/lib/resumen';
+import { HERRAMIENTAS_COTIZADOR } from './cotizador';
+import { ErrorUsuario } from './errores';
 
 // Herramientas que la IA (Claude o ChatGPT) puede usar sobre los datos de la app.
 // Todas actúan en nombre de la persona dueña de la clave.
@@ -12,18 +14,19 @@ import { armarResumen } from '@/lib/resumen';
 type Cliente = SupabaseClient<any, any, any>;
 type Yo = { id: string; nombre: string; email: string };
 type Args = Record<string, unknown>;
-export type Contexto = { db: Cliente; yo: Yo };
+/** permisos: los extra de la persona (por ejemplo cotizador.costos); los admin tienen todos. */
+export type Contexto = { db: Cliente; yo: Yo; permisos: Set<string> };
 
 type Herramienta = {
   name: string;
   title: string;
   description: string;
   soloLectura: boolean;
+  /** Si está, solo la ve y la usa quien tiene ese permiso. */
+  permiso?: string;
   inputSchema: { type: 'object'; properties: Record<string, unknown>; required?: string[] };
   ejecutar: (ctx: Contexto, args: Args) => Promise<unknown>;
 };
-
-class ErrorUsuario extends Error {}
 
 const fechaOk = (v: unknown, campo: string): string => {
   const s = String(v ?? '');
@@ -418,14 +421,19 @@ export const HERRAMIENTAS: Herramienta[] = [
       return { ok: true, pedido: p.numero };
     },
   },
+  ...HERRAMIENTAS_COTIZADOR,
 ];
+
+/** Las herramientas que puede usar una persona según sus permisos. */
+export const herramientasPara = (permisos: Set<string>) => HERRAMIENTAS.filter((h) => !h.permiso || permisos.has(h.permiso));
 
 export async function ejecutarHerramienta(ctx: Contexto, nombre: string, args: Args): Promise<{ texto: string; error: boolean }> {
   const h = HERRAMIENTAS.find((x) => x.name === nombre);
   if (!h) return { texto: `No existe la herramienta ${nombre}`, error: true };
+  if (h.permiso && !ctx.permisos.has(h.permiso)) return { texto: 'No tenés permiso para usar esta herramienta (pedíselo a un administrador de la app).', error: true };
   try {
     const r = await h.ejecutar(ctx, args ?? {});
-    return { texto: JSON.stringify(r, null, 1), error: false };
+    return { texto: typeof r === 'string' ? r : JSON.stringify(r, null, 1), error: false };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (!(e instanceof ErrorUsuario)) console.error('ia', nombre, e);

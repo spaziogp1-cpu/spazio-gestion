@@ -129,6 +129,12 @@ buscar y ver pedidos, calendario, tareas, reporte de ventas, crear y completar t
 etapa, agendar entrega, registrar pago y agregar notas. Los cambios quedan en el historial como
 "Nombre (con IA)". Las claves se pueden revocar desde Ajustes.
 
+Quien tiene permiso de costos (admin o un rol con `cotizador.costos`) ve además las herramientas
+del cotizador (`lib/ia/cotizador.ts`): guía de recetas, catálogo de insumos, listar y ver productos,
+crear y editar productos y márgenes, guardar el borrador de una receta, probarla con medidas,
+publicarla y descartar el borrador. Hacen lo mismo que `/cotizador/admin/productos` (mismas
+validaciones antes de publicar); los demás no las ven en la lista ni las pueden llamar.
+
 ## Cotizador (fase 1: costos)
 
 El motor de cálculo está en `lib/cotizador/` y no depende de la base ni de las pantallas:

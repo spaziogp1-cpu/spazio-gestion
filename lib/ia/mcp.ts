@@ -2,7 +2,8 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { crearAdmin } from '@/lib/supabase/admin';
-import { HERRAMIENTAS, ejecutarHerramienta } from './herramientas';
+import { PERMISO_COSTOS, permisosDe } from './cotizador';
+import { ejecutarHerramienta, herramientasPara } from './herramientas';
 
 // Servidor MCP (Model Context Protocol, transporte HTTP sin sesión) para conectar
 // Claude o ChatGPT a la app. Cada persona usa su propia clave, que se crea en Ajustes.
@@ -12,6 +13,7 @@ const INSTRUCCIONES = `Sos el asistente de Spazio Design, que fabrica y vende mu
 Estas herramientas leen y modifican la app de gestión interna: pedidos (con etapas Señado → En fabricación → Fabricada → Embalada → Envío o retiro coordinado → Entregado), tareas, calendario, pagos y reportes.
 Respondé en español rioplatense. Las fechas son de Buenos Aires (AAAA-MM-DD). Los montos están en pesos argentinos.
 Antes de cambiar algo (etapa, pago, entrega), confirmá con la persona si el pedido no es evidente.`;
+const INSTRUCCIONES_COTIZADOR = `También podés configurar el cotizador: productos, márgenes y recetas (las herramientas cotizador_*). Antes de armar o cambiar una receta leé cotizador_guia. Los cambios de receta quedan en borrador: probalos con cotizador_probar, mostrale el resultado a la persona y publicá (cotizador_publicar) solo cuando te lo confirme. Estos datos incluyen costos internos: no los pongas en textos para clientes.`;
 
 type Pedido = { jsonrpc?: string; id?: string | number | null; method?: string; params?: Record<string, any> };
 
@@ -47,7 +49,9 @@ export async function atenderMcp(request: NextRequest, claveRuta?: string) {
     return NextResponse.json(fallo(null, -32700, 'JSON inválido'), { status: 400 });
   }
 
-  const ctx = { db: crearAdmin(`${yo.email}#ia`), yo };
+  const db = crearAdmin(`${yo.email}#ia`);
+  const ctx = { db, yo, permisos: await permisosDe(db, yo.id) };
+  const disponibles = herramientasPara(ctx.permisos);
   const atender = async (m: Pedido) => {
     // Notificaciones (sin id): no llevan respuesta.
     if (m.id === undefined || m.id === null) return null;
@@ -58,14 +62,14 @@ export async function atenderMcp(request: NextRequest, claveRuta?: string) {
           protocolVersion: VERSIONES.includes(pedida) ? pedida : VERSIONES[0],
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: 'spazio-gestion', title: 'Spazio Gestión', version: '1.0.0' },
-          instructions: `${INSTRUCCIONES}\nQuien usa esta conexión es ${yo.nombre}.`,
+          instructions: `${INSTRUCCIONES}${ctx.permisos.has(PERMISO_COSTOS) ? `\n${INSTRUCCIONES_COTIZADOR}` : ''}\nQuien usa esta conexión es ${yo.nombre}.`,
         });
       }
       case 'ping':
         return respuesta(m.id, {});
       case 'tools/list':
         return respuesta(m.id, {
-          tools: HERRAMIENTAS.map((h) => ({
+          tools: disponibles.map((h) => ({
             name: h.name,
             title: h.title,
             description: h.description,
