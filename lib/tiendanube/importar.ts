@@ -5,7 +5,7 @@ import { leerReglaPlazo } from '@/lib/parametros';
 import { agregarPedido as agregarAPlanilla, anotarPendiente } from '@/lib/planilla/sync';
 import { generarRemito } from '@/lib/remitos/servicio';
 import { leerConexion, obtenerOrden, ordenesPagadasDesde } from './api';
-import { pedidoDesdeOrden, type OrdenTN } from './mapeo';
+import { pagoMarcadoDespues, pedidoDesdeOrden, type OrdenTN } from './mapeo';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Cliente = SupabaseClient<any, any, any>;
@@ -51,20 +51,37 @@ async function avisarEquipo(db: Cliente, tipo: string, titulo: string, cuerpo: s
   if (filas.length) await db.from('notificaciones').upsert(filas, { onConflict: 'clave', ignoreDuplicates: true });
 }
 
-/** Busca un pedido cargado a mano para la misma venta (mismo cliente, canal Tienda Nube, fechas cercanas). */
-async function buscarCargadoAMano(db: Cliente, email: string | null, telefono: string | null, fecha: string) {
-  const { data } = await db
+const soloDigitos = (t: string | null | undefined) => (t ?? '').replace(/\D/g, '');
+
+/**
+ * Busca un pedido ya cargado (a mano o desde la planilla) para la misma venta: mismo cliente
+ * (email, teléfono o DNI) y fecha de venta cercana a la compra en Tienda Nube.
+ * `amplio`: para un pago marcado al entregar, mira más días y cualquier canal, porque ahí
+ * la venta seguro ya está cargada y solo hace falta encontrarla.
+ */
+async function buscarCargado(
+  db: Cliente,
+  cliente: { email: string | null; telefono: string | null; dni: string | null },
+  fecha: string,
+  amplio = false,
+) {
+  let q = db
     .from('pedidos')
-    .select('id, numero, clientes!inner(email, telefono)')
-    .eq('canal', 'tiendanube')
+    .select('id, numero, clientes!inner(email, telefono, dni)')
     .is('tiendanube_id', null)
     .neq('etapa', 'cancelado')
-    .gte('fecha_venta', masDias(fecha, -4))
-    .lte('fecha_venta', masDias(fecha, 4));
-  const mail = email?.trim().toLowerCase();
-  const tel = ultimos8(telefono);
-  return ((data ?? []) as unknown as { id: string; numero: number; clientes: { email: string | null; telefono: string | null } }[]).find(
-    (p) => (mail && p.clientes.email?.trim().toLowerCase() === mail) || (tel.length === 8 && ultimos8(p.clientes.telefono) === tel),
+    .gte('fecha_venta', masDias(fecha, amplio ? -10 : -4))
+    .lte('fecha_venta', masDias(fecha, amplio ? 10 : 4));
+  if (!amplio) q = q.eq('canal', 'tiendanube');
+  const { data } = await q;
+  const mail = cliente.email?.trim().toLowerCase();
+  const tel = ultimos8(cliente.telefono);
+  const dni = soloDigitos(cliente.dni);
+  return ((data ?? []) as unknown as { id: string; numero: number; clientes: { email: string | null; telefono: string | null; dni: string | null } }[]).find(
+    (p) =>
+      (mail && p.clientes.email?.trim().toLowerCase() === mail) ||
+      (tel.length === 8 && ultimos8(p.clientes.telefono) === tel) ||
+      (dni.length >= 7 && soloDigitos(p.clientes.dni) === dni),
   );
 }
 
@@ -94,11 +111,33 @@ export async function procesarOrden(db: Cliente, ordenId: number, yaLeida?: Orde
 
     const datos = pedidoDesdeOrden(orden);
 
-    const manual = await buscarCargadoAMano(db, datos.cliente.email, datos.cliente.telefono, datos.fecha_venta);
+    // Pago marcado al entregar (transferencia con seña) o compra anterior a la conexión:
+    // la venta ya fue cargada, así que nunca se crea un pedido nuevo.
+    const anterior = Boolean(orden.created_at && new Date(orden.created_at).getTime() < new Date(conexion.desde).getTime());
+    const yaCargada = pagoMarcadoDespues(orden) || anterior;
+
+    const manual = await buscarCargado(db, datos.cliente, datos.fecha_venta, yaCargada);
     if (manual) {
+      // Solo se vincula: no se tocan pagos, etapa ni productos del pedido que ya existe.
       await db.from('pedidos').update({ tiendanube_id: datos.tiendanube_id }).eq('id', manual.id);
-      await marcar(db, ordenId, 'vinculado', `Ya estaba cargado a mano como #${manual.numero}`, manual.id);
+      await marcar(db, ordenId, 'vinculado', `Ya estaba cargado como #${manual.numero}`, manual.id);
       return { estado: 'vinculado', pedidoId: manual.id, detalle: `#${manual.numero}` };
+    }
+
+    if (yaCargada) {
+      const det = anterior
+        ? 'Compra anterior a la conexión con la app: no se creó un pedido nuevo'
+        : 'Pago marcado al entregar: no se creó un pedido nuevo y no se encontró el pedido original';
+      await marcar(db, ordenId, 'sin_pagar', det);
+      await avisarEquipo(
+        db,
+        'venta_tiendanube',
+        `Pago recibido en Tienda Nube #${orden.number ?? orden.id} (${datos.cliente.nombre})`,
+        'No se cargó como venta nueva porque se marcó pagada después de la compra. No encontré el pedido original para vincularlo: revisá que esté cargado.',
+        '/pedidos',
+        `tnpagotarde:${orden.id}`,
+      );
+      return { estado: 'sin_pagar', detalle: det };
     }
 
     const { regla, feriados } = await leerReglaPlazo(db as never);

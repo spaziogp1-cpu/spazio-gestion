@@ -165,6 +165,20 @@ export function formaPago(o: OrdenTN): string {
   return 'otro';
 }
 
+/**
+ * En las compras por transferencia, Spazio deja la orden "sin pagar" en Tienda Nube (el cliente
+ * solo deja una seña) y recién marca "pago recibido" cuando entrega. Ese aviso de pago llega días
+ * o semanas después de la compra y la venta ya está cargada: no es una venta nueva.
+ * Una tarjeta o Pago Nube se acreditan en el momento, así que la diferencia es de minutos u horas.
+ */
+export function pagoMarcadoDespues(o: OrdenTN, dias = 2): boolean {
+  if (!o.created_at || !o.paid_at) return false;
+  const creada = new Date(o.created_at).getTime();
+  const pagada = new Date(o.paid_at).getTime();
+  if (Number.isNaN(creada) || Number.isNaN(pagada)) return false;
+  return pagada - creada > dias * 24 * 60 * 60 * 1000;
+}
+
 export function pedidoDesdeOrden(o: OrdenTN): DatosPedido {
   const dir = o.shipping_address ?? {};
   const retira = o.shipping_pickup_type === 'pickup';
@@ -216,7 +230,8 @@ export function pedidoDesdeOrden(o: OrdenTN): DatosPedido {
     tiendanube_id: String(o.id),
     numero_tn: o.number ?? null,
     canal: 'tiendanube',
-    fecha_venta: fechaAR(o.paid_at || o.created_at),
+    // La venta es el día en que el cliente compró, no el día en que se marcó el pago.
+    fecha_venta: fechaAR(o.created_at || o.paid_at),
     cliente: {
       nombre: txt(o.customer?.name) ?? txt(o.contact_name) ?? txt(o.billing_name) ?? txt(dir.name) ?? 'Cliente Tienda Nube',
       telefono: txt(o.contact_phone) ?? txt(o.customer?.phone) ?? txt(dir.phone) ?? txt(o.billing_phone),

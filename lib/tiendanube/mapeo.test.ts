@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fechaAR, formaPago, leerVariante, modeloProducto, pedidoDesdeOrden, tipoProducto, type OrdenTN } from './mapeo';
+import { fechaAR, formaPago, leerVariante, modeloProducto, pagoMarcadoDespues, pedidoDesdeOrden, tipoProducto, type OrdenTN } from './mapeo';
 
 const orden: OrdenTN = {
   id: 1712345678,
@@ -63,6 +63,16 @@ test('retiro en showroom, transferencia y sin pagar', () => {
   assert.equal(p.precio_envio_cliente, 0);
   assert.equal(p.sena, 0);
   assert.equal(p.forma_pago, 'transferencia');
+});
+
+test('pago marcado al entregar: fecha de venta = compra, y se detecta como ya cargada', () => {
+  // Compró el 23/9 por transferencia (seña) y se marcó "pago recibido" al entregar, el 28/10.
+  const tarde: OrdenTN = { ...orden, created_at: '2026-09-23T15:00:00+0000', paid_at: '2026-10-28T18:00:00+0000', gateway: 'offline', payment_details: { method: 'custom' } };
+  assert.equal(pedidoDesdeOrden(tarde).fecha_venta, '2026-09-23');
+  assert.equal(pagoMarcadoDespues(tarde), true);
+  // Tarjeta / Pago Nube: se acredita en el momento.
+  assert.equal(pagoMarcadoDespues(orden), false);
+  assert.equal(pagoMarcadoDespues({ ...orden, paid_at: null }), false);
 });
 
 test('detecciones sueltas', () => {
