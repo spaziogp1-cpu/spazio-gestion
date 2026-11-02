@@ -346,6 +346,20 @@ details.mas[open] > summary::before { content: '– '; }
 .filtro .n { opacity: 0.6; margin-left: 4px; font-variant-numeric: tabular-nums; }
 .buscador { display: flex; gap: 8px; margin-bottom: 12px; }
 
+/* Ordenar y filtros extra de pedidos */
+.orden-pedidos { margin-bottom: 12px; }
+.orden-fila { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.orden-select { display: flex; flex-direction: column; gap: 5px; flex: 1 1 240px; min-width: 0; }
+.orden-select select { width: 100%; }
+.mas-filtros { flex: 0 0 auto; }
+.mas-filtros[open] { flex-basis: 100%; order: 2; }
+.mas-filtros > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.mas-filtros > summary::-webkit-details-marker { display: none; }
+.mas-filtros > summary .n { background: var(--ink); color: var(--bg); border-radius: 999px; padding: 0 7px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.mas-filtros-grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 10px; }
+.mas-filtros-grilla select, .mas-filtros-grilla input { width: 100%; }
+.limpiar-filtros { display: inline-block; margin-top: 10px; font-size: 13px; color: var(--ink-2); text-decoration: underline; }
+
 .lista { list-style: none; margin: 0; padding: 0; }
 .pedido-fila {
   display: grid; grid-template-columns: 1fr auto; gap: 4px 12px;
