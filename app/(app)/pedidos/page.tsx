@@ -33,16 +33,12 @@ export default async function PedidosPage({
   const extra = leerFiltros(sp);
   const nExtra = cantidadFiltros(extra);
   const { miembro, supabase } = await miembroActual();
-  const { data: eq } = await supabase.from('equipo').select('id, nombre').eq('activo', true).order('nombre');
+  // Equipo y activos salen en paralelo. Los activos se traen siempre: alimentan los contadores de los filtros.
+  const [{ data: eq }, { data: activosData }] = await Promise.all([
+    supabase.from('equipo').select('id, nombre').eq('activo', true).order('nombre'),
+    supabase.from('pedidos_resumen').select('*').in('etapa', ETAPAS_ACTIVAS).order('fecha_limite', { ascending: true }).limit(500),
+  ]);
   const equipo = (eq ?? []) as { id: string; nombre: string }[];
-
-  // Los activos se traen siempre: alimentan los contadores de los filtros.
-  const { data: activosData } = await supabase
-    .from('pedidos_resumen')
-    .select('*')
-    .in('etapa', ETAPAS_ACTIVAS)
-    .order('fecha_limite', { ascending: true })
-    .limit(500);
   const activos = (activosData ?? []) as PedidoResumen[];
 
   let lista: PedidoResumen[];

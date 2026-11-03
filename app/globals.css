@@ -1032,3 +1032,12 @@ input.formula { font-size: 16px; }
   :root:not([data-tema='claro']) .gc-publica .turnos-cabecera img { filter: invert(1); }
 }
 :root[data-tema='oscuro'] .gc-publica .turnos-cabecera img { filter: invert(1); }
+
+/* Pantalla de carga (app/(app)/loading.tsx) */
+.cargando { animation: cargando-aparece 0.2s ease-out 0.08s both; }
+.cargando-barra { height: 14px; border-radius: 7px; background: var(--surface-2); margin: 10px 0; animation: cargando-late 1.2s ease-in-out infinite; }
+.cargando-titulo { height: 28px; width: 40%; margin: 4px 0 18px; }
+.cargando-corta { width: 60%; }
+@keyframes cargando-late { 50% { opacity: 0.45; } }
+@keyframes cargando-aparece { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cargando-barra { animation: none; } }

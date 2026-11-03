@@ -20,9 +20,10 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Renueva la sesión si venció y la valida. getClaims verifica la firma localmente
+  // (sin ir al servidor de Supabase en cada clic) cuando el proyecto lo permite.
+  const { data: auth } = await supabase.auth.getClaims();
+  const user = auth?.claims ?? null;
 
   const path = request.nextUrl.pathname;
   const esPublica = PUBLICAS.some((p) => path === p || path.startsWith(p + '/'));

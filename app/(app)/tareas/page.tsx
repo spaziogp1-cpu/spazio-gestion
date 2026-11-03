@@ -9,8 +9,6 @@ export const metadata: Metadata = { title: 'Tareas' };
 export default async function TareasPage({ searchParams }: { searchParams: Promise<{ de?: string; ver?: string }> }) {
   const { de, ver } = await searchParams;
   const { miembro, supabase } = await miembroActual();
-  const { data: eq } = await supabase.from('equipo').select('id, nombre').eq('activo', true).order('nombre');
-  const equipo = (eq ?? []) as { id: string; nombre: string }[];
 
   // "de": id de la persona, "todos" o vacío (= yo)
   const persona = de === 'todos' ? null : (de ?? miembro.id);
@@ -22,7 +20,11 @@ export default async function TareasPage({ searchParams }: { searchParams: Promi
   consulta = hechas
     ? consulta.eq('estado', 'hecha').order('completada_en', { ascending: false }).limit(60)
     : consulta.neq('estado', 'hecha').order('vencimiento', { ascending: true, nullsFirst: false }).order('creado_en').limit(400);
-  const { data } = await consulta;
+  const [{ data: eq }, { data }] = await Promise.all([
+    supabase.from('equipo').select('id, nombre').eq('activo', true).order('nombre'),
+    consulta,
+  ]);
+  const equipo = (eq ?? []) as { id: string; nombre: string }[];
   const tareas = (data ?? []) as Tarea[];
   // Dentro de cada grupo, las de prioridad alta primero.
   const peso = { alta: 0, media: 1, baja: 2 } as const;

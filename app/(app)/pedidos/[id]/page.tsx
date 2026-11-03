@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { nombreEstadoEntrega } from '@/lib/entregas/tipos';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import { IconoVolver, IconoWhatsApp } from '@/components/iconos';
 import { ChipEtapa } from '@/components/pedido-fila';
 import { CANALES, ENVIOS, ETAPAS, TIPOS_PAGO, TIPOS_VENTA, nombreDe } from '@/lib/constantes';
@@ -15,10 +16,17 @@ import { ListaTareas, NuevaTarea } from '@/components/tareas';
 import { CAMPOS_OCULTOS, autorEvento, textoEvento } from './historial';
 import { BorrarPago, EditarPedido, FormComentario, FormPago, ItemEditable, NuevoItem, SelectorEtapa, SubirArchivos, BorrarArchivo, BotonRemito } from './partes';
 
+// El encabezado de la pestaña y la ficha usan el mismo resumen: se consulta una sola vez.
+const resumenPedido = cache(async (id: string) => {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  const { supabase } = await miembroActual();
+  const { data } = await supabase.from('pedidos_resumen').select('*').eq('id', id).maybeSingle();
+  return (data as PedidoResumen | null) ?? null;
+});
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const { supabase } = await miembroActual();
-  const { data } = await supabase.from('pedidos_resumen').select('numero, cliente_nombre').eq('id', id).maybeSingle();
+  const data = await resumenPedido(id);
   return { title: data ? `#${data.numero} ${data.cliente_nombre}` : 'Pedido' };
 }
 
@@ -34,12 +42,10 @@ export default async function FichaPedido({
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { miembro, supabase } = await miembroActual();
 
-  const { data: pData } = await supabase.from('pedidos_resumen').select('*').eq('id', id).maybeSingle();
-  if (!pData) notFound();
-  const p = pData as PedidoResumen;
-
-  const [clienteR, itemsR, pagosR, comentariosR, archivosR, eventosR, equipoR, provR, ppR, plazo, tareasR] = await Promise.all([
-    supabase.from('clientes').select('*').eq('id', p.cliente_id).single(),
+  // Todo lo de la ficha sale en paralelo (antes eran varias tandas, una detrás de otra).
+  const [pData, clienteR, itemsR, pagosR, comentariosR, archivosR, eventosR, equipoR, provR, ppR, plazo, tareasR, remitoR, entregaR] = await Promise.all([
+    resumenPedido(id),
+    supabase.from('pedidos').select('cliente:clientes(*)').eq('id', id).maybeSingle(),
     supabase.from('pedido_items').select('*').eq('pedido_id', id).order('orden').order('creado_en'),
     supabase.from('pagos').select('*').eq('pedido_id', id).order('fecha').order('creado_en'),
     supabase.from('comentarios').select('id, texto, creado_en, autor:equipo(nombre)').eq('pedido_id', id).order('creado_en'),
@@ -50,21 +56,25 @@ export default async function FichaPedido({
     supabase.from('proveedor_pendientes').select('*').eq('pedido_id', id).order('creado_en'),
     leerReglaPlazo(supabase),
     supabase.from('tareas_resumen').select('*').eq('pedido_id', id).order('estado').order('vencimiento', { nullsFirst: false }),
+    supabase.from('remitos').select('version, estado, drive_url, error').eq('pedido_id', id).order('version', { ascending: false }).limit(1).maybeSingle(),
+    // Entrega del pedido (la más reciente); si la migración 0022 no está, no se muestra.
+    supabase
+      .from('entregas')
+      .select('id, estado, intento, motivos, fecha_acordada, franja_desde, franja_hasta')
+      .eq('pedido_id', id)
+      .order('intento', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
-  const { data: remitoData } = await supabase.from('remitos').select('version, estado, drive_url, error').eq('pedido_id', id).order('version', { ascending: false }).limit(1).maybeSingle();
-  // Entrega del pedido (la más reciente); si la migración 0022 no está, no se muestra.
-  const { data: entregaData } = await supabase
-    .from('entregas')
-    .select('id, estado, intento, motivos, fecha_acordada, franja_desde, franja_hasta')
-    .eq('pedido_id', id)
-    .order('intento', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  if (!pData) notFound();
+  const p = pData;
+  const remitoData = remitoR.data;
+  const entregaData = entregaR.data;
   const entrega = entregaData as { id: string; estado: string; intento: number; motivos: string[]; fecha_acordada: string | null; franja_desde: string | null; franja_hasta: string | null } | null;
   const tareas = (tareasR.data ?? []) as Tarea[];
   const proveedores = (provR.data ?? []) as Proveedor[];
   const pedidosProv = (ppR.data ?? []) as PedidoProveedor[];
-  const cliente = clienteR.data as Cliente;
+  const cliente = (clienteR.data as unknown as { cliente: Cliente } | null)?.cliente as Cliente;
   const items = (itemsR.data ?? []) as Item[];
   const pagos = (pagosR.data ?? []) as Pago[];
   const comentarios = (comentariosR.data ?? []) as unknown as Comentario[];
