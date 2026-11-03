@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fechaAR, formaPago, leerVariante, modeloProducto, pagoMarcadoDespues, pedidoDesdeOrden, tipoProducto, type OrdenTN } from './mapeo';
+import { COLOR_A_DEFINIR, fechaAR, formaPago, itemsDeProducto, leerVariante, modeloProducto, pagoMarcadoDespues, pedidoDesdeOrden, tipoProducto, type OrdenTN } from './mapeo';
 
 const orden: OrdenTN = {
   id: 1712345678,
@@ -86,4 +86,42 @@ test('detecciones sueltas', () => {
   assert.deepEqual(leerVariante(['120 x 80', '5+5', 'Gris claro']), { medidas: '120x80', color: 'gris claro', material: '5+5', resto: [] });
   assert.equal(formaPago({ id: 1, gateway: 'mercadopago' }), 'cuotas/mp');
   assert.equal(fechaAR('2026-10-19T02:59:00Z'), '2026-10-18');
+});
+
+test('combos de la web: se desarman en mesa + sillas', () => {
+  const resumen = (name: string, variant_values: string[], quantity = 1, price = 1000000) =>
+    itemsDeProducto({ name, variant_values, quantity, price }).map((i) => [i.producto, i.modelo, i.medidas, i.color, i.cantidad, i.precio, i.tapa, i.puntas].join('|'));
+
+  assert.deepEqual(resumen('Combo Mesa Sol + 4 Sillas Cesca', ['Incoloro', 'Sin insertos de aluminio', '80x75']), [
+    'mesa alta|sol|80x75|incoloro|1|1000000|s/ insertos|',
+    `sillas|cesca|45x43x84|${COLOR_A_DEFINIR}|4|0||`,
+  ]);
+  // Tiempo no puede quedar como modelo "cesca"; dos combos = 2 mesas y 8 sillas.
+  assert.deepEqual(resumen('Combo Mesa Tiempo + 4 Sillas Cesca', ['Bronce/gris', '180x90x75'], 2), [
+    'mesa alta|tiempo|180x90x75|bronce/gris|2|1000000||',
+    `sillas|cesca|45x43x84|${COLOR_A_DEFINIR}|8|0||`,
+  ]);
+  assert.deepEqual(resumen('Combo Mesa Constelación + 4 Sillas Cesca', ['Color', '140x70x75']), [
+    `mesa alta|constelacion|140x70x75|color (${COLOR_A_DEFINIR})|1|1000000||`,
+    `sillas|cesca|45x43x84|${COLOR_A_DEFINIR}|4|0||`,
+  ]);
+  assert.deepEqual(resumen('Combo Mesa Aire Alta Rectangular + 4 Sillas Cesca', ['Madera', '160x80x75', 'Chanfle']), [
+    'mesa alta|aire|160x80x75|madera|1|1000000||chanfle',
+    `sillas|cesca|45x43x84|${COLOR_A_DEFINIR}|4|0||`,
+  ]);
+  assert.deepEqual(resumen('Combo Mesa Aire Alta Redonda + 4 Sillas Cesca', ['Color', '120x75']), [
+    `mesa alta|aire|120x75|color (${COLOR_A_DEFINIR})|1|1000000||`,
+    `sillas|cesca|45x43x84|${COLOR_A_DEFINIR}|4|0||`,
+  ]);
+  // Combos solo de sillas: 4 por combo, el precio repartido.
+  assert.deepEqual(resumen('Combo Silla Cesca', [], 1, 1365000), [`sillas|cesca|45x43x84|${COLOR_A_DEFINIR}|4|341250||`]);
+  assert.deepEqual(resumen('Combo Silla Duna', [], 2, 1365000), [`sillas|duna||${COLOR_A_DEFINIR}|8|341250||`]);
+});
+
+test('combo en una orden: total igual y avisos en observaciones', () => {
+  const p = pedidoDesdeOrden({ ...orden, products: [{ name: 'Combo Mesa Sol + 4 Sillas Cesca', variant_values: ['Color', 'Con insertos de aluminio', '100x75'], quantity: 1, price: '1684500' }] });
+  assert.equal(p.items.length, 2);
+  assert.equal(p.items.reduce((s, i) => s + (i.precio ?? 0) * i.cantidad, 0), 1684500);
+  assert.match(p.observaciones ?? '', /color de las sillas a definir/);
+  assert.match(p.observaciones ?? '', /color del vidrio a confirmar/);
 });

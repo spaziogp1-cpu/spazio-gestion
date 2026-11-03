@@ -51,8 +51,8 @@ export type ItemPedido = {
   producto: string;
   modelo: string | null;
   color: string | null;
-  puntas: null;
-  tapa: null;
+  puntas: string | null;
+  tapa: string | null;
   material: string | null;
   medidas: string | null;
   cantidad: number;
@@ -155,6 +155,96 @@ export function leerVariante(valores: string[]): { medidas: string | null; color
   return { medidas, color, material, resto };
 }
 
+/** Medidas de una silla Cesca, como se cargan en la planilla. */
+const MEDIDAS_SILLA: Record<string, string> = { cesca: '45x43x84' };
+/** El color de las sillas de un combo no se elige en la web: se define con el cliente después de la compra. */
+export const COLOR_A_DEFINIR = 'a definir';
+
+type ProductoTN = NonNullable<OrdenTN['products']>[number];
+
+/**
+ * Un producto de la orden como uno o más renglones del pedido.
+ * Los combos de la web ("Combo Mesa Sol + 4 Sillas Cesca", "Combo Silla Cesca") se desarman:
+ * la mesa con su medida, color y opciones, y las sillas con la cantidad que lleva el combo
+ * por la cantidad de combos comprados. El precio del combo queda en la mesa (o, si es un combo
+ * solo de sillas, repartido entre las sillas) para que el total no cambie.
+ */
+export function itemsDeProducto(pr: ProductoTN, notas: string[] = []): ItemPedido[] {
+  const nombre = txt(pr.name) ?? 'Producto';
+  const valores = (pr.variant_values ?? []).map((v) => txt(v)).filter((v): v is string => Boolean(v));
+  const cantidad = Math.max(1, Math.round(num(pr.quantity)) || 1);
+  const precio = pr.price != null ? num(pr.price) : null;
+  const n = sinAcentos(nombre);
+
+  const combo = /^\s*combo\b/.test(n);
+  if (!combo) {
+    const v = leerVariante(valores);
+    if (v.resto.length) notas.push(`${nombre}: ${v.resto.join(' · ')}`);
+    return [{ producto: tipoProducto(nombre), modelo: modeloProducto(nombre) ?? nombre, color: v.color, puntas: null, tapa: null, material: v.material, medidas: v.medidas, cantidad, precio }];
+  }
+
+  // Sillas del combo: "+ 4 Sillas Cesca", "Combo Silla Duna" (los de sillas solas son de a 4).
+  const parteSillas = n.match(/(\d+)?\s*(sillas?|taburetes?)\s+([a-z]+)/);
+  const porCombo = Number(parteSillas?.[1]) || 4;
+  const modeloSillas = parteSillas ? modeloProducto(parteSillas[3]) ?? parteSillas[3] : null;
+  const tipoSillas = parteSillas && /^taburete/.test(parteSillas[2]) ? 'taburete' : 'sillas';
+  const parteMesa = n.split('+')[0].replace(/^\s*combo\s+/, '');
+  const conMesa = /\bmesa\b/.test(parteMesa);
+
+  const sillas: ItemPedido | null = parteSillas
+    ? {
+        producto: tipoSillas,
+        modelo: modeloSillas,
+        color: COLOR_A_DEFINIR,
+        puntas: null,
+        tapa: null,
+        material: null,
+        medidas: (modeloSillas && MEDIDAS_SILLA[modeloSillas]) ?? null,
+        cantidad: porCombo * cantidad,
+        precio: conMesa ? 0 : precio != null ? num(precio / porCombo) : null,
+      }
+    : null;
+  if (!conMesa) {
+    if (sillas) notas.push(`${nombre}: color de ${tipoSillas === 'taburete' ? 'los taburetes' : 'las sillas'} a definir con el cliente`);
+    return sillas ? [sillas] : [];
+  }
+
+  // Opciones de la mesa: medida, color del vidrio (o madera), insertos (Sol) y borde (Aire).
+  let medidas: string | null = null;
+  let color: string | null = null;
+  let tapa: string | null = null;
+  let puntas: string | null = null;
+  let material: string | null = null;
+  const resto: string[] = [];
+  for (const v of valores) {
+    const s = sinAcentos(v).trim();
+    if (!medidas && /\d+\s*(cm)?\s*[x×]\s*\d+/.test(s)) medidas = v.replace(/\s+/g, '').toLowerCase();
+    else if (/insertos?/.test(s)) tapa = /\bsin\b/.test(s) ? 's/ insertos' : 'c/ insertos';
+    else if (/^(recto|chanfle|biselado|redondead)/.test(s)) puntas = s;
+    else if (!material && /(\d+\s*\+\s*\d+|\d+\s*mm)\b/.test(s)) material = s.replace(/\s+/g, '');
+    else if (!color && s === 'color') color = `color (${COLOR_A_DEFINIR})`;
+    else if (!color && s.includes('/')) color = s.replace(/\s+/g, '');
+    else if (!color && (s === 'madera' || COLORES.some((c) => s.includes(c)))) color = s === 'madera' ? 'madera' : COLORES.find((c) => s.includes(c)) ?? s;
+    else resto.push(v);
+  }
+  if (resto.length) notas.push(`${nombre}: ${resto.join(' · ')}`);
+  if (color === `color (${COLOR_A_DEFINIR})` || color?.includes('/')) notas.push(`${nombre}: color del vidrio a confirmar con el cliente`);
+  if (sillas) notas.push(`${nombre}: color de las sillas a definir con el cliente`);
+
+  const mesa: ItemPedido = {
+    producto: 'mesa alta',
+    modelo: modeloProducto(parteMesa) ?? parteMesa.replace(/^mesa\s+/, '').trim(),
+    color,
+    puntas,
+    tapa,
+    material,
+    medidas,
+    cantidad,
+    precio,
+  };
+  return sillas ? [mesa, sillas] : [mesa];
+}
+
 export function formaPago(o: OrdenTN): string {
   const g = sinAcentos(`${o.gateway ?? ''} ${o.gateway_name ?? ''}`);
   const metodo = sinAcentos(String(o.payment_details?.method ?? ''));
@@ -195,23 +285,7 @@ export function pedidoDesdeOrden(o: OrdenTN): DatosPedido {
   const pagado = o.payment_status === 'paid' ? totalOrden : 0;
 
   const notas: string[] = [];
-  const items: ItemPedido[] = (o.products ?? []).map((pr) => {
-    const nombre = txt(pr.name) ?? 'Producto';
-    const valores = (pr.variant_values ?? []).map((v) => txt(v)).filter((v): v is string => Boolean(v));
-    const v = leerVariante(valores);
-    if (v.resto.length) notas.push(`${nombre}: ${v.resto.join(' · ')}`);
-    return {
-      producto: tipoProducto(nombre),
-      modelo: modeloProducto(nombre) ?? nombre,
-      color: v.color,
-      puntas: null,
-      tapa: null,
-      material: v.material,
-      medidas: v.medidas,
-      cantidad: Math.max(1, Math.round(num(pr.quantity)) || 1),
-      precio: pr.price != null ? num(pr.price) : null,
-    };
-  });
+  const items: ItemPedido[] = (o.products ?? []).flatMap((pr) => itemsDeProducto(pr, notas));
 
   const calle = [txt(dir.address), txt(dir.number)].filter(Boolean).join(' ');
   const direccion = [calle, txt(dir.floor)].filter(Boolean).join(', ') || null;
