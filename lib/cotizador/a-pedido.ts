@@ -46,7 +46,19 @@ export async function datosParaPedido(presupuestoId: string): Promise<{ error?: 
   ]);
   const etiquetas: Record<string, Record<string, string>> = {};
   for (const v of (vals ?? []) as { atributo: string; valor: string; etiqueta: string }[]) (etiquetas[v.atributo] ??= {})[v.valor] = v.etiqueta;
-  type Calc = { item_id: string; resultado: { lineas?: { unidad: string; insumo?: string; variante?: Record<string, string> }[] } };
+  type Calc = {
+    item_id: string;
+    resultado: { lineas?: { id?: string; nombre?: string; unidad: string; cantidad?: number; insumo?: string; variante?: Record<string, string>; vidrio?: { color: string } }[] };
+  };
+  // Si los vidrios de un producto son de distintos colores: "tapa gris / bases azul" (para Vidpro).
+  const coloresDe = new Map(
+    ((calcs ?? []) as Calc[]).map((c) => {
+      const piezas = (c.resultado.lineas ?? []).filter((l) => l.vidrio && l.cantidad !== 0);
+      if (new Set(piezas.map((l) => l.vidrio!.color)).size < 2) return [c.item_id, null];
+      const color = (v: string) => (etiquetas.color?.[v] ?? v).toLowerCase();
+      return [c.item_id, piezas.map((l) => `${(l.nombre ?? '').toLowerCase()} ${color(l.vidrio!.color)}`).join(' / ')];
+    }),
+  );
   const vidrioDe = new Map(
     ((calcs ?? []) as Calc[]).map((c) => [
       c.item_id,
@@ -62,8 +74,8 @@ export async function datosParaPedido(presupuestoId: string): Promise<{ error?: 
     cot_recetas: { definicion: unknown } | null;
     cot_productos: { cot_categorias: { nombre: string } | null } | null;
   };
-  const lista = ((items ?? []) as unknown as Fila[]).map((i) =>
-    itemParaPedido({
+  const lista = ((items ?? []) as unknown as Fila[]).map((i) => ({
+    ...itemParaPedido({
       titulo: i.titulo,
       categoria: i.cot_productos?.cot_categorias?.nombre ?? null,
       receta: i.cot_recetas ? leerReceta(i.cot_recetas.definicion) : null,
@@ -73,7 +85,8 @@ export async function datosParaPedido(presupuestoId: string): Promise<{ error?: 
       precio: Number(i.precio_unitario),
       cantidad: i.cantidad,
     }),
-  );
+    ...(coloresDe.get(i.id) ? { color: coloresDe.get(i.id)! } : {}),
+  }));
   return {
     datos: {
       presupuestoId: p.id,

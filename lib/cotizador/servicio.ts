@@ -13,7 +13,7 @@ import { crearAdmin } from '@/lib/supabase/admin';
 import { cargarCatalogo } from './catalogo';
 import { conPiezasAgregadas, cotizar, entradasVisibles } from './motor';
 import { leerReceta } from './receta';
-import type { AjustePieza, AjustesPiezas, Aviso, Catalogo, PiezaAgregada, Receta, ResultadoCalculo } from './tipos';
+import type { AjustePieza, AjustesPiezas, Aviso, Catalogo, LineaResultado, PiezaAgregada, Receta, ResultadoCalculo, VidrioPieza } from './tipos';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = SupabaseClient<any, any, any>;
@@ -105,8 +105,18 @@ export function limpiarPiezas(receta: Receta, piezas: unknown): AjustesPiezas {
       const n = Number(a[k]);
       if (a[k] != null && a[k] !== '' && Number.isFinite(n) && n >= 1 && n <= 600) ok[k] = Math.round(n * 10) / 10;
     }
+    Object.assign(ok, vidrioValido(a));
+    if (typeof a.forma === 'boolean') ok.forma = a.forma;
     if (Object.keys(ok).length) out[id] = ok;
   }
+  return out;
+}
+
+/** Color (valor del catálogo, ej. "gris-oscuro") y espesor en mm de una pieza, si son válidos. */
+function vidrioValido(a: Record<string, unknown>): { color?: string; espesor?: string } {
+  const out: { color?: string; espesor?: string } = {};
+  if (typeof a.color === 'string' && /^[a-z0-9][a-z0-9-]{0,29}$/.test(a.color)) out.color = a.color;
+  if (a.espesor != null && /^\d{1,2}$/.test(String(a.espesor))) out.espesor = String(a.espesor);
   return out;
 }
 
@@ -126,7 +136,7 @@ export function limpiarAgregadas(receta: Receta, extras: unknown): PiezaAgregada
     if (!(Number.isInteger(cantidad) && cantidad >= 1 && cantidad <= 50)) continue;
     if (!(ancho >= 1 && ancho <= 600 && largo >= 1 && largo <= 600)) continue;
     const nombre = String(a.nombre ?? '').trim().slice(0, 40) || 'Vidrio agregado';
-    out.push({ id, nombre, como: String(a.como), cantidad, ancho: Math.round(ancho * 10) / 10, largo: Math.round(largo * 10) / 10, forma: a.forma === true });
+    out.push({ id, nombre, como: String(a.como), cantidad, ancho: Math.round(ancho * 10) / 10, largo: Math.round(largo * 10) / 10, forma: a.forma === true, ...vidrioValido(a) });
   }
   return out;
 }
@@ -171,6 +181,8 @@ export async function calcularItem(
   for (const k of Object.keys(receta.entradas)) if (visibles.has(k) && valores[k] != null && valores[k] !== '') limpios[k] = valores[k];
   // Sin margen se calcula igual el costo (para quien lo ve), pero no hay precio.
   const ajustes = limpiarPiezas(receta, piezas);
+  // El color y el espesor de los vidrios agregados se calculan igual que los de las piezas de la receta.
+  for (const x of agregadas) if (x.color || x.espesor) ajustes[x.id] = { ...ajustes[x.id], color: x.color, espesor: x.espesor };
   const resultado = cotizar({ receta, catalogo, valores: limpios, cantidad, margen: margenUsado ?? 0, piezas: ajustes });
   if (margenUsado == null) {
     resultado.ok = false;
@@ -191,7 +203,7 @@ export async function calcularItem(
     piezas: Object.fromEntries(Object.entries(ajustes).filter(([id]) => resultado.lineas.some((l) => l.id === id && l.original))),
     valores: limpios,
     resultado,
-    detalle: describirItem(receta, limpios, catalogo),
+    detalle: [describirItem(receta, limpios, catalogo), describirVidrios(resultado.lineas, catalogo)].filter(Boolean).join(' · '),
   };
 }
 
@@ -231,6 +243,35 @@ export function describirItem(receta: Receta, valores: Record<string, number | s
   return [medidas.length ? `${medidas.join(' × ')} cm` : '', ...opciones].filter(Boolean).join(' · ');
 }
 
+/**
+ * Las piezas cuyo vidrio quedó distinto a lo que dice el producto (otro color, otro espesor, con forma o
+ * con puntas rectas), para la descripción que ve el cliente: "bases: azul 12 mm" · "tapa: con forma".
+ */
+export function describirVidrios(lineas: LineaResultado[], catalogo: Catalogo): string {
+  const partes: string[] = [];
+  for (const l of lineas) {
+    const v = l.vidrio;
+    if (!v || !l.original?.vidrio || l.cantidad === 0) continue;
+    const o = l.original.vidrio;
+    const vidrio: string[] = [];
+    if (v.color !== o.color) vidrio.push((catalogo.valores.color?.[v.color]?.etiqueta ?? v.color).toLowerCase());
+    if (v.espesor !== o.espesor) vidrio.push(`${v.espesor} mm`);
+    const cambios = [vidrio.join(' '), v.forma !== o.forma ? (v.forma ? 'con forma' : 'puntas rectas') : ''].filter(Boolean);
+    if (cambios.length) partes.push(`${l.nombre.toLowerCase()}: ${cambios.join(', ')}`);
+  }
+  // Un vidrio agregado a mano se nombra si su color o espesor no es el de ninguna pieza del producto.
+  const propias = lineas.filter((l) => l.vidrio && !l.id.startsWith('extra_'));
+  for (const l of lineas) {
+    const v = l.vidrio;
+    if (!v || !l.id.startsWith('extra_')) continue;
+    const cambios: string[] = [];
+    if (!propias.some((x) => x.vidrio!.color === v.color)) cambios.push((catalogo.valores.color?.[v.color]?.etiqueta ?? v.color).toLowerCase());
+    if (!propias.some((x) => x.vidrio!.espesor === v.espesor)) cambios.push(`${v.espesor} mm`);
+    if (cambios.length) partes.push(`${l.nombre.toLowerCase()}: ${cambios.join(' ')}`);
+  }
+  return partes.join(' · ');
+}
+
 /** Lo que puede ver alguien sin permiso de costos. */
 export type ResultadoVenta = {
   ok: boolean;
@@ -257,7 +298,7 @@ export type ResultadoVenta = {
       estimado?: string;
       minimoAplicado?: string;
       /** Piezas por m²: se pueden cambiar a mano. */
-      pieza?: { cantidad: number; ancho: number; largo: number; original?: { cantidad: number; ancho?: number; largo?: number } };
+      pieza?: { cantidad: number; ancho: number; largo: number; vidrio?: VidrioPieza; original?: { cantidad: number; ancho?: number; largo?: number; vidrio?: VidrioPieza } };
     }[];
   };
 };
@@ -291,7 +332,7 @@ export function paraVenta(c: CalculoItem, verCostos: boolean): ResultadoVenta {
         costo: l.costo,
         estimado: l.estimado,
         minimoAplicado: l.minimoAplicado,
-        pieza: l.regla === 'm2' && l.ancho != null && l.largo != null ? { cantidad: l.cantidad, ancho: l.ancho, largo: l.largo, original: l.original } : undefined,
+        pieza: l.regla === 'm2' && l.ancho != null && l.largo != null ? { cantidad: l.cantidad, ancho: l.ancho, largo: l.largo, vidrio: l.vidrio, original: l.original } : undefined,
       })),
     },
   };

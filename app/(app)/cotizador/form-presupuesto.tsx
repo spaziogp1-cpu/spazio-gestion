@@ -7,8 +7,10 @@ import type { ProductoVenta, ResultadoVenta } from '@/lib/cotizador/servicio';
 import { guardarPresupuesto, precioItem } from './actions';
 
 type Catalogo = { productos: ProductoVenta[]; etiquetas: Record<string, Record<string, string>>; muestras: Record<string, string> };
-type CampoPieza = { cantidad?: string; ancho?: string; largo?: string };
-type CampoExtra = { id: string; nombre: string; como: string; cantidad: string; ancho: string; largo: string; forma: boolean };
+// Campos de texto de una pieza, y el vidrio (color, espesor, forma) si se cambió en el desglose.
+type CampoPieza = { cantidad?: string; ancho?: string; largo?: string; color?: string; espesor?: string; forma?: boolean };
+type PiezaGuardada = { cantidad?: number; ancho?: number; largo?: number; color?: string; espesor?: string; forma?: boolean };
+type CampoExtra = { id: string; nombre: string; como: string; cantidad: string; ancho: string; largo: string; forma: boolean; color?: string; espesor?: string };
 type ClienteSel = { id: string | null; nombre: string; telefono: string | null };
 type Item = {
   key: number;
@@ -31,8 +33,8 @@ export type InicialPresupuesto = {
     valores: Record<string, number | string>;
     cantidad: number;
     margen?: number | null;
-    piezas?: Record<string, { cantidad?: number; ancho?: number; largo?: number }> | null;
-    extras?: { id: string; nombre: string; como: string; cantidad: number; ancho: number; largo: number; forma?: boolean }[] | null;
+    piezas?: Record<string, PiezaGuardada> | null;
+    extras?: { id: string; nombre: string; como: string; cantidad: number; ancho: number; largo: number; forma?: boolean; color?: string; espesor?: string }[] | null;
   }[];
   descuentoPct: number;
   observaciones: string | null;
@@ -51,13 +53,16 @@ function margenFraccion(s: string): number | null {
 const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
 /** Campos de piezas → números para el servidor (vacío = lo de la receta). */
 function piezasNumeros(p: Record<string, CampoPieza>) {
-  const out: Record<string, { cantidad?: number; ancho?: number; largo?: number }> = {};
+  const out: Record<string, PiezaGuardada> = {};
   for (const [id, c] of Object.entries(p)) {
-    const x: { cantidad?: number; ancho?: number; largo?: number } = {};
+    const x: PiezaGuardada = {};
     for (const k of ['cantidad', 'ancho', 'largo'] as const) {
       const t = (c[k] ?? '').trim().replace(',', '.');
       if (t !== '' && Number.isFinite(Number(t))) x[k] = Number(t);
     }
+    if (c.color) x.color = c.color;
+    if (c.espesor) x.espesor = c.espesor;
+    if (c.forma != null) x.forma = c.forma;
     if (Object.keys(x).length) out[id] = x;
   }
   return out;
@@ -70,13 +75,15 @@ const extrasEnviar = (xs: CampoExtra[]) =>
     largo: Number(x.largo.replace(',', '.') || NaN),
   }));
 const num = (n: number) => String(n).replace('.', ',');
-const aCampos = (p?: Record<string, { cantidad?: number; ancho?: number; largo?: number }> | null) =>
+const aCampos = (p?: Record<string, PiezaGuardada> | null) =>
   Object.fromEntries(
     Object.entries(p ?? {}).map(([id, v]) => [
       id,
-      Object.fromEntries(Object.entries(v).map(([k, n]) => [k, String(n).replace('.', ',')])) as CampoPieza,
+      Object.fromEntries(Object.entries(v).map(([k, n]) => [k, typeof n === 'number' ? String(n).replace('.', ',') : n])) as CampoPieza,
     ]),
   );
+/** Espesores que se ofrecen en cada vidrio: los del producto, o los habituales si no pregunta espesor. */
+const ESPESORES = ['8', '10', '12', '16', '20'];
 let siguiente = 1;
 
 export default function FormPresupuesto({
@@ -622,7 +629,16 @@ function ItemPresupuesto({
               )}
             </div>
           )}
-          {verCostos && r?.costos && <Desglose item={item} lineas={r.costos.lineas} onCambiar={onCambiar} />}
+          {verCostos && r?.costos && (
+            <Desglose
+              item={item}
+              lineas={r.costos.lineas}
+              onCambiar={onCambiar}
+              colores={catalogo.etiquetas.color ?? {}}
+              muestras={catalogo.muestras}
+              espesores={producto.entradas.espesor?.tipo === 'opcion' && producto.entradas.espesor.permitidos?.length ? producto.entradas.espesor.permitidos : ESPESORES}
+            />
+          )}
         </div>
       )}
     </section>
@@ -630,10 +646,75 @@ function ItemPresupuesto({
 }
 
 // ---------------------------------------------------------------------
-// Desglose del costo: las piezas de vidrio se pueden cambiar a mano (cantidad y medidas).
+// Desglose del costo: las piezas de vidrio se pueden cambiar a mano (cantidad, medidas, color, espesor y forma).
 type LineaCosto = NonNullable<ResultadoVenta['costos']>['lineas'][number];
+type Vidrio = NonNullable<NonNullable<LineaCosto['pieza']>['vidrio']>;
 
-function Desglose({ item, lineas, onCambiar }: { item: Item; lineas: LineaCosto[]; onCambiar: (c: Partial<Item>) => void }) {
+/** Color, espesor y forma de un vidrio del desglose. */
+function CamposVidrio({
+  nombre,
+  vidrio,
+  colores,
+  muestras,
+  espesores,
+  conForma = true,
+  onCambiar,
+}: {
+  nombre: string;
+  vidrio: Vidrio;
+  colores: Record<string, string>;
+  muestras: Record<string, string>;
+  espesores: string[];
+  conForma?: boolean;
+  onCambiar: (c: Partial<Vidrio>) => void;
+}) {
+  const listaEsp = [...new Set([...espesores, vidrio.espesor])].sort((a, b) => Number(a) - Number(b));
+  const listaColores = vidrio.color in colores ? Object.entries(colores) : [...Object.entries(colores), [vidrio.color, vidrio.color] as [string, string]];
+  return (
+    <div className="presu-pieza presu-vidrio">
+      <span className="chip-muestra" style={{ background: muestras[vidrio.color] ?? 'transparent' }} aria-hidden="true" />
+      <select aria-label={`${nombre}: color`} value={vidrio.color} onChange={(e) => onCambiar({ color: e.target.value })}>
+        {listaColores.map(([v, etq]) => (
+          <option key={v} value={v}>
+            {etq}
+          </option>
+        ))}
+      </select>
+      <select aria-label={`${nombre}: espesor`} value={vidrio.espesor} onChange={(e) => onCambiar({ espesor: e.target.value })}>
+        {listaEsp.map((v) => (
+          <option key={v} value={v}>
+            {v} mm
+          </option>
+        ))}
+      </select>
+      {conForma && (
+        <select aria-label={`${nombre}: forma`} value={vidrio.forma ? 'si' : 'no'} onChange={(e) => onCambiar({ forma: e.target.value === 'si' })}>
+          <option value="no">puntas rectas</option>
+          <option value="si">con forma</option>
+        </select>
+      )}
+    </div>
+  );
+}
+
+const describirVidrio = (v: Vidrio, colores: Record<string, string>) =>
+  `${(colores[v.color] ?? v.color).toLowerCase()} ${v.espesor} mm ${v.forma ? 'con forma' : 'rectas'}`;
+
+function Desglose({
+  item,
+  lineas,
+  onCambiar,
+  colores,
+  muestras,
+  espesores,
+}: {
+  item: Item;
+  lineas: LineaCosto[];
+  onCambiar: (c: Partial<Item>) => void;
+  colores: Record<string, string>;
+  muestras: Record<string, string>;
+  espesores: string[];
+}) {
   const cambiadas = lineas.filter((l) => l.pieza?.original).length + item.extras.length;
   const propias = lineas.filter((l) => !l.id.startsWith('extra_'));
   const vidrios = propias.filter((l) => l.pieza).map((l) => ({ id: l.id, nombre: l.nombre }));
@@ -647,14 +728,22 @@ function Desglose({ item, lineas, onCambiar }: { item: Item; lineas: LineaCosto[
     const como = vidrios.find((v) => /base|pata|lateral/i.test(v.nombre))?.id ?? vidrios[0]?.id ?? '';
     onCambiar({ extras: [...item.extras, { id: `extra_${n}`, nombre: 'Vidrio agregado', como, cantidad: '1', ancho: '', largo: '', forma: false }] });
   };
-  const campo = (l: LineaCosto, k: keyof CampoPieza) => {
+  const campo = (l: LineaCosto, k: 'cantidad' | 'ancho' | 'largo') => {
     const escrito = item.piezas[l.id]?.[k];
     if (escrito != null) return escrito;
     const v = l.pieza ? l.pieza[k] : '';
     return String(Math.round(Number(v) * 10) / 10).replace('.', ',');
   };
-  const cambiar = (id: string, k: keyof CampoPieza, v: string) =>
+  const cambiar = (id: string, k: 'cantidad' | 'ancho' | 'largo', v: string) =>
     onCambiar({ piezas: { ...item.piezas, [id]: { ...item.piezas[id], [k]: v } } });
+  const cambiarVidrio = (id: string, c: Partial<Vidrio>) => onCambiar({ piezas: { ...item.piezas, [id]: { ...item.piezas[id], ...c } } });
+  // Lo elegido a mano manda sobre lo último calculado (que puede venir atrasado mientras recalcula).
+  const vidrioDe = (l: LineaCosto): Vidrio | null => {
+    const v = l.pieza?.vidrio;
+    if (!v) return null;
+    const a = item.piezas[l.id];
+    return { color: a?.color ?? v.color, espesor: a?.espesor ?? v.espesor, forma: a?.forma ?? v.forma };
+  };
   const restablecer = (id: string) => {
     const resto = { ...item.piezas };
     delete resto[id];
@@ -665,7 +754,7 @@ function Desglose({ item, lineas, onCambiar }: { item: Item; lineas: LineaCosto[
       <summary className="small">
         <strong>Desglose</strong>{' '}
         <span className="quiet">
-          · {cambiadas ? `${cambiadas} ${cambiadas === 1 ? 'cambio' : 'cambios'} · ` : ''}cambiá medidas, cantidades o agregá vidrios
+          · {cambiadas ? `${cambiadas} ${cambiadas === 1 ? 'cambio' : 'cambios'} · ` : ''}cambiá medidas, color, espesor y forma de cada vidrio, o agregá vidrios
         </span>
       </summary>
       <table className="tabla probador-tabla presu-desglose-tabla">
@@ -684,9 +773,13 @@ function Desglose({ item, lineas, onCambiar }: { item: Item; lineas: LineaCosto[
                     <span className="quiet">cm</span>
                   </div>
                 )}
+                {vidrioDe(l) && (
+                  <CamposVidrio nombre={l.nombre} vidrio={vidrioDe(l)!} colores={colores} muestras={muestras} espesores={espesores} onCambiar={(c) => cambiarVidrio(l.id, c)} />
+                )}
                 {l.pieza?.original && (
                   <div className="xs quiet">
-                    Receta: {l.pieza.original.cantidad} × {Math.round((l.pieza.original.ancho ?? 0) * 10) / 10} × {Math.round((l.pieza.original.largo ?? 0) * 10) / 10} ·{' '}
+                    Receta: {l.pieza.original.cantidad} × {Math.round((l.pieza.original.ancho ?? 0) * 10) / 10} × {Math.round((l.pieza.original.largo ?? 0) * 10) / 10}
+                    {l.pieza.original.vidrio ? `, ${describirVidrio(l.pieza.original.vidrio, colores)}` : ''} ·{' '}
                     <button type="button" className="link-boton" onClick={() => restablecer(l.id)}>
                       volver a la receta
                     </button>
@@ -726,10 +819,19 @@ function Desglose({ item, lineas, onCambiar }: { item: Item; lineas: LineaCosto[
                     <span>×</span>
                     <input aria-label="Largo (cm)" inputMode="decimal" placeholder="largo" value={x.largo} onChange={(e) => cambiarExtra(x.id, { largo: e.target.value })} />
                     <span className="quiet">cm</span>
-                    <label className="xs" style={{ display: 'inline-flex', gap: 4, alignItems: 'center', marginLeft: 6 }}>
-                      <input type="checkbox" checked={x.forma} onChange={(e) => cambiarExtra(x.id, { forma: e.target.checked })} /> con forma
-                    </label>
                   </div>
+                  {(() => {
+                    // El vidrio del agregado: lo elegido, o el calculado (el de la pieza "como" si no se cambió).
+                    const calc = lineas.find((l) => l.id === x.id)?.pieza?.vidrio ?? vidrioDe(propias.find((l) => l.id === x.como) ?? ({} as LineaCosto));
+                    if (!calc)
+                      return (
+                        <label className="xs" style={{ display: 'inline-flex', gap: 4, alignItems: 'center', marginTop: 4 }}>
+                          <input type="checkbox" checked={x.forma} onChange={(e) => cambiarExtra(x.id, { forma: e.target.checked })} /> con forma
+                        </label>
+                      );
+                    const v = { color: x.color || calc.color, espesor: x.espesor || calc.espesor, forma: x.forma };
+                    return <CamposVidrio nombre={x.nombre} vidrio={v} colores={colores} muestras={muestras} espesores={espesores} onCambiar={(c) => cambiarExtra(x.id, c)} />;
+                  })()}
                   <div className="xs">
                     {c == null && <span className="quiet">Completá cantidad y medidas · </span>}
                     <button type="button" className="link-boton" onClick={() => onCambiar({ extras: item.extras.filter((y) => y.id !== x.id) })}>

@@ -22,6 +22,7 @@ import type {
   ResultadoCalculo,
   Tarifa,
   ValoresAtributos,
+  VidrioPieza,
 } from './tipos';
 
 /**
@@ -69,7 +70,86 @@ export function conPiezasAgregadas(receta: Receta, extras: PiezaAgregada[]): Rec
   return { ...receta, lineas };
 }
 
-export const VERSION_MOTOR = 'motor-2'; // motor-2: piezas cambiadas a mano
+// ---------------------------------------------------------------------
+// El vidrio de cada pieza (color, espesor y forma cambiados a mano)
+// ---------------------------------------------------------------------
+/** Espesor total en mm → composición del laminado que se pide. */
+const COMPOSICION_DE: Record<string, string> = { '6': '3+3', '8': '4+4', '10': '5+5', '12': '6+6', '15': '10+5', '16': '8+8', '20': '10+10' };
+
+/** Espesor en mm de una variante de vidrio: el espesor, o la suma de la composición ("5+5" → "10"). */
+export function espesorDeVariante(v: Record<string, string>): string | undefined {
+  if (v.espesor && /^\d+$/.test(v.espesor)) return v.espesor;
+  const m = /^(\d+)\+(\d+)$/.exec(v.composicion ?? '');
+  return m ? String(Number(m[1]) + Number(m[2])) : undefined;
+}
+
+/** Si la línea es un vidrio con color y espesor: cuál es (la forma se completa al final). */
+function vidrioDe(ins: Insumo, v: Record<string, string>): VidrioPieza | undefined {
+  if (!ins.atributos.includes('color') || !v.color) return undefined;
+  const espesor = espesorDeVariante(v);
+  return espesor ? { color: v.color, espesor, forma: false } : undefined;
+}
+
+const esRecargoForma = (l: Linea) => l.regla === 'porcentaje' && /\baj\.recargo_forma\b/.test(l.porcentaje ?? '');
+
+/**
+ * Variables para calcular una pieza con otro color o espesor: todas las opciones de color del producto
+ * (color, color de las bases…) pasan a ser el color de la pieza y el espesor, el de la pieza. Las opciones
+ * que no se mostraban (ej. tipo de vidrio, que solo se pregunta en incoloro, gris y bronce) toman su valor
+ * por defecto, para que la receta elija el vidrio que corresponde a ese color.
+ */
+function varsConVidrio(vars: Variables, receta: Receta, o: { color?: string; espesor?: string }): Variables {
+  const v: Variables = { ...vars };
+  for (const [k, ent] of Object.entries(receta.entradas)) {
+    if (ent.tipo !== 'opcion') continue;
+    if (o.color && (ent.atributo === 'color' || k === 'color')) v[k] = o.color;
+    else if (o.espesor && (ent.atributo === 'espesor' || k === 'espesor')) v[k] = o.espesor;
+    else if ((v[k] === '' || v[k] == null) && ent.def != null && ent.def !== '') v[k] = String(ent.def);
+  }
+  return v;
+}
+
+/** Pisa color y espesor (o la composición del laminado) en la variante de la pieza. */
+function forzarVidrio(ins: Insumo, variante: Record<string, string>, o: { color?: string; espesor?: string }) {
+  const v = { ...variante };
+  if (o.color && ins.atributos.includes('color')) v.color = o.color;
+  if (o.espesor && ins.atributos.includes('espesor')) v.espesor = o.espesor;
+  if (o.espesor && ins.atributos.includes('composicion')) v.composicion = COMPOSICION_DE[o.espesor] ?? v.composicion;
+  return v;
+}
+
+/**
+ * Receta con la forma pedida pieza por pieza: "con forma" le suma a esa pieza su propio recargo de forma
+ * (y entra en los mismos ajustes que la pieza); "puntas rectas" la saca del recargo de forma de la receta.
+ * Los vidrios agregados tienen su propia casilla de forma (ver conPiezasAgregadas).
+ */
+export function conFormaPorPieza(receta: Receta, piezas: AjustesPiezas): Receta {
+  const pedidas = Object.entries(piezas).filter(([id, a]) => a.forma != null && !id.startsWith('extra_'));
+  if (!pedidas.length) return receta;
+  let lineas = [...receta.lineas];
+  for (const [id, a] of pedidas) {
+    const i = lineas.findIndex((l) => l.id === id && l.regla === 'm2');
+    if (i < 0) continue;
+    // La receta deja de cobrarle la forma a esta pieza (si con eso no le queda ninguna, la línea no va).
+    lineas = lineas.map((l) => {
+      if (!esRecargoForma(l) || !l.sobre?.includes(id)) return l;
+      const sobre = l.sobre.filter((s) => s !== id);
+      return sobre.length ? { ...l, sobre } : { ...l, condicion: '1 == 0' };
+    });
+    if (!a.forma) continue;
+    let nuevo = `${id}_forma`;
+    while (lineas.some((l) => l.id === nuevo)) nuevo += '_';
+    const forma: Linea = { id: nuevo, nombre: `${lineas[i].nombre}: con forma`, regla: 'porcentaje', porcentaje: 'aj.recargo_forma', sobre: [id], nota: 'Forma elegida en el desglose' };
+    lineas = [...lineas.slice(0, i + 1), forma, ...lineas.slice(i + 1)];
+    // El recargo entra en los mismos ajustes que la pieza.
+    lineas = lineas.map((l) =>
+      l.regla === 'porcentaje' && l.id !== nuevo && !esRecargoForma(l) && l.sobre?.includes(id) ? { ...l, sobre: [...l.sobre, nuevo] } : l,
+    );
+  }
+  return { ...receta, lineas };
+}
+
+export const VERSION_MOTOR = 'motor-3'; // motor-2: piezas cambiadas a mano · motor-3: color, espesor y forma por pieza
 
 /** Distancia (en la unidad de la referencia, ej. cm) a partir de la cual una estimación es poco confiable. */
 const ESTIMACION_LEJANA = 30;
@@ -178,6 +258,9 @@ type Estado = {
   avisos: Aviso[];
   tarifasUsadas: { insumo: string; tarifa: Tarifa }[];
   piezas: AjustesPiezas;
+  receta: Receta;
+  /** Lo que daba la receta en cada pieza de vidrio, para mostrarlo si se cambió. */
+  deReceta: Map<string, { cantidad: number; ancho: number; largo: number; vidrio?: VidrioPieza }>;
 };
 
 function guardarVars(e: Estado, r: LineaResultado) {
@@ -241,8 +324,28 @@ function calcularLinea(l: Linea, cat: Catalogo, e: Estado): LineaResultado | nul
     return { ...base, cantidad: 1, unidad: 'porcentaje', medida: pct, medidaReal: pct, precioUnitario: sobre, costo: redondear2(sobre * pct) };
   }
 
-  const ins = resolverInsumo(l, cat, e.vars);
-  const variante = resolverVariante(l, ins, e.vars);
+  let ins = resolverInsumo(l, cat, e.vars);
+  let variante = resolverVariante(l, ins, e.vars);
+  const vidrioReceta = l.regla === 'm2' ? vidrioDe(ins, variante) : undefined;
+  // Pieza de otro color o espesor (cambiada en el desglose).
+  const otroVidrio = vidrioReceta && (ajuste?.color || ajuste?.espesor) ? { color: ajuste.color, espesor: ajuste.espesor } : null;
+  if (otroVidrio && vidrioReceta) {
+    const vars = varsConVidrio(e.vars, e.receta, otroVidrio);
+    ins = resolverInsumo(l, cat, vars);
+    variante = forzarVidrio(ins, resolverVariante(l, ins, vars), otroVidrio);
+    // Si ese vidrio no viene en ese color o espesor (ej. float rojo), el primero que sí.
+    if (!tarifasPara(ins, variante, cat.valores).length) {
+      for (const alt of Object.values(cat.insumos)) {
+        if (alt.tipo !== 'vidrio' || alt.unidad !== 'm2' || alt.codigo === ins.codigo || !alt.atributos.includes('color')) continue;
+        const v = forzarVidrio(alt, {}, { color: variante.color, espesor: otroVidrio.espesor ?? vidrioReceta.espesor });
+        if (alt.atributos.every((a) => v[a]) && tarifasPara(alt, v, cat.valores).length) {
+          ins = alt;
+          variante = v;
+          break;
+        }
+      }
+    }
+  }
   const tarifas = tarifasPara(ins, variante, cat.valores);
   const r: LineaResultado = { ...base, insumo: ins.codigo, insumoNombre: ins.nombre, variante, unidad: ins.unidad };
   const sinPrecio = () =>
@@ -286,6 +389,11 @@ function calcularLinea(l: Linea, cat: Catalogo, e: Estado): LineaResultado | nul
       const largo = ajuste?.largo ?? largoReceta;
       if (ajuste && (ancho !== anchoReceta || largo !== largoReceta || cantidad !== cantidadReceta))
         r.original = { cantidad: cantidadReceta, ancho: anchoReceta, largo: largoReceta };
+      const vidrio = vidrioDe(ins, variante);
+      if (vidrio) {
+        r.vidrio = vidrio;
+        e.deReceta.set(l.id, { cantidad: cantidadReceta, ancho: anchoReceta, largo: largoReceta, vidrio: vidrioReceta });
+      }
       if (ancho <= 0 || largo <= 0) throw new ErrorFormula(`Medidas de pieza inválidas (${ancho} × ${largo})`);
       const m2 = (ancho * largo) / 10000;
       const min = minimoDe(ins, tarifa, 'pieza');
@@ -427,7 +535,36 @@ export function entradasVisibles(receta: Receta, elegidos: Record<string, number
   return out;
 }
 
-export function cotizar(p: PedidoCalculo): ResultadoCalculo {
+/**
+ * Completa la forma de cada pieza de vidrio (lleva un recargo de forma que se cobró) y, si el vidrio
+ * quedó distinto a lo que daba la receta (color, espesor o forma), lo deja anotado en "original".
+ */
+function marcarFormas(original: Receta, receta: Receta, e: Estado) {
+  const lineaDe = new Map(receta.lineas.map((l) => [l.id, l]));
+  const cobradas = e.lineas.filter((r) => esRecargoForma(lineaDe.get(r.id) ?? ({} as Linea))).map((r) => lineaDe.get(r.id)!);
+  // En la receta sin cambios: los recargos de forma que aplicaban (su condición daba verdadero).
+  const enReceta = original.lineas.filter((l) => {
+    if (!esRecargoForma(l)) return false;
+    try {
+      return !l.condicion || evaluarCondicion(l.condicion, e.vars);
+    } catch {
+      return false;
+    }
+  });
+  for (const r of e.lineas) {
+    if (!r.vidrio) continue;
+    r.vidrio.forma = cobradas.some((l) => l.sobre?.includes(r.id));
+    const rec = e.deReceta.get(r.id);
+    if (!rec?.vidrio || r.id.startsWith('extra_')) continue;
+    const antes = { ...rec.vidrio, forma: enReceta.some((l) => l.sobre?.includes(r.id)) };
+    if (antes.color !== r.vidrio.color || antes.espesor !== r.vidrio.espesor || antes.forma !== r.vidrio.forma)
+      r.original = { ...(r.original ?? { cantidad: rec.cantidad, ancho: rec.ancho, largo: rec.largo }), vidrio: antes };
+  }
+}
+
+export function cotizar(pedido: PedidoCalculo): ResultadoCalculo {
+  // La forma pedida pieza por pieza cambia qué recargos de forma lleva la receta.
+  const p = { ...pedido, receta: conFormaPorPieza(pedido.receta, pedido.piezas ?? {}) };
   const avisos: Aviso[] = validarReceta(p.receta).filter((a) => a.nivel === 'error');
   const cantidad = p.cantidad ?? 1;
   if (!Number.isInteger(cantidad) || cantidad < 1) avisos.push({ nivel: 'error', mensaje: 'La cantidad tiene que ser un número entero mayor a cero' });
@@ -440,6 +577,8 @@ export function cotizar(p: PedidoCalculo): ResultadoCalculo {
     avisos,
     tarifasUsadas: [],
     piezas: p.piezas ?? {},
+    receta: p.receta,
+    deReceta: new Map(),
   };
 
   if (!avisos.some((a) => a.nivel === 'error')) {
@@ -468,6 +607,7 @@ export function cotizar(p: PedidoCalculo): ResultadoCalculo {
         guardarVars(e, r);
       }
     }
+    marcarFormas(pedido.receta, p.receta, e);
   }
 
   const ok = !avisos.some((a) => a.nivel === 'error');

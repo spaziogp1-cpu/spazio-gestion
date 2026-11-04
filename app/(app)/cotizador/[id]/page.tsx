@@ -40,7 +40,8 @@ type Calculo = {
       cantidad?: number;
       ancho?: number;
       largo?: number;
-      original?: { cantidad: number; ancho?: number; largo?: number };
+      vidrio?: { color: string; espesor: string; forma: boolean };
+      original?: { cantidad: number; ancho?: number; largo?: number; vidrio?: { color: string; espesor: string; forma: boolean } };
     }[];
   };
   creado_en: string;
@@ -52,7 +53,7 @@ export default async function PresupuestoPage({ params }: { params: Promise<{ id
   const { miembro, supabase } = await miembroActual();
   const verCostos = miembro.rol === 'admin' || (await supabase.rpc('puede', { p_permiso: 'cotizador.costos' })).data === true;
 
-  const [{ data: p }, { data: its }, { data: calcs }] = await Promise.all([
+  const [{ data: p }, { data: its }, { data: calcs }, { data: colores }] = await Promise.all([
     supabase
       .from('cot_presupuestos')
       .select('*, vendedor:vendedor_id(nombre), aprobador:aprobado_por(nombre)')
@@ -60,7 +61,9 @@ export default async function PresupuestoPage({ params }: { params: Promise<{ id
       .maybeSingle(),
     supabase.from('cot_presupuesto_items').select('*, cot_productos(foto_url)').eq('presupuesto_id', id).order('orden'),
     verCostos ? supabase.from('cot_presupuesto_calculos').select('item_id, costo_unitario, margen, resultado, creado_en').eq('presupuesto_id', id) : Promise.resolve({ data: [] }),
+    verCostos ? supabase.from('cot_atributo_valores').select('valor, etiqueta').eq('atributo', 'color') : Promise.resolve({ data: [] }),
   ]);
+  const etiquetasColor: Record<string, string> = Object.fromEntries(((colores ?? []) as { valor: string; etiqueta: string }[]).map((c) => [c.valor, c.etiqueta]));
   if (!p) notFound();
   const items = (its ?? []) as Item[];
   const calculos = new Map(((calcs ?? []) as Calculo[]).map((c) => [c.item_id, c]));
@@ -147,6 +150,7 @@ export default async function PresupuestoPage({ params }: { params: Promise<{ id
                                     <span className="quiet">
                                       {' '}
                                       · {l.cantidad} × {Math.round(l.ancho * 10) / 10} × {Math.round((l.largo ?? 0) * 10) / 10} cm
+                                      {l.vidrio && ` · ${(etiquetasColor[l.vidrio.color] ?? l.vidrio.color).toLowerCase()} ${l.vidrio.espesor} mm${l.vidrio.forma ? ' con forma' : ''}`}
                                     </span>
                                   )}
                                   {l.id?.startsWith('extra_') && !l.id.endsWith('_forma') && (
@@ -156,7 +160,10 @@ export default async function PresupuestoPage({ params }: { params: Promise<{ id
                                   )}
                                   {l.original && (
                                     <div className="xs" style={{ color: 'var(--accent)' }}>
-                                      Cambiada a mano (receta: {l.original.cantidad} × {Math.round((l.original.ancho ?? 0) * 10) / 10} × {Math.round((l.original.largo ?? 0) * 10) / 10})
+                                      Cambiada a mano (receta: {l.original.cantidad} × {Math.round((l.original.ancho ?? 0) * 10) / 10} × {Math.round((l.original.largo ?? 0) * 10) / 10}
+                                      {l.original.vidrio &&
+                                        `, ${(etiquetasColor[l.original.vidrio.color] ?? l.original.vidrio.color).toLowerCase()} ${l.original.vidrio.espesor} mm ${l.original.vidrio.forma ? 'con forma' : 'rectas'}`}
+                                      )
                                     </div>
                                   )}
                                   {(l.minimoAplicado || l.estimado) && <div className="xs quiet">{[l.minimoAplicado, l.estimado].filter(Boolean).join(' · ')}</div>}

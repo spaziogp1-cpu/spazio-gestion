@@ -93,11 +93,28 @@ export type Receta = {
 // ---------------------------------------------------------------------
 // Pedido de cálculo y resultado
 // ---------------------------------------------------------------------
-/** Cambios a mano en las piezas de un producto (por id de línea m²): cantidad y medidas en cm. */
-export type AjustePieza = { cantidad?: number; ancho?: number; largo?: number };
+/**
+ * Cambios a mano en las piezas de un producto (por id de línea m²): cantidad y medidas en cm,
+ * y el vidrio de esa pieza (color, espesor en mm y si va con forma o con puntas rectas).
+ */
+export type AjustePieza = { cantidad?: number; ancho?: number; largo?: number; color?: string; espesor?: string; forma?: boolean };
 export type AjustesPiezas = Record<string, AjustePieza>;
 /** Vidrio agregado a mano en un presupuesto: del mismo vidrio que la pieza "como" de la receta. */
-export type PiezaAgregada = { id: string; nombre: string; como: string; cantidad: number; ancho: number; largo: number; forma?: boolean };
+export type PiezaAgregada = {
+  id: string;
+  nombre: string;
+  como: string;
+  cantidad: number;
+  ancho: number;
+  largo: number;
+  forma?: boolean;
+  /** Si es de otro color o espesor que la pieza "como". */
+  color?: string;
+  espesor?: string;
+};
+
+/** El vidrio de una pieza por m²: color, espesor (mm) y si lleva recargo de forma. */
+export type VidrioPieza = { color: string; espesor: string; forma: boolean };
 
 export type PedidoCalculo = {
   receta: Receta;
@@ -127,8 +144,10 @@ export type LineaResultado = {
   minimoAplicado?: string;
   estimado?: string; // texto interno: "estimada, confirmar con STG"
   tarifaId?: number | string;
+  /** Piezas de vidrio: el color, espesor y forma con que se calculó. */
+  vidrio?: VidrioPieza;
   /** Si la pieza se cambió a mano: lo que daba la receta. */
-  original?: { cantidad: number; ancho?: number; largo?: number };
+  original?: { cantidad: number; ancho?: number; largo?: number; vidrio?: VidrioPieza };
 };
 
 export type Aviso = { nivel: 'error' | 'advertencia'; linea?: string; mensaje: string };

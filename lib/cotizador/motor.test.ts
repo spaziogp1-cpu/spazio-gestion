@@ -362,3 +362,125 @@ test('vidrios agregados a mano: mismo vidrio que la pieza elegida y entran en el
   assert.equal(costo(r, 'ajuste'), Math.round((97020 + 47124 + 57750 + 46200 + 9240) * 0.2 * 100) / 100);
   assert.equal(conPiezasAgregadas(luna, []), luna);
 });
+
+// ---------------------------------------------------------------------
+// Color, espesor y forma por pieza (desglose del presupuesto)
+// ---------------------------------------------------------------------
+const esp = "si(espesor == '8', '4+4', si(espesor == '10', '5+5', si(espesor == '12', '6+6', si(espesor == '16', '8+8', '10+10'))))";
+const mesaPersonalizada: Receta = {
+  entradas: {
+    L: { tipo: 'medida', nombre: 'Largo', def: 100 },
+    P: { tipo: 'medida', nombre: 'Profundidad', def: 50 },
+    H: { tipo: 'medida', nombre: 'Alto', def: 40 },
+    color: { tipo: 'opcion', nombre: 'Color', atributo: 'color', def: 'incoloro' },
+    combinada: { tipo: 'opcion', nombre: 'Bases de otro color', permitidos: ['no', 'si'], def: 'no' },
+    color_bases: { tipo: 'opcion', nombre: 'Color de las bases', atributo: 'color', def: 'incoloro', mostrarSi: "combinada == 'si'" },
+    espesor: { tipo: 'opcion', nombre: 'Espesor (mm)', permitidos: ['10', '8', '12', '16', '20'], def: '10' },
+    tipo_vidrio: {
+      tipo: 'opcion',
+      nombre: 'Vidrio',
+      permitidos: ['float', 'laminado'],
+      def: 'float',
+      mostrarSi: "en(espesor, '8', '10') && (en(color, 'incoloro', 'gris', 'bronce') || (combinada == 'si' && en(color_bases, 'incoloro', 'gris', 'bronce')))",
+    },
+    cant_bases: { tipo: 'medida', nombre: 'Bases', min: 0, max: 10, def: 2 },
+    forma_tapa: { tipo: 'opcion', nombre: 'Forma en la tapa', permitidos: ['no', 'si'], def: 'no' },
+    ajuste: { tipo: 'opcion', nombre: 'Ajuste (20%)', permitidos: ['mesa baja', 'mesa alta', 'sin ajuste'], def: 'mesa baja' },
+  },
+  lineas: [
+    {
+      id: 'tapa',
+      nombre: 'Tapa',
+      regla: 'm2',
+      insumoFormula: "si(en(espesor, '8', '10') && tipo_vidrio == 'float' && en(color, 'incoloro', 'gris', 'bronce'), 'vidrio-float', 'vidrio-laminado')",
+      ancho: 'L',
+      largo: 'P',
+      variante: { color: 'color', espesor: 'espesor', composicion: esp },
+    },
+    {
+      id: 'bases',
+      nombre: 'Bases',
+      regla: 'm2',
+      insumoFormula:
+        "si(en(espesor, '8', '10') && tipo_vidrio == 'float' && en(si(combinada == 'si', color_bases, color), 'incoloro', 'gris', 'bronce'), 'vidrio-float', 'vidrio-laminado')",
+      cantidad: 'cant_bases',
+      ancho: 'P',
+      largo: 'H - 1',
+      variante: { color: "si(combinada == 'si', color_bases, color)", espesor: 'espesor', composicion: esp },
+    },
+    { id: 'forma', nombre: 'Recargo por forma', regla: 'porcentaje', condicion: "forma_tapa == 'si'", porcentaje: 'aj.recargo_forma', sobre: ['tapa'] },
+    { id: 'ajuste_baja', nombre: 'Ajuste', regla: 'porcentaje', condicion: "ajuste == 'mesa baja'", porcentaje: 'aj.ajuste_vidpro', sobre: ['tapa', 'bases', 'forma'] },
+  ],
+};
+const catForma: Catalogo = { ...catalogo, ajustes: { ...catalogo.ajustes, recargo_forma: 0.2 } };
+const linea = (r: ReturnType<typeof cotizar>, id: string) => r.lineas.find((l) => l.id === id);
+
+test('por pieza: tapa gris y bases rosa en una mesa incolora', () => {
+  const r = cotizar({
+    receta: mesaPersonalizada,
+    catalogo: catForma,
+    valores: {},
+    margen: 0.5,
+    piezas: { tapa: { color: 'gris' }, bases: { color: 'rosa' } },
+  });
+  assert.equal(r.ok, true, JSON.stringify(r.avisos));
+  const tapa = linea(r, 'tapa')!;
+  assert.equal(tapa.insumo, 'vidrio-float');
+  assert.equal(tapa.precioUnitario, 115500); // float gris 10 mm
+  assert.deepEqual(tapa.vidrio, { color: 'gris', espesor: '10', forma: false });
+  assert.deepEqual(tapa.original?.vidrio, { color: 'incoloro', espesor: '10', forma: false });
+  const bases = linea(r, 'bases')!;
+  assert.equal(bases.insumo, 'vidrio-laminado'); // rosa solo viene laminado
+  assert.equal(bases.precioUnitario, 189000);
+  assert.equal(bases.variante?.composicion, '5+5');
+});
+
+test('por pieza: color en una mesa de color sin tipo de vidrio elegido pasa a float', () => {
+  // Mesa rosa (no se pregunta float/laminado) con la tapa en incoloro 10 mm: va en float.
+  const r = cotizar({ receta: mesaPersonalizada, catalogo: catForma, valores: { color: 'rosa' }, margen: 0.5, piezas: { tapa: { color: 'incoloro' } } });
+  assert.equal(r.ok, true, JSON.stringify(r.avisos));
+  assert.equal(linea(r, 'tapa')!.precioUnitario, 73500);
+  assert.equal(linea(r, 'bases')!.precioUnitario, 189000);
+});
+
+test('por pieza: espesor distinto en una pieza', () => {
+  const r = cotizar({ receta: mesaPersonalizada, catalogo: catForma, valores: {}, margen: 0.5, piezas: { bases: { espesor: '8' } } });
+  assert.equal(r.ok, true, JSON.stringify(r.avisos));
+  assert.equal(linea(r, 'bases')!.precioUnitario, 69300);
+  assert.equal(linea(r, 'tapa')!.precioUnitario, 73500);
+  assert.equal(linea(r, 'bases')!.original?.vidrio?.espesor, '10');
+});
+
+test('por pieza: bases con forma suman su recargo y entran en el ajuste', () => {
+  const r = cotizar({ receta: mesaPersonalizada, catalogo: catForma, valores: {}, margen: 0.5, piezas: { bases: { forma: true } } });
+  assert.equal(r.ok, true, JSON.stringify(r.avisos));
+  const bases = linea(r, 'bases')!;
+  const forma = linea(r, 'bases_forma')!;
+  assert.equal(forma.costo, Math.round(bases.costo * 0.2 * 100) / 100);
+  assert.equal(bases.vidrio?.forma, true);
+  assert.equal(bases.original?.vidrio?.forma, false);
+  assert.equal(linea(r, 'forma'), undefined); // la tapa sigue recta
+  const ajuste = linea(r, 'ajuste_baja')!;
+  assert.equal(ajuste.precioUnitario, linea(r, 'tapa')!.costo + bases.costo + forma.costo);
+});
+
+test('por pieza: tapa con puntas rectas aunque el producto diga forma', () => {
+  const r = cotizar({ receta: mesaPersonalizada, catalogo: catForma, valores: { forma_tapa: 'si' }, margen: 0.5, piezas: { tapa: { forma: false } } });
+  assert.equal(r.ok, true, JSON.stringify(r.avisos));
+  assert.equal(linea(r, 'forma'), undefined);
+  assert.equal(linea(r, 'tapa')!.vidrio?.forma, false);
+  assert.equal(linea(r, 'tapa')!.original?.vidrio?.forma, true);
+  // Y sin cambios: la receta cobra la forma de la tapa.
+  const sin = cotizar({ receta: mesaPersonalizada, catalogo: catForma, valores: { forma_tapa: 'si' }, margen: 0.5 });
+  assert.ok(linea(sin, 'forma')!.costo > 0);
+  assert.equal(linea(sin, 'tapa')!.vidrio?.forma, true);
+  assert.equal(linea(sin, 'tapa')!.original, undefined);
+});
+
+test('por pieza: un vidrio agregado de otro color', () => {
+  const receta = conPiezasAgregadas(mesaPersonalizada, [{ id: 'extra_1', nombre: 'Estante', como: 'bases', cantidad: 1, ancho: 40, largo: 90 }]);
+  const r = cotizar({ receta, catalogo: catForma, valores: {}, margen: 0.5, piezas: { extra_1: { color: 'bronce' } } });
+  assert.equal(r.ok, true, JSON.stringify(r.avisos));
+  assert.equal(linea(r, 'extra_1')!.precioUnitario, 115500);
+  assert.equal(linea(r, 'bases')!.precioUnitario, 73500);
+});
