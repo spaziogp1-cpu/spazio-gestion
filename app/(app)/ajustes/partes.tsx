@@ -1,7 +1,7 @@
 'use client';
 
 import { startTransition, useActionState, useState, useTransition } from 'react';
-import { cambiarMiContrasena, crearClaveIA, traerDePlanillaOriginal, definirContrasena, enviarmeResumen, guardarMiembro, guardarAvisos, guardarParametros, guardarDriveRemitos, guardarReparto, guardarTurnos, guardarVehiculo, probarGoogleMaps, importarTiendaNube, probarPlanilla, probarReporte, revocarClaveIA, type EstadoAjustes } from './actions';
+import { cambiarMiContrasena, crearClaveIA, traerDePlanillaOriginal, definirContrasena, enviarmeResumen, guardarMiembro, guardarAvisos, guardarParametros, guardarDriveRemitos, guardarReparto, guardarTurnos, guardarVehiculo, probarGoogleMaps, importarTiendaNube, probarPlanilla, probarReporte, recalcularPlazosCromado, revocarClaveIA, type EstadoAjustes } from './actions';
 
 type Miembro = { id: string; nombre: string; alias_planilla: string | null; email: string; telefono: string | null; rol: string; activo: boolean };
 
@@ -304,6 +304,23 @@ export function MiContrasena() {
         </button>
       </div>
     </form>
+  );
+}
+
+export function RecalcularCromado() {
+  const [pendiente, iniciar] = useTransition();
+  const [estado, setEstado] = useState<EstadoAjustes>({});
+  return (
+    <div className="form-bloque">
+      <p className="small quiet">Pasa los pedidos en curso con estructura cromada a la fecha límite nueva (venta + plazo máximo con cromado).</p>
+      <div className="acciones">
+        <button type="button" className="btn btn-chico" disabled={pendiente} onClick={() => iniciar(async () => setEstado(await recalcularPlazosCromado()))}>
+          {pendiente ? 'Recalculando…' : 'Recalcular pedidos con cromado'}
+        </button>
+      </div>
+      {estado.ok && <p className="aviso aviso-ok">{estado.ok}</p>}
+      {estado.error && <p className="error-form">{estado.error}</p>}
+    </div>
   );
 }
 

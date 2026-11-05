@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { miembroActual } from '@/lib/sesion';
 import { NotificacionesCelular } from './push';
 import { fechaCorta } from '@/lib/fechas';
-import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormAvisos, FormParametros, FormReparto, FormDriveRemitos, FormTurnos, FormVehiculo, ProbarGoogleMaps, type VehiculoAjustes, ImportarTiendaNube, ProbarPlanilla, ProbarReportes, ProbarResumen } from './partes';
+import { AsistenteIA, FormMiembro, MiContrasena, TraerDeOriginal, FormAvisos, FormParametros, RecalcularCromado, FormReparto, FormDriveRemitos, FormTurnos, FormVehiculo, ProbarGoogleMaps, type VehiculoAjustes, ImportarTiendaNube, ProbarPlanilla, ProbarReportes, ProbarResumen } from './partes';
 
 async function conexionTiendaNube() {
   try {
@@ -118,6 +118,7 @@ export default async function AjustesPage({ searchParams }: { searchParams: Prom
             </div>
             <div className="seccion">
               <FormParametros valores={valores} editable={admin} />
+              {admin && <RecalcularCromado />}
             </div>
           </section>
           <section className="card" id="reparto" style={{ scrollMarginTop: 80 }}>

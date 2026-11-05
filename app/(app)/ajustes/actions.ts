@@ -499,3 +499,53 @@ export async function guardarDriveRemitos(_prev: EstadoAjustes, fd: FormData): P
     return { error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+// Pedidos en curso con estructura cromada: la fecha límite pasa a la venta + el máximo
+// del plazo con cromado (35 días hábiles). Los demás pedidos no se tocan.
+export async function recalcularPlazosCromado(): Promise<EstadoAjustes> {
+  try {
+    const { supabase } = await soloAdmin();
+    const { leerReglaPlazo } = await import('@/lib/parametros');
+    const { pedidoLlevaCromado } = await import('@/lib/plazos');
+    const { calcularFechaLimite } = await import('@/lib/fechas');
+    const { actualizarPedido } = await import('@/lib/planilla/sync');
+    const { after } = await import('next/server');
+
+    const [{ reglaCromado, feriados }, { data: pedidos, error }, { data: stg }] = await Promise.all([
+      leerReglaPlazo(supabase),
+      supabase
+        .from('pedidos')
+        .select('id, numero, fecha_venta, fecha_limite, observaciones, pedido_items(producto, modelo, color, puntas, tapa, material)')
+        .not('etapa', 'in', '(entregado,cancelado)'),
+      supabase.from('pedidos_proveedor').select('pedido_id, proveedores!inner(nombre)').neq('estado', 'cancelado').ilike('proveedores.nombre', 'STG'),
+    ]);
+    if (error) return { error: `No se pudieron leer los pedidos: ${error.message}` };
+    const conStg = new Set(((stg ?? []) as { pedido_id: string | null }[]).map((x) => x.pedido_id));
+    const fer = new Set<string>(feriados as string[]);
+
+    type Fila = { id: string; numero: number; fecha_venta: string; fecha_limite: string; observaciones: string | null; pedido_items: { producto: string }[] };
+    const cambios: { id: string; numero: number; antes: string; despues: string }[] = [];
+    for (const p of (pedidos ?? []) as Fila[]) {
+      if (!pedidoLlevaCromado(p.pedido_items ?? [], p.observaciones) && !conStg.has(p.id)) continue;
+      const nueva = calcularFechaLimite(p.fecha_venta.slice(0, 10), reglaCromado, fer);
+      if (nueva !== p.fecha_limite?.slice(0, 10)) cambios.push({ id: p.id, numero: p.numero, antes: p.fecha_limite, despues: nueva });
+    }
+    for (const c of cambios) {
+      const { error: e } = await supabase.from('pedidos').update({ fecha_limite: c.despues }).eq('id', c.id);
+      if (e) return { error: `Se cortó en el pedido #${c.numero}: ${e.message}` };
+    }
+    after(async () => {
+      for (const c of cambios) await actualizarPedido(supabase, c.id).catch(() => {});
+    });
+    revalidatePath('/pedidos');
+    revalidatePath('/produccion');
+    if (cambios.length === 0) return { ok: 'Los pedidos con estructura cromada ya tenían la fecha correcta.' };
+    const lista = cambios
+      .sort((a, b) => a.numero - b.numero)
+      .map((c) => `#${c.numero}`)
+      .join(', ');
+    return { ok: `Listo: ${cambios.length} pedidos con estructura cromada pasaron a ${reglaCromado.dias} días hábiles (${lista}).` };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}
