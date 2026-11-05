@@ -1034,3 +1034,17 @@ input.formula { font-size: 16px; }
   :root:not([data-tema='claro']) .gc-publica .turnos-cabecera img { filter: invert(1); }
 }
 :root[data-tema='oscuro'] .gc-publica .turnos-cabecera img { filter: invert(1); }
+
+/* Pantalla de carga (esqueleto) mientras llega cada sección */
+.cargando { animation: aparecer 0.2s ease 0.08s both; }
+.esqueleto { background: var(--surface-2, var(--line)); border-radius: 8px; animation: latido 1.2s ease-in-out infinite; }
+.esq-titulo { height: 28px; width: 180px; margin: 4px 0 10px; }
+.esq-sub { height: 14px; width: 120px; margin-bottom: 18px; }
+.esq-card { padding: 4px 0; }
+.esq-fila { padding: 14px 16px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.esq-fila:last-child { border-bottom: 0; }
+.esq-linea { height: 14px; }
+.esq-linea.corta { width: 35%; height: 12px; opacity: 0.7; }
+@keyframes latido { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+@keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .esqueleto, .cargando { animation: none; } }

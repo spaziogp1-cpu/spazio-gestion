@@ -20,9 +20,18 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() renueva la sesión si venció y valida el token localmente (sin ir a Supabase en cada clic).
+  const auth = supabase.auth as typeof supabase.auth & {
+    getClaims?: () => Promise<{ data: { claims?: { sub?: string } } | null }>;
+  };
+  let user: unknown = null;
+  if (typeof auth.getClaims === 'function') {
+    const { data } = await auth.getClaims();
+    const claims = data?.claims as { sub?: string } | undefined;
+    user = claims?.sub ? claims : null;
+  } else {
+    user = (await supabase.auth.getUser()).data.user;
+  }
 
   const path = request.nextUrl.pathname;
   const esPublica = PUBLICAS.some((p) => path === p || path.startsWith(p + '/'));

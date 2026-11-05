@@ -34,12 +34,10 @@ export default async function FichaPedido({
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const { miembro, supabase } = await miembroActual();
 
-  const { data: pData } = await supabase.from('pedidos_resumen').select('*').eq('id', id).maybeSingle();
-  if (!pData) notFound();
-  const p = pData as PedidoResumen;
-
-  const [clienteR, itemsR, pagosR, comentariosR, archivosR, eventosR, equipoR, provR, ppR, plazo, tareasR] = await Promise.all([
-    supabase.from('clientes').select('*').eq('id', p.cliente_id).single(),
+  // Todo de una vez: el cliente se trae a través del pedido para no esperar a tener su id.
+  const [pR, clienteR, itemsR, pagosR, comentariosR, archivosR, eventosR, equipoR, provR, ppR, plazo, tareasR, remitoR, entregaR] = await Promise.all([
+    supabase.from('pedidos_resumen').select('*').eq('id', id).maybeSingle(),
+    supabase.from('pedidos').select('cliente:clientes(*)').eq('id', id).maybeSingle(),
     supabase.from('pedido_items').select('*').eq('pedido_id', id).order('orden').order('creado_en'),
     supabase.from('pagos').select('*').eq('pedido_id', id).order('fecha').order('creado_en'),
     supabase.from('comentarios').select('id, texto, creado_en, autor:equipo(nombre)').eq('pedido_id', id).order('creado_en'),
@@ -50,21 +48,25 @@ export default async function FichaPedido({
     supabase.from('proveedor_pendientes').select('*').eq('pedido_id', id).order('creado_en'),
     leerReglaPlazo(supabase),
     supabase.from('tareas_resumen').select('*').eq('pedido_id', id).order('estado').order('vencimiento', { nullsFirst: false }),
+    supabase.from('remitos').select('version, estado, drive_url, error').eq('pedido_id', id).order('version', { ascending: false }).limit(1).maybeSingle(),
+    // Entrega del pedido (la más reciente); si la migración 0022 no está, no se muestra.
+    supabase
+      .from('entregas')
+      .select('id, estado, intento, motivos, fecha_acordada, franja_desde, franja_hasta')
+      .eq('pedido_id', id)
+      .order('intento', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
-  const { data: remitoData } = await supabase.from('remitos').select('version, estado, drive_url, error').eq('pedido_id', id).order('version', { ascending: false }).limit(1).maybeSingle();
-  // Entrega del pedido (la más reciente); si la migración 0022 no está, no se muestra.
-  const { data: entregaData } = await supabase
-    .from('entregas')
-    .select('id, estado, intento, motivos, fecha_acordada, franja_desde, franja_hasta')
-    .eq('pedido_id', id)
-    .order('intento', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  if (!pR.data) notFound();
+  const p = pR.data as PedidoResumen;
+  const remitoData = remitoR.data;
+  const entregaData = entregaR.data;
   const entrega = entregaData as { id: string; estado: string; intento: number; motivos: string[]; fecha_acordada: string | null; franja_desde: string | null; franja_hasta: string | null } | null;
   const tareas = (tareasR.data ?? []) as Tarea[];
   const proveedores = (provR.data ?? []) as Proveedor[];
   const pedidosProv = (ppR.data ?? []) as PedidoProveedor[];
-  const cliente = clienteR.data as Cliente;
+  const cliente = (clienteR.data as unknown as { cliente: Cliente } | null)?.cliente as Cliente;
   const items = (itemsR.data ?? []) as Item[];
   const pagos = (pagosR.data ?? []) as Pago[];
   const comentarios = (comentariosR.data ?? []) as unknown as Comentario[];

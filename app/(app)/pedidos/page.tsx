@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { PedidoFila } from '@/components/pedido-fila';
 import { PedidosFiltros } from '@/components/pedidos-filtros';
 import { ETAPAS, ETAPAS_ACTIVAS } from '@/lib/constantes';
-import { miembroActual } from '@/lib/sesion';
+import { equipoActivo, miembroActual } from '@/lib/sesion';
 import {
   cantidadFiltros,
   filtrarPedidos,
@@ -33,20 +33,24 @@ export default async function PedidosPage({
   const extra = leerFiltros(sp);
   const nExtra = cantidadFiltros(extra);
   const { miembro, supabase } = await miembroActual();
-  const { data: eq } = await supabase.from('equipo').select('id, nombre').eq('activo', true).order('nombre');
-  const equipo = (eq ?? []) as { id: string; nombre: string }[];
 
+  // Todo lo que necesita la pantalla se pide a la vez (antes iba de a una consulta).
   // Los activos se traen siempre: alimentan los contadores de los filtros.
-  const { data: activosData } = await supabase
+  const consultaActivos = supabase
     .from('pedidos_resumen')
     .select('*')
     .in('etapa', ETAPAS_ACTIVAS)
     .order('fecha_limite', { ascending: true })
     .limit(500);
+  const usaConsultaPropia = Boolean(busqueda) || filtro === 'entregados';
+  const [equipo, { data: activosData }, propia] = await Promise.all([
+    equipoActivo(),
+    consultaActivos,
+    usaConsultaPropia ? consultaLista() : Promise.resolve(null),
+  ]);
   const activos = (activosData ?? []) as PedidoResumen[];
 
-  let lista: PedidoResumen[];
-  if (busqueda || filtro === 'entregados') {
+  function consultaLista() {
     const oc = ordenConsulta(orden);
     let consulta = supabase
       .from('pedidos_resumen')
@@ -70,8 +74,12 @@ export default async function PedidosPage({
         ? consulta.eq('numero', num)
         : consulta.or(`cliente_nombre.ilike.%${seguro}%,cliente_telefono.ilike.%${seguro}%,productos.ilike.%${seguro}%`);
     }
-    const { data } = await consulta;
-    lista = (data ?? []) as PedidoResumen[];
+    return consulta;
+  }
+
+  let lista: PedidoResumen[];
+  if (usaConsultaPropia) {
+    lista = (propia?.data ?? []) as PedidoResumen[];
   } else if (filtro === 'atrasados') {
     lista = activos.filter((p) => p.atrasado);
   } else if (filtro === 'mios') {
