@@ -91,18 +91,28 @@ export function FormParametros({ valores, editable }: { valores: Record<string, 
   const [estado, accion, guardando] = useActionState<EstadoAjustes, FormData>(guardarParametros, {});
   return (
     <form onSubmit={enviar(accion)} className="form-bloque">
+      <p className="small quiet">
+        Días hábiles de producción desde la venta. La fecha límite del pedido usa el máximo; el remito muestra el rango.
+      </p>
+      <div className="fila fila-2m">
+        <div className="campo">
+          <label>Sin estructura cromada (días hábiles)</label>
+          <div className="acciones">
+            <input name="plazo_normal_min" type="number" min={1} defaultValue={valores.plazo_normal_min ?? '20'} disabled={!editable} aria-label="Mínimo" />
+            <span>a</span>
+            <input name="plazo_normal_max" type="number" min={1} defaultValue={valores.plazo_normal_max ?? '25'} disabled={!editable} aria-label="Máximo" />
+          </div>
+        </div>
+        <div className="campo">
+          <label>Con estructura cromada (días hábiles)</label>
+          <div className="acciones">
+            <input name="plazo_cromado_min" type="number" min={1} defaultValue={valores.plazo_cromado_min ?? '30'} disabled={!editable} aria-label="Mínimo" />
+            <span>a</span>
+            <input name="plazo_cromado_max" type="number" min={1} defaultValue={valores.plazo_cromado_max ?? '35'} disabled={!editable} aria-label="Máximo" />
+          </div>
+        </div>
+      </div>
       <div className="fila fila-3">
-        <div className="campo">
-          <label>Plazo de entrega (días)</label>
-          <input name="plazo_entrega_dias" type="number" min={1} defaultValue={valores.plazo_entrega_dias ?? '49'} disabled={!editable} />
-        </div>
-        <div className="campo">
-          <label>Tipo de días</label>
-          <select name="plazo_entrega_tipo" defaultValue={valores.plazo_entrega_tipo ?? 'corridos'} disabled={!editable}>
-            <option value="corridos">Corridos</option>
-            <option value="habiles">Hábiles</option>
-          </select>
-        </div>
         <div className="campo">
           <label>Avisar antes del vencimiento (días)</label>
           <input name="aviso_dias_antes" type="number" min={0} defaultValue={valores.aviso_dias_antes ?? '3'} disabled={!editable} />

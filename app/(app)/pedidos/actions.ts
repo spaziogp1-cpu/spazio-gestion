@@ -7,6 +7,7 @@ import { ETAPAS } from '@/lib/constantes';
 import { calcularFechaLimite, hoyAR } from '@/lib/fechas';
 import { leerMonto, texto } from '@/lib/formato';
 import { leerReglaPlazo } from '@/lib/parametros';
+import { pedidoLlevaCromado, reglaDe } from '@/lib/plazos';
 import { miembroActual } from '@/lib/sesion';
 import { vincularPresupuesto } from '@/lib/cotizador/a-pedido';
 import { generarRemito } from '@/lib/remitos/servicio';
@@ -50,10 +51,20 @@ export async function crearPedido(_prev: Estado, fd: FormData): Promise<Estado> 
   for (const it of items) if (!it.producto) it.producto = 'mesa';
 
   const fechaVenta = fechaValida(texto(fd.get('fecha_venta'))) ?? hoyAR();
+
+  // Estructura cromada: 30-35 días hábiles; el resto, 20-25. Se detecta por el producto
+  // y se puede marcar a mano; si se marcó a mano, queda anotado para el remito.
+  let observaciones = texto(fd.get('observaciones'));
+  const marcado = fd.get('lleva_cromado') === 'on';
+  if (marcado && !pedidoLlevaCromado(items, observaciones)) {
+    observaciones = observaciones ? `${observaciones}\nLleva estructura cromada` : 'Lleva estructura cromada';
+  }
+  const cromado = fd.get('cromado_en_form') === '1' ? marcado : pedidoLlevaCromado(items, observaciones);
+
   let fechaLimite = fechaValida(texto(fd.get('fecha_limite')));
   if (!fechaLimite) {
-    const { regla, feriados } = await leerReglaPlazo(supabase);
-    fechaLimite = calcularFechaLimite(fechaVenta, regla, new Set(feriados));
+    const { plazos, feriados } = await leerReglaPlazo(supabase);
+    fechaLimite = calcularFechaLimite(fechaVenta, reglaDe(cromado, plazos), new Set(feriados));
   }
   if (fechaLimite < fechaVenta) return { error: 'La fecha límite no puede ser anterior a la venta.' };
 
@@ -88,7 +99,7 @@ export async function crearPedido(_prev: Estado, fd: FormData): Promise<Estado> 
       total,
       sena,
       precio_envio_cliente: envioCliente,
-      observaciones: texto(fd.get('observaciones')),
+      observaciones,
       pauta: pauta === 'si' ? true : pauta === 'no' ? false : null,
       campana: texto(fd.get('campana')),
       dm_inbound: texto(fd.get('dm_inbound')),

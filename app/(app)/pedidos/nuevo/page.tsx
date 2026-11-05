@@ -36,7 +36,7 @@ export default async function NuevoPedidoPage({
         equipo={(equipo ?? []) as { id: string; nombre: string }[]}
         yo={miembro.id}
         hoy={hoyAR()}
-        regla={plazo.regla}
+        plazos={plazo.plazos}
         feriados={plazo.feriados}
         inicial={
           presu

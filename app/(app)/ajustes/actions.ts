@@ -40,19 +40,23 @@ export async function guardarMiembro(id: string | null, _prev: EstadoAjustes, fd
 export async function guardarParametros(_prev: EstadoAjustes, fd: FormData): Promise<EstadoAjustes> {
   try {
     const { supabase } = await soloAdmin();
-    const plazo = Math.round(Number(fd.get('plazo_entrega_dias')));
-    const aviso = Math.round(Number(fd.get('aviso_dias_antes')));
-    if (!(plazo > 0) || !(aviso >= 0)) return { error: 'Revisá los números.' };
-    const tipo = fd.get('plazo_entrega_tipo') === 'habiles' ? 'habiles' : 'corridos';
+    const num = (k: string) => Math.round(Number(fd.get(k)));
+    const aviso = num('aviso_dias_antes');
+    const nMin = num('plazo_normal_min'), nMax = num('plazo_normal_max');
+    const cMin = num('plazo_cromado_min'), cMax = num('plazo_cromado_max');
+    if (![nMin, nMax, cMin, cMax].every((n) => n > 0) || !(aviso >= 0)) return { error: 'Revisá los números.' };
+    if (nMin > nMax || cMin > cMax) return { error: 'En cada plazo, el mínimo no puede ser mayor que el máximo.' };
     const filas = [
-      { clave: 'plazo_entrega_dias', valor: String(plazo) },
-      { clave: 'plazo_entrega_tipo', valor: tipo },
-      { clave: 'aviso_dias_antes', valor: String(aviso) },
+      { clave: 'plazo_normal_min', valor: String(nMin), nota: 'Producción sin estructura cromada: mínimo (días hábiles)' },
+      { clave: 'plazo_normal_max', valor: String(nMax), nota: 'Producción sin estructura cromada: máximo (días hábiles, fecha límite)' },
+      { clave: 'plazo_cromado_min', valor: String(cMin), nota: 'Producción con estructura cromada: mínimo (días hábiles)' },
+      { clave: 'plazo_cromado_max', valor: String(cMax), nota: 'Producción con estructura cromada: máximo (días hábiles, fecha límite)' },
     ];
-    for (const f of filas) {
-      const { error } = await supabase.from('parametros').update({ valor: f.valor }).eq('clave', f.clave);
-      if (error) return { error: `No se pudo guardar: ${error.message}` };
-    }
+    // Las filas de plazos se crean la primera vez que se guardan.
+    const { error: ePlazos } = await supabase.from('parametros').upsert(filas, { onConflict: 'clave' });
+    if (ePlazos) return { error: `No se pudo guardar: ${ePlazos.message}` };
+    const { error: eAviso } = await supabase.from('parametros').update({ valor: String(aviso) }).eq('clave', 'aviso_dias_antes');
+    if (eAviso) return { error: `No se pudo guardar: ${eAviso.message}` };
     // Interruptor de los WhatsApp automáticos (la fila se crea la primera vez).
     const { error: eWa } = await supabase.from('parametros').upsert(
       { clave: 'whatsapp_activo', valor: fd.get('whatsapp_activo') === 'on' ? 'si' : 'no', nota: 'Avisos automáticos por WhatsApp (si / no)' },

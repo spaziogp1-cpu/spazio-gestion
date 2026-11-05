@@ -1,7 +1,7 @@
 // Remito de Spazio Design en PDF (A4, dos páginas: remito y términos y condiciones).
 // Sin servidor ni base: recibe los datos ya armados y devuelve los bytes. Se puede probar.
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
-import { CONDICIONES_PEDIDO, TERMINOS, TERMINOS_INTRO } from './textos';
+import { TERMINOS_INTRO, condicionesPedido, terminos } from './textos';
 
 export type ItemRemito = { producto: string; modelo: string | null; color: string | null; puntas: string | null; tapa: string | null; material: string | null; medidas: string | null; cantidad: number };
 
@@ -18,6 +18,7 @@ export type DatosRemito = {
   envioPrecio: number; // lo que paga el cliente por el envío
   envio: string; // retira, flete, expreso, coordinar
   pagado: number;
+  plazo?: string; // "20-25 días hábiles"; con estructura cromada, "30-35 días hábiles"
 };
 
 // ---------------------------------------------------------------- textos que dependen del pedido
@@ -222,7 +223,7 @@ export async function generarRemitoPdf(d: DatosRemito): Promise<Uint8Array> {
   h1.tabla([{ rotulo: 'Valor del envío', valor: pago.envioTexto }], 255);
   h1.y -= 8;
   h1.titulo('Condiciones generales del pedido', 12);
-  for (const p of CONDICIONES_PEDIDO) h1.parrafo(p, 9, f.r, NEGRO, 7);
+  for (const p of condicionesPedido(d.plazo)) h1.parrafo(p, 9, f.r, NEGRO, 7);
 
   // Página 2: términos y condiciones
   const h2 = new Hoja(pdf, pdf.addPage([A4.w, A4.h]), f, 2);
@@ -230,7 +231,7 @@ export async function generarRemitoPdf(d: DatosRemito): Promise<Uint8Array> {
   h2.centrado('TÉRMINOS Y CONDICIONES', 20, f.b, NEGRO, 8);
   h2.centrado('Información importante sobre producción, materiales, medidas y traslados', 10, f.r, GRIS, 14);
   h2.parrafo(TERMINOS_INTRO, 8.6, f.r, NEGRO, 4);
-  for (const t of TERMINOS) {
+  for (const t of terminos(d.plazo)) {
     h2.titulo(t.titulo, 10.5);
     for (const p of t.parrafos) h2.parrafo(p, 8.6, f.r, NEGRO, 4);
   }

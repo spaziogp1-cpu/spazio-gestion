@@ -1,6 +1,7 @@
 import 'server-only';
 import { crearAdmin } from '@/lib/supabase/admin';
 import { generarRemitoPdf, nombreRemito, type ItemRemito } from './pdf';
+import { leerPlazos, CLAVES_PLAZO, pedidoLlevaCromado, rangoDe, textoRango } from '@/lib/plazos';
 
 // Arma el remito de un pedido, lo guarda en los archivos del pedido y lo sube a Google Drive.
 // Usa el cliente con permisos completos: lo llaman procesos del servidor (alta de pedidos y cron).
@@ -42,11 +43,16 @@ export async function generarRemito(pedidoId: string, opciones: { quien?: string
   const db = crearAdmin(opciones.quien ?? 'Remitos');
   const { data: p } = await db.from('pedidos_resumen').select('*').eq('id', pedidoId).maybeSingle();
   if (!p) return { ok: false, error: 'Pedido no encontrado' };
-  const [{ data: c }, { data: items }, { data: previos }] = await Promise.all([
+  const [{ data: c }, { data: items }, { data: previos }, { data: params }, { data: stg }] = await Promise.all([
     db.from('clientes').select('nombre, dni, telefono, email').eq('id', p.cliente_id).single(),
     db.from('pedido_items').select('producto, modelo, color, puntas, tapa, material, medidas, cantidad').eq('pedido_id', pedidoId).order('orden'),
     db.from('remitos').select('version').eq('pedido_id', pedidoId).order('version', { ascending: false }).limit(1),
+    db.from('parametros').select('clave, valor').in('clave', Object.values(CLAVES_PLAZO)),
+    // Si ya se le pidió estructura a STG, el pedido lleva cromado aunque el producto no lo diga.
+    db.from('pedidos_proveedor').select('id, proveedores!inner(nombre)').eq('pedido_id', pedidoId).neq('estado', 'cancelado').ilike('proveedores.nombre', 'STG').limit(1),
   ]);
+  const plazos = leerPlazos(new Map(((params ?? []) as { clave: string; valor: string }[]).map((x) => [x.clave, x.valor])));
+  const cromado = pedidoLlevaCromado((items ?? []) as ItemRemito[], p.observaciones) || (stg ?? []).length > 0;
   const version = ((previos ?? [])[0]?.version ?? 0) + 1;
   const pdf = await generarRemitoPdf({
     numero: p.numero,
@@ -61,6 +67,7 @@ export async function generarRemito(pedidoId: string, opciones: { quien?: string
     envioPrecio: Number(p.precio_envio_cliente),
     envio: p.envio,
     pagado: Number(p.pagado),
+    plazo: textoRango(rangoDe(cromado, plazos)),
   });
   const nombre = nombreRemito(p.numero, c?.nombre ?? 'Cliente', version);
   const ruta = `${pedidoId}/remito-${p.numero}-v${version}-${Date.now()}.pdf`;

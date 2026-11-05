@@ -2,8 +2,9 @@
 
 import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from 'react';
 import { CANALES, ENVIOS, FORMAS_PAGO, MATERIALES_SUGERIDOS, PRODUCTOS_SUGERIDOS, TIPOS_VENTA } from '@/lib/constantes';
-import { calcularFechaLimite, fechaCorta, type ReglaPlazo } from '@/lib/fechas';
+import { calcularFechaLimite, fechaCorta } from '@/lib/fechas';
 import { leerMonto, plata } from '@/lib/formato';
+import { pedidoLlevaCromado, rangoDe, reglaDe, textoRango, type Plazos } from '@/lib/plazos';
 import { createClient } from '@/lib/supabase/client';
 import type { Cliente } from '@/lib/tipos';
 import { crearPedido, type Estado } from '../actions';
@@ -12,7 +13,7 @@ type Props = {
   equipo: { id: string; nombre: string }[];
   yo: string;
   hoy: string;
-  regla: ReglaPlazo;
+  plazos: Plazos;
   feriados: string[];
   inicial?: {
     nombre: string;
@@ -41,7 +42,7 @@ export type ItemInicial = {
 };
 type ItemForm = { key: number; precio: string; cantidad: string; datos?: ItemInicial };
 
-export default function FormPedido({ equipo, yo, hoy, regla, feriados, inicial }: Props) {
+export default function FormPedido({ equipo, yo, hoy, plazos, feriados, inicial }: Props) {
   const [estado, accion, guardando] = useActionState<Estado, FormData>(crearPedido, {});
 
   // ----- Cliente -----
@@ -93,9 +94,37 @@ export default function FormPedido({ equipo, yo, hoy, regla, feriados, inicial }
   const sumaItems = items.reduce((s, it) => s + leerMonto(it.precio) * (Number(it.cantidad) || 1), 0);
   const totalFinal = total ? leerMonto(total) : sumaItems;
   const saldo = totalFinal + leerMonto(envioCliente) - leerMonto(sena);
+  // ----- Estructura cromada: cambia el plazo (30-35 hábiles contra 20-25) -----
+  const leerItemsDelForm = (form: HTMLFormElement | null) => {
+    if (!form) return inicial?.items ?? [];
+    const fd = new FormData(form);
+    const col = (k: string) => fd.getAll(`item_${k}`).map((v) => String(v));
+    return col('producto').map((producto, i) => ({
+      producto,
+      modelo: col('modelo')[i],
+      color: col('color')[i],
+      puntas: col('puntas')[i],
+      tapa: col('tapa')[i],
+      material: col('material')[i],
+    }));
+  };
+  const formRef = useRef<HTMLFormElement>(null);
+  const [cromadoDetectado, setCromadoDetectado] = useState(() => pedidoLlevaCromado(inicial?.items ?? [], inicial?.observaciones));
+  const [cromadoManual, setCromadoManual] = useState<boolean | null>(null);
+  const cromado = cromadoManual ?? cromadoDetectado;
+  const revisarCromado = () => {
+    const form = formRef.current;
+    const obs = form ? String(new FormData(form).get('observaciones') ?? '') : '';
+    setCromadoDetectado(pedidoLlevaCromado(leerItemsDelForm(form), obs));
+  };
+  // Al agregar o quitar un producto también se vuelve a mirar.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(revisarCromado, [items.length]);
+  const regla = reglaDe(cromado, plazos);
   const fechaSugerida = useMemo(
     () => calcularFechaLimite(fechaVenta || hoy, regla, new Set(feriados)),
-    [fechaVenta, hoy, regla, feriados],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fechaVenta, hoy, regla.dias, feriados],
   );
 
   return (
@@ -106,9 +135,12 @@ export default function FormPedido({ equipo, yo, hoy, regla, feriados, inicial }
         const fd = new FormData(e.currentTarget);
         startTransition(() => accion(fd));
       }}
+      ref={formRef}
+      onInput={revisarCromado}
       className="form-bloque"
       style={{ maxWidth: 720 }}
     >
+      <input type="hidden" name="cromado_en_form" value="1" />
       {inicial?.presupuestoId && (
         <>
           <input type="hidden" name="presupuesto_id" value={inicial.presupuestoId} />
@@ -394,10 +426,23 @@ export default function FormPedido({ equipo, yo, hoy, regla, feriados, inicial }
             <span className="ayuda">
               {fechaManual && fechaManual !== fechaSugerida
                 ? 'Cambiada a mano'
-                : `${regla.dias} días ${regla.tipo === 'habiles' ? 'hábiles' : 'corridos'} desde la venta`}
+                : `${regla.dias} días hábiles desde la venta`}
             </span>
           </div>
         </div>
+        <label className="small" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <input
+            type="checkbox"
+            name="lleva_cromado"
+            checked={cromado}
+            onChange={(e) => {
+              setCromadoManual(e.target.checked === cromadoDetectado ? null : e.target.checked);
+              setFechaManual('');
+            }}
+          />
+          Lleva estructura cromada — producción {textoRango(rangoDe(cromado, plazos))}
+          {cromadoManual === null && cromadoDetectado && <span className="quiet"> (detectado por el producto)</span>}
+        </label>
         <details className="mas">
           <summary>Otra fecha de venta, responsable y dirección de entrega</summary>
           <div className="form-bloque" style={{ marginTop: 8 }}>

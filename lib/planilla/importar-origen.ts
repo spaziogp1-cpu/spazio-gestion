@@ -2,6 +2,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { calcularFechaLimite } from '@/lib/fechas';
 import { leerReglaPlazo } from '@/lib/parametros';
+import { pedidoLlevaCromado, reglaDe } from '@/lib/plazos';
 import { HOJA_VENTAS } from './filas';
 import { escribeEnOriginal, leerOrigen, planillaConfigurada } from './google';
 import { normalizarNombre, ventasDesdeFilas, type VentaPlanilla } from './origen';
@@ -75,7 +76,7 @@ export async function importarDeOriginal(db: Cliente, opciones: { simular?: bool
     .gte('fecha_venta', masDias(desde, -5));
   const cercanos = (cercanosData ?? []) as unknown as Existente[];
 
-  const [{ data: equipo }, { regla, feriados }] = await Promise.all([
+  const [{ data: equipo }, { plazos, feriados }] = await Promise.all([
     db.from('equipo').select('id, nombre, alias_planilla, rol, activo, creado_en').order('creado_en'),
     leerReglaPlazo(db as never),
   ]);
@@ -109,7 +110,7 @@ export async function importarDeOriginal(db: Cliente, opciones: { simular?: bool
           canal: v.canal,
           responsable_id: vendedorId(v.vendedor),
           fecha_venta: v.fecha_venta,
-          fecha_limite: v.fecha_limite ?? calcularFechaLimite(v.fecha_venta, regla, new Set(feriados)),
+          fecha_limite: v.fecha_limite ?? calcularFechaLimite(v.fecha_venta, reglaDe(pedidoLlevaCromado(v.items ?? [], v.observaciones), plazos), new Set(feriados)),
           envio: v.envio,
           forma_pago: v.forma_pago,
           total: v.total,

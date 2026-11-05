@@ -2,6 +2,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { calcularFechaLimite } from '@/lib/fechas';
 import { leerReglaPlazo } from '@/lib/parametros';
+import { pedidoLlevaCromado, reglaDe } from '@/lib/plazos';
 import { agregarPedido as agregarAPlanilla, anotarPendiente } from '@/lib/planilla/sync';
 import { generarRemito } from '@/lib/remitos/servicio';
 import { leerConexion, obtenerOrden, ordenesPagadasDesde } from './api';
@@ -140,8 +141,9 @@ export async function procesarOrden(db: Cliente, ordenId: number, yaLeida?: Orde
       return { estado: 'sin_pagar', detalle: det };
     }
 
-    const { regla, feriados } = await leerReglaPlazo(db as never);
-    const fecha_limite = calcularFechaLimite(datos.fecha_venta, regla, new Set(feriados));
+    const { plazos, feriados } = await leerReglaPlazo(db as never);
+    const cromado = pedidoLlevaCromado(datos.items, datos.observaciones);
+    const fecha_limite = calcularFechaLimite(datos.fecha_venta, reglaDe(cromado, plazos), new Set(feriados));
     // Las tareas automáticas del pedido quedan a cargo del administrador.
     const { data: encargado } = await db.from('equipo').select('id').eq('activo', true).eq('rol', 'admin').order('creado_en').limit(1).maybeSingle();
 

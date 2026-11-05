@@ -1,18 +1,27 @@
 import type { createClient } from '@/lib/supabase/server';
 import type { ReglaPlazo } from '@/lib/fechas';
+import { CLAVES_PLAZO, leerPlazos, reglaDe, type Plazos } from '@/lib/plazos';
 
 type Cliente = Awaited<ReturnType<typeof createClient>>;
 
-export async function leerReglaPlazo(supabase: Cliente): Promise<{ regla: ReglaPlazo; feriados: string[] }> {
+/**
+ * Plazos de producción y feriados.
+ * `regla` es la de los productos sin estructura cromada; `reglaCromado`, la de los que la llevan.
+ * Para un pedido puntual usá `reglaDe(pedidoLlevaCromado(items), plazos)`.
+ */
+export async function leerReglaPlazo(
+  supabase: Cliente,
+): Promise<{ regla: ReglaPlazo; reglaCromado: ReglaPlazo; plazos: Plazos; feriados: string[] }> {
   const [{ data: params }, { data: fer }] = await Promise.all([
-    supabase.from('parametros').select('clave, valor').in('clave', ['plazo_entrega_dias', 'plazo_entrega_tipo']),
+    supabase.from('parametros').select('clave, valor').in('clave', Object.values(CLAVES_PLAZO)),
     supabase.from('feriados').select('fecha'),
   ]);
-  const mapa = new Map((params ?? []).map((p: { clave: string; valor: string }) => [p.clave, p.valor]));
-  const dias = Number(mapa.get('plazo_entrega_dias') ?? 28);
-  const tipo = mapa.get('plazo_entrega_tipo') === 'habiles' ? 'habiles' : 'corridos';
+  const mapa = new Map<string, string>(((params ?? []) as { clave: string; valor: string }[]).map((p) => [p.clave, p.valor]));
+  const plazos = leerPlazos(mapa);
   return {
-    regla: { dias: Number.isFinite(dias) && dias > 0 ? dias : 28, tipo },
+    regla: reglaDe(false, plazos),
+    reglaCromado: reglaDe(true, plazos),
+    plazos,
     feriados: (fer ?? []).map((f: { fecha: string }) => f.fecha),
   };
 }

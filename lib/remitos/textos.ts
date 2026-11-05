@@ -1,15 +1,18 @@
-// Textos fijos del remito de Spazio Design (copiados del modelo que usa el equipo).
+// Textos del remito de Spazio Design (copiados del modelo que usa el equipo).
+// El plazo cambia según el pedido: "20-25 días hábiles" o, con estructura cromada, "30-35 días hábiles".
 
-export const CONDICIONES_PEDIDO = [
+export const PLAZO_TEXTO_DEFECTO = '20-25 días hábiles';
+
+export const condicionesPedido = (plazo: string = PLAZO_TEXTO_DEFECTO) => [
   'El pago confirma el inicio del pedido y permite avanzar con la producción del producto encargado. Al tratarse de piezas realizadas por encargo y/o a medida, el importe abonado queda asociado específicamente al producto detallado en este comprobante.',
-  'El plazo estimado de producción es de aproximadamente 20-25 días hábiles, sujeto a las condiciones de fabricación, disponibilidad de materiales, procesos internos y eventuales ajustes necesarios para garantizar la calidad final de la pieza.',
+  `El plazo estimado de producción es de aproximadamente ${plazo}, sujeto a las condiciones de fabricación, disponibilidad de materiales, procesos internos y eventuales ajustes necesarios para garantizar la calidad final de la pieza.`,
   'La aceptación de este comprobante implica también la lectura y conformidad con los términos y condiciones detallados en la página siguiente.',
 ];
 
 export const TERMINOS_INTRO =
   'En Spazio Design trabajamos principalmente con productos de vidrio laminado realizados por encargo. Cada pieza se produce cuidando tanto la calidad técnica como la identidad visual del producto. A continuación, detallamos algunas condiciones importantes para que el cliente conozca mejor el proceso de fabricación y las características propias del material.';
 
-export const TERMINOS: { titulo: string; parrafos: string[] }[] = [
+export const terminos = (plazo: string = PLAZO_TEXTO_DEFECTO): { titulo: string; parrafos: string[] }[] => [
   {
     titulo: '1. Características del vidrio laminado',
     parrafos: [
@@ -19,7 +22,7 @@ export const TERMINOS: { titulo: string; parrafos: string[] }[] = [
   {
     titulo: '2. Tiempos de producción',
     parrafos: [
-      'La mayoría de nuestros productos son realizados por encargo y, en muchos casos, a medida. El plazo habitual de producción es de aproximadamente 20-25 días hábiles desde la confirmación del pedido y el pago. Este plazo puede verse modificado por cuestiones propias de fabricación, disponibilidad de materiales, tiempos de taller, ajustes técnicos, controles de calidad, roturas imprevistas o la necesidad de rehacer alguna pieza para asegurar un mejor resultado final. Contamos con una producción constante pero cuidada y limitada; por eso agradecemos la comprensión del cliente ante cualquier demora razonable que pudiera surgir.',
+      `La mayoría de nuestros productos son realizados por encargo y, en muchos casos, a medida. El plazo habitual de producción es de aproximadamente ${plazo} desde la confirmación del pedido y el pago. Este plazo puede verse modificado por cuestiones propias de fabricación, disponibilidad de materiales, tiempos de taller, ajustes técnicos, controles de calidad, roturas imprevistas o la necesidad de rehacer alguna pieza para asegurar un mejor resultado final. Contamos con una producción constante pero cuidada y limitada; por eso agradecemos la comprensión del cliente ante cualquier demora razonable que pudiera surgir.`,
     ],
   },
   {
