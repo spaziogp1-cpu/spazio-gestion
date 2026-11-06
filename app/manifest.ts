@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Gestión interna de Spazio Design',
     start_url: '/',
     display: 'standalone',
-    background_color: '#f6f4ef',
-    theme_color: '#f6f4ef',
+    background_color: '#f6f4f0',
+    theme_color: '#f6f4f0',
     lang: 'es-AR',
     icons: [
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

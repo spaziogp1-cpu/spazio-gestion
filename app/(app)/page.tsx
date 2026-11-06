@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BarraAvance } from '@/components/avance';
+import { IconoMas } from '@/components/iconos';
 import { ListaTareas } from '@/components/tareas';
 import { ETAPAS, ETAPAS_ACTIVAS } from '@/lib/constantes';
 import { fechaCorta, fechaHora, horaCorta, inicioSemana, relativo } from '@/lib/fechas';
@@ -17,12 +18,13 @@ function saludo() {
   return h < 13 ? 'Buen día' : h < 20 ? 'Buenas tardes' : 'Buenas noches';
 }
 
+// Mismo código de color que las etiquetas de etapa (globals.css): pendiente → en proceso → completado.
 const COLOR_ETAPA: Record<string, string> = {
-  senado: 'violeta',
-  en_fabricacion: 'naranja',
+  senado: 'amarillo',
+  en_fabricacion: 'violeta',
   lista: 'verde',
-  embalada: 'azul',
-  envio_coordinado: 'rosa',
+  embalada: 'rosa',
+  envio_coordinado: 'azul',
 };
 
 function Tarjeta({ titulo, href, enlace = 'Ver todo', children, className = '' }: { titulo: React.ReactNode; href?: string; enlace?: string; children: React.ReactNode; className?: string }) {
@@ -142,7 +144,7 @@ export default async function MiDia({ searchParams }: { searchParams: Promise<{ 
             </Link>
           </nav>
           <Link href="/pedidos/nuevo" className="btn btn-primario">
-            + Nuevo pedido
+            <IconoMas /> Nuevo pedido
           </Link>
           <Link href="/calendario" className="btn">
             Agendar entrega

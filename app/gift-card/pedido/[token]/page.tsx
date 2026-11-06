@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Marca } from '@/components/marca';
 import { notFound } from 'next/navigation';
 import { TarjetaGift, TarjetaGiftDorso } from '@/components/tarjeta-gift';
 import { fraseOcasion, linkWhatsAppTexto } from '@/lib/giftcard';
@@ -33,8 +34,7 @@ export default async function PedidoGiftPage({ params, searchParams }: { params:
   return (
     <main className="turnos gc-publica">
       <header className="turnos-cabecera">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <a href="/gift-card" aria-label="Spazio Design"><img src="/logo-spazio-negro.png" alt="Spazio" /></a>
+        <a href="/gift-card" aria-label="Spazio Design"><Marca sub="" alto={36} placa /></a>
       </header>
       <section className="card turnos-card form-bloque">
         {s.estado === 'cancelada' ? (

@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from 'next';
-import { DM_Sans, Instrument_Serif } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import { SCRIPT_TEMA } from '@/components/tema';
 
-const sans = DM_Sans({ subsets: ['latin'], variable: '--fuente-sans', display: 'swap' });
-const serif = Instrument_Serif({ subsets: ['latin'], weight: '400', style: ['normal', 'italic'], variable: '--fuente-serif', display: 'swap' });
+// Tipografía: Neulis Sans es la de la marca; el proyecto no tiene sus archivos,
+// así que se usa Inter. Para pasar a Neulis, sumar los .woff2 en /public/fonts y
+// declararlos con next/font/local usando la misma variable (--fuente-sans).
+const sans = Inter({ subsets: ['latin'], variable: '--fuente-sans', display: 'swap' });
 
 export const metadata: Metadata = {
   title: { default: 'Spazio · Gestión', template: '%s · Spazio' },
@@ -18,14 +20,14 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#F3EFE8' },
-    { media: '(prefers-color-scheme: dark)', color: '#16130F' },
+    { media: '(prefers-color-scheme: light)', color: '#F6F4F0' },
+    { media: '(prefers-color-scheme: dark)', color: '#141518' },
   ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es-AR" className={`${sans.variable} ${serif.variable}`} suppressHydrationWarning>
+    <html lang="es-AR" className={sans.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
       </head>

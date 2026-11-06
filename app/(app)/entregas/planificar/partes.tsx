@@ -47,7 +47,8 @@ export type RutaVista = {
   paradas: ParadaVista[];
 };
 
-const COLORES = ['#c2410c', '#2563eb', '#16a34a', '#9333ea'];
+// Series de datos con la paleta Spazio (violeta primero; el azul queda para acciones).
+const COLORES = ['#7853b8', '#238765', '#f27830', '#d9789d'];
 const duracion = (m: number | null) => (m == null ? '—' : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`);
 
 export function PlanDelDia({

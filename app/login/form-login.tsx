@@ -60,7 +60,10 @@ export default function FormLogin() {
         <button className="btn btn-primario btn-bloque" disabled={entrando}>
           {entrando ? 'Entrando…' : 'Entrar'}
         </button>
-        <button type="button" className="btn btn-fantasma btn-bloque" onClick={() => setConCodigo(true)}>
+        <div className="login-separador" aria-hidden="true">
+          <span>o</span>
+        </div>
+        <button type="button" className="btn btn-texto btn-bloque login-alternativa" onClick={() => setConCodigo(true)}>
           No tengo contraseña: entrar con un código por email
         </button>
       </form>
@@ -78,7 +81,10 @@ export default function FormLogin() {
       <button className="btn btn-primario btn-bloque" disabled={enviando}>
         {enviando ? 'Enviando…' : 'Mandarme el código'}
       </button>
-      <button type="button" className="btn btn-fantasma btn-bloque" onClick={() => setConCodigo(false)}>
+      <div className="login-separador" aria-hidden="true">
+        <span>o</span>
+      </div>
+      <button type="button" className="btn btn-texto btn-bloque login-alternativa" onClick={() => setConCodigo(false)}>
         Entrar con contraseña
       </button>
     </form>

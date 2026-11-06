@@ -23,7 +23,7 @@ export default async function TurnoPage({ params, searchParams }: { params: Prom
   return (
     <main className="turnos">
       <header className="turnos-cabecera">
-        <Marca sub="Design" />
+        <Marca sub="Design" alto={36} placa />
       </header>
       <section className="card turnos-card form-bloque">
         {turno.estado === 'cancelada' ? (
