@@ -55,26 +55,28 @@ export function Sidebar({ nombre, avisos }: { nombre: string; avisos: number }) 
   return (
     <nav className="sidebar" aria-label="Principal">
       <Link href="/" className="marca" aria-label="Spazio Gestión, Mi día">
-        <Marca />
+        <Marca alto={38} />
       </Link>
-      <Link href="/pedidos/nuevo" className="btn btn-primario" style={{ marginBottom: 12 }}>
+      <Link href="/pedidos/nuevo" className="btn btn-primario">
         <IconoMas /> Nuevo pedido
       </Link>
       <BotonBuscar />
-      {SECCIONES.map(({ href, nombre, color }) => (
+      {SECCIONES.map(({ href, nombre, Icono }) => (
         <Link key={href} href={href} className="navlink" aria-current={activo(path, href) ? 'page' : undefined}>
-          <span className="punto-seccion" style={{ background: `var(--c-${color})` }} aria-hidden="true" /> {nombre}
+          <Icono className="navlink-icono" />
+          <span className="navlink-txt">{nombre}</span>
           {href === '/avisos' && avisos > 0 && <span className="insignia">{avisos > 99 ? '99+' : avisos}</span>}
         </Link>
       ))}
       <div className="pie">
         <SelectorTema />
-        <div style={{ marginTop: 10 }}>{nombre}</div>
-        <form action="/auth/salir" method="post">
-          <button className="btn btn-fantasma btn-chico" style={{ paddingLeft: 0 }}>
-            Salir
-          </button>
-        </form>
+        <div className="pie-usuario">
+          <span className="pie-avatar" aria-hidden="true">{nombre.trim().charAt(0).toUpperCase()}</span>
+          <span className="pie-nombre">{nombre}</span>
+          <form action="/auth/salir" method="post">
+            <button className="btn btn-texto btn-chico">Salir</button>
+          </form>
+        </div>
       </div>
     </nav>
   );

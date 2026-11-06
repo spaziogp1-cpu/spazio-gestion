@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Marca } from '@/components/marca';
 import { TarjetaGift, TarjetaGiftDorso } from '@/components/tarjeta-gift';
 import { fechaAR, fraseOcasion, normalizarCodigo } from '@/lib/giftcard';
 import { createClient } from '@/lib/supabase/server';
@@ -41,8 +42,7 @@ export default async function SaldoPage({ searchParams }: { searchParams: Promis
   return (
     <main className="turnos gc-publica">
       <header className="turnos-cabecera">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <a href="/gift-card" aria-label="Spazio Design"><img src="/logo-spazio-negro.png" alt="Spazio" /></a>
+        <a href="/gift-card" aria-label="Spazio Design"><Marca sub="" alto={36} placa /></a>
       </header>
       <section className="card turnos-card form-bloque">
         <h1>

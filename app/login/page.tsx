@@ -17,12 +17,14 @@ export default async function LoginPage({
   const { error } = await searchParams;
   return (
     <main className="login">
-      <div className="card">
-        <div className="marca">
-          <Marca />
+      <div className="login-columna">
+        <div className="login-marca">
+          <Marca alto={56} />
         </div>
-        {error && ERRORES[error] && <p className="aviso aviso-mal" style={{ marginBottom: 14 }}>{ERRORES[error]}</p>}
-        <FormLogin />
+        <div className="card login-card">
+          {error && ERRORES[error] && <p className="aviso aviso-mal login-error">{ERRORES[error]}</p>}
+          <FormLogin />
+        </div>
       </div>
     </main>
   );

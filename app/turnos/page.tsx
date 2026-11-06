@@ -26,7 +26,7 @@ export default async function TurnosPage({ searchParams }: { searchParams: Promi
   return (
     <main className="turnos">
       <header className="turnos-cabecera">
-        <Marca sub="Design" />
+        <Marca sub="Design" alto={36} placa />
       </header>
       <section className="card turnos-card">
         <h1>

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Marca } from '@/components/marca';
 import { TarjetaGift } from '@/components/tarjeta-gift';
 import { hoyAR, sumarDiasCorridos } from '@/lib/fechas';
 import { GC_INICIO_MAX_DIAS } from '@/lib/giftcard';
@@ -20,8 +21,7 @@ export default async function GiftCardPage() {
   return (
     <main className="turnos gc-publica">
       <header className="turnos-cabecera">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <a href="https://www.spaziodesign.net" aria-label="Spazio Design"><img src="/logo-spazio-negro.png" alt="Spazio" /></a>
+        <a href="https://www.spaziodesign.net" aria-label="Spazio Design"><Marca sub="" alto={36} placa /></a>
       </header>
       <section className="card turnos-card">
         <div className="gc-hero">
