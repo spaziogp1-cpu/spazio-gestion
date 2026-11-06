@@ -62,7 +62,7 @@ export async function datosParaPedido(presupuestoId: string): Promise<{ error?: 
   const vidrioDe = new Map(
     ((calcs ?? []) as Calc[]).map((c) => [
       c.item_id,
-      c.resultado.lineas?.find((l) => l.unidad === 'm2' && l.insumo?.startsWith('vidrio'))?.variante ?? null,
+      c.resultado.lineas?.find((l) => l.unidad === 'm2' && l.insumo?.startsWith('vidrio') && l.cantidad !== 0)?.variante ?? null,
     ]),
   );
   type Fila = {

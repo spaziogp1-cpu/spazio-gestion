@@ -11,7 +11,9 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { crearAdmin } from '@/lib/supabase/admin';
 import { cargarCatalogo } from './catalogo';
-import { conPiezasAgregadas, cotizar, entradasVisibles } from './motor';
+import { conPiezasAgregadas, cotizar, entradaDeCantidad, entradasVisibles } from './motor';
+
+export { entradaDeCantidad };
 import { leerReceta } from './receta';
 import type { AjustePieza, AjustesPiezas, Aviso, Catalogo, LineaResultado, PiezaAgregada, Receta, ResultadoCalculo, VidrioPieza } from './tipos';
 
@@ -107,6 +109,11 @@ export function limpiarPiezas(receta: Receta, piezas: unknown): AjustesPiezas {
     }
     Object.assign(ok, vidrioValido(a));
     if (typeof a.forma === 'boolean') ok.forma = a.forma;
+    // Vidrio eliminado en el desglose (solo piezas de la receta; los agregados se sacan de la lista).
+    if (a.quitada === true && !id.startsWith('extra_')) {
+      ok.quitada = true;
+      ok.cantidad = 0;
+    }
     if (Object.keys(ok).length) out[id] = ok;
   }
   return out;
@@ -175,12 +182,22 @@ export async function calcularItem(
   const receta = conPiezasAgregadas(recetaProducto, agregadas);
   const catalogo = cache?.catalogo ?? (await cargarCatalogo(db));
   if (cache) cache.catalogo = catalogo;
-  // Solo se usan los valores de entradas que existen y se piden.
-  const visibles = new Set(entradasVisibles(receta, valores));
-  const limpios: Record<string, number | string> = {};
-  for (const k of Object.keys(receta.entradas)) if (visibles.has(k) && valores[k] != null && valores[k] !== '') limpios[k] = valores[k];
-  // Sin margen se calcula igual el costo (para quien lo ve), pero no hay precio.
   const ajustes = limpiarPiezas(receta, piezas);
+  // Una pieza eliminada cuya cantidad sale de una entrada (ej. bases): esa entrada queda en 0.
+  const valoresUsados = { ...valores };
+  for (const [id, a] of Object.entries(ajustes)) {
+    if (!a.quitada) continue;
+    const k = entradaDeCantidad(receta, id);
+    if (k) valoresUsados[k] = 0;
+  }
+  // Tiene que quedar al menos un vidrio (si el producto lleva vidrios).
+  const piezasM2 = receta.lineas.filter((l) => l.regla === 'm2');
+  if (piezasM2.length && piezasM2.every((l) => ajustes[l.id]?.quitada)) throw new Error('Tiene que quedar al menos un vidrio.');
+  // Solo se usan los valores de entradas que existen y se piden.
+  const visibles = new Set(entradasVisibles(receta, valoresUsados));
+  const limpios: Record<string, number | string> = {};
+  for (const k of Object.keys(receta.entradas)) if (visibles.has(k) && valoresUsados[k] != null && valoresUsados[k] !== '') limpios[k] = valoresUsados[k];
+  // Sin margen se calcula igual el costo (para quien lo ve), pero no hay precio.
   // El color y el espesor de los vidrios agregados se calculan igual que los de las piezas de la receta.
   for (const x of agregadas) if (x.color || x.espesor) ajustes[x.id] = { ...ajustes[x.id], color: x.color, espesor: x.espesor };
   const resultado = cotizar({ receta, catalogo, valores: limpios, cantidad, margen: margenUsado ?? 0, piezas: ajustes });
@@ -200,7 +217,8 @@ export async function calcularItem(
     margenProducto,
     margenManual: manual,
     // Solo las piezas que de verdad quedaron distintas a la receta.
-    piezas: Object.fromEntries(Object.entries(ajustes).filter(([id]) => resultado.lineas.some((l) => l.id === id && l.original))),
+    // (las eliminadas se guardan siempre, aunque la receta también diera 0).
+    piezas: Object.fromEntries(Object.entries(ajustes).filter(([id, a]) => a.quitada || resultado.lineas.some((l) => l.id === id && l.original))),
     valores: limpios,
     resultado,
     detalle: [describirItem(receta, limpios, catalogo), describirVidrios(resultado.lineas, catalogo)].filter(Boolean).join(' · '),
@@ -298,7 +316,17 @@ export type ResultadoVenta = {
       estimado?: string;
       minimoAplicado?: string;
       /** Piezas por m²: se pueden cambiar a mano. */
-      pieza?: { cantidad: number; ancho: number; largo: number; vidrio?: VidrioPieza; original?: { cantidad: number; ancho?: number; largo?: number; vidrio?: VidrioPieza } };
+      pieza?: {
+        cantidad: number;
+        ancho: number;
+        largo: number;
+        vidrio?: VidrioPieza;
+        original?: { cantidad: number; ancho?: number; largo?: number; vidrio?: VidrioPieza };
+        /** Eliminada en el desglose. */
+        quitada?: boolean;
+        /** Entrada del formulario que da la cantidad (al eliminar la pieza pasa a 0). */
+        cantidadDe?: string;
+      };
     }[];
   };
 };
@@ -332,7 +360,18 @@ export function paraVenta(c: CalculoItem, verCostos: boolean): ResultadoVenta {
         costo: l.costo,
         estimado: l.estimado,
         minimoAplicado: l.minimoAplicado,
-        pieza: l.regla === 'm2' && l.ancho != null && l.largo != null ? { cantidad: l.cantidad, ancho: l.ancho, largo: l.largo, vidrio: l.vidrio, original: l.original } : undefined,
+        pieza:
+          l.regla === 'm2' && l.ancho != null && l.largo != null
+            ? {
+                cantidad: l.cantidad,
+                ancho: l.ancho,
+                largo: l.largo,
+                vidrio: l.vidrio,
+                original: l.original,
+                ...(l.quitada ? { quitada: true } : {}),
+                ...(entradaDeCantidad(c.receta, l.id) ? { cantidadDe: entradaDeCantidad(c.receta, l.id) } : {}),
+              }
+            : undefined,
       })),
     },
   };

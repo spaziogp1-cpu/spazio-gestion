@@ -97,7 +97,16 @@ export type Receta = {
  * Cambios a mano en las piezas de un producto (por id de línea m²): cantidad y medidas en cm,
  * y el vidrio de esa pieza (color, espesor en mm y si va con forma o con puntas rectas).
  */
-export type AjustePieza = { cantidad?: number; ancho?: number; largo?: number; color?: string; espesor?: string; forma?: boolean };
+export type AjustePieza = {
+  cantidad?: number;
+  ancho?: number;
+  largo?: number;
+  color?: string;
+  espesor?: string;
+  forma?: boolean;
+  /** Vidrio eliminado del presupuesto ("Eliminar vidrio" en el desglose): cuenta como cantidad 0. */
+  quitada?: boolean;
+};
 export type AjustesPiezas = Record<string, AjustePieza>;
 /** Vidrio agregado a mano en un presupuesto: del mismo vidrio que la pieza "como" de la receta. */
 export type PiezaAgregada = {
@@ -148,6 +157,8 @@ export type LineaResultado = {
   vidrio?: VidrioPieza;
   /** Si la pieza se cambió a mano: lo que daba la receta. */
   original?: { cantidad: number; ancho?: number; largo?: number; vidrio?: VidrioPieza };
+  /** Pieza eliminada a mano en el presupuesto (no se cobra ni se pide). */
+  quitada?: boolean;
 };
 
 export type Aviso = { nivel: 'error' | 'advertencia'; linea?: string; mensaje: string };

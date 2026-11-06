@@ -42,6 +42,7 @@ type Calculo = {
       largo?: number;
       vidrio?: { color: string; espesor: string; forma: boolean };
       original?: { cantidad: number; ancho?: number; largo?: number; vidrio?: { color: string; espesor: string; forma: boolean } };
+      quitada?: boolean;
     }[];
   };
   creado_en: string;
@@ -142,7 +143,7 @@ export default async function PresupuestoPage({ params }: { params: Promise<{ id
                         </summary>
                         <table className="tabla probador-tabla" style={{ marginTop: 6 }}>
                           <tbody>
-                            {(c.resultado.lineas ?? []).map((l, k) => (
+                            {(c.resultado.lineas ?? []).filter((l) => !l.quitada).map((l, k) => (
                               <tr key={k}>
                                 <td>
                                   {l.nombre}

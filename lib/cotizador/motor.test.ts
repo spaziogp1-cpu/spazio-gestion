@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { conPiezasAgregadas, cotizar, entradasVisibles, validarReceta } from './motor';
+import { conPiezasAgregadas, cotizar, entradaDeCantidad, entradasVisibles, validarReceta } from './motor';
 import type { Catalogo, Receta } from './tipos';
 
 // Precios reales de la lista de Vidpro (15/10/2026) y de STG.
@@ -483,4 +483,66 @@ test('por pieza: un vidrio agregado de otro color', () => {
   assert.equal(r.ok, true, JSON.stringify(r.avisos));
   assert.equal(linea(r, 'extra_1')!.precioUnitario, 115500);
   assert.equal(linea(r, 'bases')!.precioUnitario, 73500);
+});
+
+// ---------------------------------------------------------------------
+// Eliminar vidrio en el desglose (ej. Mesa Personalizada: tapa + bases).
+const personalizada: Receta = {
+  entradas: {
+    L: { tipo: 'medida', nombre: 'Largo', def: 100 },
+    P: { tipo: 'medida', nombre: 'Profundidad', def: 50 },
+    H: { tipo: 'medida', nombre: 'Alto', def: 40 },
+    color: { tipo: 'opcion', nombre: 'Color', atributo: 'color', def: 'incoloro' },
+    espesor: { tipo: 'opcion', nombre: 'Espesor (mm)', permitidos: ['10', '8'], def: '10' },
+    cant_bases: { tipo: 'medida', nombre: 'Bases', min: 0, max: 10, def: 2 },
+  },
+  lineas: [
+    { id: 'tapa', nombre: 'Tapa', regla: 'm2', insumo: 'vidrio-float', ancho: 'L', largo: 'P' },
+    { id: 'bases', nombre: 'Bases', regla: 'm2', insumo: 'vidrio-float', cantidad: 'cant_bases', ancho: 'P', largo: 'H - 1' },
+    { id: 'ajuste', nombre: 'Ajuste', regla: 'porcentaje', porcentaje: 'aj.ajuste_vidpro', sobre: ['tapa', 'bases'] },
+    { id: 'uv', nombre: 'Pegado UV', regla: 'ml', insumo: 'pegado-uv', condicion: 'cant_bases * (H - 1) > 0', metros: 'cant_bases * (H - 1) / 100', variante: { tipo_vidrio: "'float'" } },
+  ],
+};
+
+test('entradaDeCantidad: solo cantidades que son una medida que admite 0', () => {
+  assert.equal(entradaDeCantidad(personalizada, 'bases'), 'cant_bases');
+  assert.equal(entradaDeCantidad(personalizada, 'tapa'), undefined);
+  assert.equal(entradaDeCantidad(personalizada, 'no-existe'), undefined);
+});
+
+test('una sola tapa: se elimina el segundo vidrio (bases) y su pegado UV', () => {
+  const r = cotizar({
+    receta: personalizada,
+    catalogo,
+    valores: { P: 70, cant_bases: 0 },
+    margen: 0.5,
+    piezas: { bases: { quitada: true, cantidad: 0 } },
+  });
+  assert.equal(r.ok, true, JSON.stringify(r.avisos));
+  const tapa = r.lineas.find((l) => l.id === 'tapa')!;
+  assert.equal(tapa.cantidad, 1);
+  assert.equal(tapa.costo, 0.7 * 73500); // 100 × 70 cm, 10 mm incoloro
+  const bases = r.lineas.find((l) => l.id === 'bases')!;
+  assert.equal(bases.quitada, true);
+  assert.equal(bases.costo, 0);
+  assert.equal(r.lineas.find((l) => l.id === 'uv'), undefined);
+  assert.equal(r.costoUnitario, Math.round(0.7 * 73500 * 1.2 * 100) / 100);
+});
+
+test('se puede eliminar el primer vidrio (tapa) y queda el segundo', () => {
+  const r = cotizar({
+    receta: personalizada,
+    catalogo,
+    valores: { P: 70 },
+    margen: 0.5,
+    piezas: { tapa: { quitada: true, cantidad: 0 }, bases: { cantidad: 1, ancho: 40, largo: 60 } },
+  });
+  assert.equal(r.ok, true, JSON.stringify(r.avisos));
+  const tapa = r.lineas.find((l) => l.id === 'tapa')!;
+  assert.equal(tapa.quitada, true);
+  assert.equal(tapa.costo, 0);
+  const bases = r.lineas.find((l) => l.id === 'bases')!;
+  assert.equal(bases.cantidad, 1);
+  assert.equal(bases.costo, 0.24 * 73500);
+  assert.equal(r.lineas.find((l) => l.id === 'ajuste')!.costo, Math.round(0.24 * 73500 * 0.2 * 100) / 100);
 });

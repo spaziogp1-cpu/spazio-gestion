@@ -70,6 +70,18 @@ export function conPiezasAgregadas(receta: Receta, extras: PiezaAgregada[]): Rec
   return { ...receta, lineas };
 }
 
+/**
+ * La entrada que da la cantidad de una pieza, si la cantidad es directamente una medida del formulario
+ * (ej. las bases de la Mesa Personalizada: cantidad "cant_bases"). Al eliminar esa pieza, la entrada pasa a 0
+ * y con ella todo lo que depende de esa cantidad (ej. el pegado UV de las bases).
+ */
+export function entradaDeCantidad(receta: Receta, lineaId: string): string | undefined {
+  const k = receta.lineas.find((l) => l.id === lineaId)?.cantidad?.trim();
+  if (!k || !/^[A-Za-z][A-Za-z0-9_]*$/.test(k)) return undefined;
+  const ent = receta.entradas[k];
+  return ent?.tipo === 'medida' && ent.min === 0 ? k : undefined;
+}
+
 // ---------------------------------------------------------------------
 // El vidrio de cada pieza (color, espesor y forma cambiados a mano)
 // ---------------------------------------------------------------------
@@ -300,7 +312,8 @@ function calcularLinea(l: Linea, cat: Catalogo, e: Estado): LineaResultado | nul
   if (cantidadReceta < 0) throw new ErrorFormula('La cantidad no puede ser negativa');
   // Pieza cambiada a mano en el presupuesto (solo piezas por m²).
   const ajuste = l.regla === 'm2' ? e.piezas[l.id] : undefined;
-  const cantidad = ajuste?.cantidad ?? cantidadReceta;
+  const quitada = ajuste?.quitada === true;
+  const cantidad = quitada ? 0 : (ajuste?.cantidad ?? cantidadReceta);
 
   const base: LineaResultado = {
     id: l.id,
@@ -387,8 +400,20 @@ function calcularLinea(l: Linea, cat: Catalogo, e: Estado): LineaResultado | nul
       const largoReceta = evaluarNumero(l.largo, e.vars);
       const ancho = ajuste?.ancho ?? anchoReceta;
       const largo = ajuste?.largo ?? largoReceta;
-      if (ajuste && (ancho !== anchoReceta || largo !== largoReceta || cantidad !== cantidadReceta))
+      if (ajuste && (quitada || ancho !== anchoReceta || largo !== largoReceta || cantidad !== cantidadReceta))
         r.original = { cantidad: cantidadReceta, ancho: anchoReceta, largo: largoReceta };
+      if (quitada) {
+        // Eliminada en el desglose: queda en el cálculo con cantidad 0 (sin costo) para poder mostrarla y restaurarla.
+        r.quitada = true;
+        const vidrioQ = vidrioDe(ins, variante);
+        if (vidrioQ) {
+          r.vidrio = vidrioQ;
+          e.deReceta.set(l.id, { cantidad: cantidadReceta, ancho: anchoReceta, largo: largoReceta, vidrio: vidrioReceta });
+        }
+        r.ancho = ancho > 0 ? ancho : 0;
+        r.largo = largo > 0 ? largo : 0;
+        break;
+      }
       const vidrio = vidrioDe(ins, variante);
       if (vidrio) {
         r.vidrio = vidrio;
