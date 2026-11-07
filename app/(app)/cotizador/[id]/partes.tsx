@@ -34,6 +34,44 @@ export function AccionesPresupuesto({
       const r = await f();
       if (r && r.error) setError(r.error);
     });
+  const urlPdf = `/cotizador/${id}/pdf`;
+  // En el celular abre el menú de compartir con el archivo (WhatsApp, mail…); en la compu lo descarga.
+  const mandarPdf = () =>
+    empezar(async () => {
+      setError(null);
+      try {
+        const r = await fetch(urlPdf, { cache: 'no-store' });
+        if (!r.ok) throw new Error((await r.text()) || 'No se pudo generar el PDF.');
+        const blob = await r.blob();
+        const disp = r.headers.get('Content-Disposition') ?? '';
+        const m = disp.match(/filename\*=UTF-8''([^;]+)/);
+        const nombre = m ? decodeURIComponent(m[1]) : 'Presupuesto Spazio.pdf';
+        const archivo = new File([blob], nombre, { type: 'application/pdf' });
+        if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [archivo] })) {
+          try {
+            await navigator.share({ files: [archivo], title: nombre });
+          } catch (e) {
+            if ((e as Error).name === 'AbortError') return; // cerró el menú sin mandar
+            throw e;
+          }
+        } else {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = nombre;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+        }
+        if (estado === 'borrador') {
+          const c = await cambiarEstado(id, 'enviado');
+          if (c && c.error) setError(c.error);
+        }
+      } catch (e) {
+        setError((e as Error).message || 'No se pudo generar el PDF.');
+      }
+    });
+
   const copiar = async () => {
     try {
       await navigator.clipboard.writeText(texto);
@@ -78,6 +116,16 @@ export function AccionesPresupuesto({
           </a>
         )}
       </div>
+      {!necesitaAprobacion && (
+        <div className="acciones">
+          <button type="button" className="btn btn-primario" onClick={mandarPdf} disabled={pendiente}>
+            {pendiente ? 'Armando el PDF…' : 'Mandar PDF'}
+          </button>
+          <a className="btn" href={urlPdf} target="_blank" rel="noopener noreferrer">
+            Ver PDF
+          </a>
+        </div>
+      )}
 
       <div className="campo">
         <label htmlFor="pr-estado">Estado</label>
